@@ -1,0 +1,335 @@
+openapi: 3.1.0
+info:
+  title: Doorman
+  version: 1.0.0
+  description: API для аутентификации и авторизации пользователей Эдиума
+
+servers:
+  - url: https://edium.ru/doorman/v1
+tags:
+  - name: OTP
+    description: OTP операции
+
+  - name: Tokens
+    description: Управление токенами
+
+  - name: Registration
+    description: Регистрация пользователя
+
+  - name: Keys
+    description: Public keys (JWKS)
+
+paths:
+  /otp/send:
+    post:
+      tags: [OTP]
+      summary: Отправка временного кода пользователю по SMS или Max
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpSendRequest'
+      responses:
+        '200':
+          description: Код отправлен
+        '400':
+          description: Некорректный номер телефона или способ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                badRequest:
+                  value:
+                    error: BAD_REQUEST
+        '403':
+          description: Пользователь с таким номером удален/заблокирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                phoneUnavailable:
+                  value:
+                    error: PHONE_UNAVAILABLE
+        '429':
+          description: OTP уже отправлено          
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                otpAlreadySent:
+                  value:
+                    error: OTP_ALREADY_SENT
+
+  /otp/verify:
+    post:
+      tags: [OTP]
+      summary: Проверка кода
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+      responses:
+        '200':
+          description: Код подтвержден
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AuthTokensResponse'
+                  - $ref: '#/components/schemas/OtpRegistrationTokenResponse'
+        '401':
+          description: Неверный или истекший код
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                otpExpired:
+                  value:
+                    error: OTP_EXPIRED
+                otpInvalid:
+                  value:
+                    error: OTP_INVALID
+        '429':
+          description: Слишком много попыток
+          content:
+            application/json: 
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                otpAttemptsExceeded:
+                  value:
+                    error: OTP_ATTEMPTS_EXCEEDED
+  /auth/register:
+    post:
+      tags: [Registration]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses: 
+        '200':
+          description: Пользователь зарегестрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokensResponse'
+        '401':
+          description: Неверный или истекший registration токен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                registrationTokenExpired:
+                  value:
+                    error: REGISTRATION_TOKEN_EXPIRED
+                registrationTokenInvalid:
+                  value:
+                    error: REGISTRATION_TOKEN_INVALID
+
+
+  /auth/refresh:
+    post:
+      tags: [Tokens]
+      summary: Обновить токены
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Выдана новая пара токенов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokensResponse'
+        '401':
+          description: Неверный или истекший refresh токен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                refreshTokenExpired:
+                  value:
+                    error: REFRESH_TOKEN_EXPIRED
+                refreshTokenInvalid:
+                  value:
+                    error: REFRESH_TOKEN_INVALID
+
+
+  /auth/logout:
+    post:
+      tags: [Tokens]
+      summary: Выход из аккаунта
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Успешно вышел
+
+  /.well-known/jwks.json:
+    get:
+      tags: [Keys]
+      summary: Get JSON Web Key Set
+      responses:
+        '200':
+          description: JWKS document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JWKSResponse'
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    OtpSendRequest:
+      type: object
+      required: [phone, channel]
+      properties:
+        phone:
+          type: string
+          format: phone
+          example: 89776002210
+        channel:
+          type: string
+          enum:
+            - sms
+            - max
+
+    OtpVerifyRequest:
+      type: object
+      required: [phone, otp]
+      properties:
+        phone:
+          type: string
+          format: phone
+          example: 89776002210
+        otp:
+          type: string
+          example: 123456
+
+    AuthTokensResponse:
+      type: object
+      properties: 
+        access_token:
+          type: string
+          description: JWT access token
+        refresh_token:
+          type: string
+          description: JWT refresh token
+        expires_in:
+          type: integer
+          description: TTL access token in seconds
+          example: 900
+        
+    OtpRegistrationTokenResponse:
+      type: object
+      properties: 
+        registration_token:
+          type: string
+          description: JWT registration token
+
+    OtpSendResponse:
+      type: object
+      required: [access_token, refresh_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        refresh_token:
+          type: string
+          description: Refresh token
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+          description: Access token lifetime in seconds
+          example: 900
+
+    RegisterRequest:
+      type: object
+      required: [name, surname, phone, registration_token]
+      properties: 
+        name:
+          type: string
+          example: Senya
+        surname: 
+          type: string
+          example: Titarenkovich
+        phone:
+          type: string
+          format: phone
+          example: 89776002210
+
+    JWKSResponse:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/JWK'
+
+    JWK:
+      type: object
+      required: [kty, kid, use, alg, n, e]
+      properties:
+        kty:
+          type: string
+          example: RSA
+        kid:
+          type: string
+          example: key-1
+        use:
+          type: string
+          example: sig
+        alg:
+          type: string
+          example: RS256
+        n:
+          type: string
+          description: Modulus
+        e:
+          type: string
+          description: Exponent
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties: 
+        refresh_token:
+          type: string
+          description: Рефреш токен для обновления 
+            
+    ErrorResponse:
+      type: object
+      required: [error, description]
+      properties: 
+        error:
+          type: string
+          example: "OTP_ALREADY_SENT"
+        description:
+          type: string
+          example: "Одноразовый код уже отправлен"
+        details:
+          type: object
+
