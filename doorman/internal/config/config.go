@@ -22,6 +22,7 @@ type PostgresConfig struct {
 	Password string `env:"POSTGRES_PASSWORD,required"`
 	Port     int    `env:"POSTGRES_PORT" envDefault:"5432"`
 	Host     string `env:"POSTGRES_HOST" envDefault:"doorman-db"`
+	SSLMode  string `env:"POSTGRES_SSLMODE" envDefault:"prefer"`
 }
 
 type RedisConfig struct {
@@ -31,8 +32,9 @@ type RedisConfig struct {
 }
 
 type KafkaConfig struct {
-	Brokers  []string `env:"KAFKA_BROKERS" envDefault:"kafka:9092"`
-	ClientID string   `env:"KAFKA_CLIENT_ID" envDefault:"doorman"`
+	Brokers          []string `env:"KAFKA_BROKERS" envDefault:"kafka:9092"`
+	ClientID         string   `env:"KAFKA_CLIENT_ID" envDefault:"doorman"`
+	UserDeletedTopic string   `env:"KAFKA_USER_DELETED_TOPIC" envDefault:"user.deleted"`
 }
 
 func Load() (*Config, error) {
