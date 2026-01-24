@@ -16,6 +16,22 @@ type App struct {
 }
 
 func New(cfg *config.Config) (*App, error) {
+	//rdb, err := redis.New(cfg.Redis)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//db, err := postgres.New(cfg.Postgres)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//producer := kafka.NewProducer(cfg.Kafka)
+	//userDeletedConsumer := kafka.NewConsumer(
+	//	cfg.Kafka.Brokers,
+	//	cfg.Kafka.ClientID,
+	//	cfg.Kafka.UserDeletedTopic,
+	//)
 
 	return &App{
 		OtpHandler:          &otp.Handler{},
