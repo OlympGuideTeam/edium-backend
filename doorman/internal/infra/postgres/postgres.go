@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"doorman/internal/config"
 	"fmt"
+	_ "github.com/lib/pq"
 )
 
 func New(cfg config.PostgresConfig) (*sql.DB, error) {

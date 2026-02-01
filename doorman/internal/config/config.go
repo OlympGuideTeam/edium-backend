@@ -22,7 +22,7 @@ type PostgresConfig struct {
 	Password string `env:"POSTGRES_PASSWORD,required"`
 	Port     int    `env:"POSTGRES_PORT" envDefault:"5432"`
 	Host     string `env:"POSTGRES_HOST" envDefault:"doorman-db"`
-	SSLMode  string `env:"POSTGRES_SSLMODE" envDefault:"prefer"`
+	SSLMode  string `env:"POSTGRES_SSLMODE" envDefault:"disable"`
 }
 
 type RedisConfig struct {

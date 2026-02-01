@@ -1,21 +1,21 @@
 name: edium
 
 services:
-  doorman:
-    build:
-      context: ./doorman
-      dockerfile: Dockerfile
-    restart: on-failure
-    env_file: ./doorman/.env
-    ports:
-      - "8081:80"
-    depends_on:
-      doorman-db:
-        condition: service_healthy
-      doorman-redis:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
+#  doorman:
+#    build:
+#      context: ./doorman
+#      dockerfile: Dockerfile
+#    restart: on-failure
+#    env_file: ./doorman/.env
+#    ports:
+#      - "8081:80"
+#    depends_on:
+#      doorman-db:
+#        condition: service_healthy
+#      doorman-redis:
+#        condition: service_healthy
+##      kafka:
+##        condition: service_healthy
 
   doorman-db:
     image: postgres:17
@@ -48,44 +48,59 @@ services:
       timeout: 3s
       retries: 20
 
-  kafka:
-    image: bitnami/kafka:3.6
-    environment:
-      KAFKA_CFG_NODE_ID: 1
-      KAFKA_CFG_PROCESS_ROLES: controller,broker
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-
-      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 1
-
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
-
-      ALLOW_PLAINTEXT_LISTENER: "yes"
+  doorman-liquibase:
+    image: liquibase/liquibase:latest
+    restart: on-failure
+    env_file: ./doorman/.env
     volumes:
-      - kafka_data:/bitnami/kafka
-    healthcheck:
-      test: [ "CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    ports:
-      - "8090:8080"
-    depends_on:
-      kafka:
-        condition: service_healthy
+      - ./migrations:/liquibase/changelog
     environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      - LIQUIBASE_COMMAND_USERNAME=$POSTGRES_USER
+      - LIQUIBASE_COMMAND_PASSWORD=$POSTGRES_PASSWORD
+      - LIQUIBASE_COMMAND_UPDATE_URL=jdbc:postgresql://doorman-db:5432/$POSTGRES_NAME
+      - LIQUIBASE_COMMAND_CHANGELOG_FILE=doorman/migrations/changelog/db.changelog-master.xml
+      - LIQUIBASE_COMMAND_DRIVER=org.postgresql.Driver
+    depends_on:
+      - doorman-db
+    entrypoint: [ "liquibase", "update" ]
+
+#  kafka:
+#    image: confluentinc/cp-kafka:7.6.0
+#    environment:
+#      KAFKA_NODE_ID: 1
+#      KAFKA_PROCESS_ROLES: broker,controller
+#      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+#
+#      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+#      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+#
+#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+#      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+#
+#      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+#      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+#    volumes:
+#      - kafka_data:/var/lib/kafka/data
+#    healthcheck:
+#      test: [ "CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1" ]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 10
+#
+#  kafka-ui:
+#    image: provectuslabs/kafka-ui:latest
+#    container_name: kafka-ui
+#    ports:
+#      - "8090:8080"
+#    depends_on:
+#      kafka:
+#        condition: service_healthy
+#    environment:
+#      KAFKA_CLUSTERS_0_NAME: local
+#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
 
   terraform:
     image: hashicorp/terraform:1.6

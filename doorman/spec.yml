@@ -40,9 +40,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
-                badRequest:
+                validationError:
                   value:
-                    error: BAD_REQUEST
+                    error: VALIDATION_ERROR
         '403':
           description: Пользователь с таким номером удален/заблокирован
           content:
@@ -54,7 +54,7 @@ paths:
                   value:
                     error: PHONE_UNAVAILABLE
         '429':
-          description: OTP уже отправлено          
+          description: Одноразовый код уже отправлен
           content:
             application/json:
               schema:
