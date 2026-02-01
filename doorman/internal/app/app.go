@@ -2,6 +2,8 @@ package app
 
 import (
 	"doorman/internal/config"
+	"doorman/internal/infra/postgres"
+	"doorman/internal/infra/redis"
 	"doorman/internal/keys"
 	"doorman/internal/otp"
 	"doorman/internal/registration"
@@ -16,16 +18,16 @@ type App struct {
 }
 
 func New(cfg *config.Config) (*App, error) {
-	//rdb, err := redis.New(cfg.Redis)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//db, err := postgres.New(cfg.Postgres)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
+	_, err := redis.New(cfg.Redis)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = postgres.New(cfg.Postgres)
+	if err != nil {
+		return nil, err
+	}
+
 	//producer := kafka.NewProducer(cfg.Kafka)
 	//userDeletedConsumer := kafka.NewConsumer(
 	//	cfg.Kafka.Brokers,
