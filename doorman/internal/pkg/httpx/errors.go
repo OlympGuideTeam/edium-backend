@@ -1,7 +1,7 @@
 package httpx
 
 import (
-	"doorman/internal/shared/apperr"
+	"doorman/internal/pkg/apperr"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"

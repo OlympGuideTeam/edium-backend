@@ -1,24 +1,25 @@
-package otp
+package handler
 
 import (
-	"doorman/internal/shared/apperr"
-	"doorman/internal/shared/httpx"
+	"doorman/internal/pkg/apperr"
+	"doorman/internal/pkg/httpx"
+	"doorman/internal/transport/dto"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
-type Handler struct {
+type OTPHandler struct {
 	service IOTPService
 }
 
-func NewHandler(service IOTPService) *Handler {
-	return &Handler{
+func NewHandler(service IOTPService) *OTPHandler {
+	return &OTPHandler{
 		service: service,
 	}
 }
 
-func (h *Handler) Send(c *gin.Context) {
-	var req sendOTPRequest
+func (h *OTPHandler) Send(c *gin.Context) {
+	var req dto.SendOTPRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httpx.WriteError(c, apperr.BadRequest(err))
 		return
@@ -32,6 +33,6 @@ func (h *Handler) Send(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (h *Handler) Verify(c *gin.Context) {
+func (h *OTPHandler) Verify(c *gin.Context) {
 
 }

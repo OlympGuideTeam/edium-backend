@@ -1,14 +1,14 @@
-package otp
+package otpsvc
 
-import "doorman/internal/shared/apperr"
+import "doorman/internal/pkg/apperr"
 
 var (
-	errAlreadySent = apperr.New(
+	ErrAlreadySent = apperr.New(
 		"OTP_ALREADY_SENT",
 		"Одноразовый код уже отправлен",
 		429,
 	)
-	errPhoneUnavailable = apperr.New(
+	ErrPhoneUnavailable = apperr.New(
 		"PHONE_UNAVAILABLE",
 		"Пользователь с таким номером удален/заблокирован",
 		403,
