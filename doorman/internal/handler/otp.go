@@ -28,6 +28,7 @@ func (h *OTPHandler) Send(c *gin.Context) {
 	err := h.service.SendOTP(c.Request.Context(), req.Phone, req.Channel)
 	if err != nil {
 		httpx.WriteError(c, err)
+		return
 	}
 
 	c.Status(http.StatusOK)

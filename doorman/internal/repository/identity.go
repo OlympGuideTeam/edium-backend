@@ -6,6 +6,7 @@ import (
 	"doorman/internal/domain"
 	"doorman/internal/infra/db"
 	"errors"
+	"log"
 )
 
 type PgIdentityStore struct {
@@ -24,19 +25,17 @@ func (s *PgIdentityStore) GetByPhone(ctx context.Context, phone string) (*domain
 		phone,
 	)
 
-	err := row.Err()
+	identity := &domain.Identity{}
+	err := row.Scan(&identity.ID, &identity.Phone, &identity.Status)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			log.Printf("okay err: %v", err)
 			return nil, nil
 		} else {
+			log.Printf("why err: %v", err)
 			return nil, err
 		}
-	}
-
-	identity := &domain.Identity{}
-	err = row.Scan(identity.ID, &identity.Phone, &identity.Status)
-	if err != nil {
-		return nil, err
 	}
 
 	return identity, nil

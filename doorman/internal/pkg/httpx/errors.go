@@ -31,5 +31,8 @@ func WriteError(c *gin.Context, err error) {
 	c.JSON(http.StatusInternalServerError, ErrorResponse{
 		Error:       "INTERNAL_ERROR",
 		Description: "Внутренняя ошибка",
+		Details: map[string]any{
+			"error": err.Error(),
+		},
 	})
 }

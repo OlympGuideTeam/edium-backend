@@ -47,7 +47,8 @@ func (s *Service) SendOTP(ctx context.Context, phone string, channel domain.Chan
 			return err
 		}
 
-		if identity.Status == domain.IdentityStatusBlocked || identity.Status == domain.IdentityStatusDeleted {
+		if identity != nil &&
+			(identity.Status == domain.IdentityStatusBlocked || identity.Status == domain.IdentityStatusDeleted) {
 			return ErrPhoneUnavailable
 		}
 
