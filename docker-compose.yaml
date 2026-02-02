@@ -1,21 +1,21 @@
 name: edium
 
 services:
-#  doorman:
-#    build:
-#      context: ./doorman
-#      dockerfile: Dockerfile
-#    restart: on-failure
-#    env_file: ./doorman/.env
-#    ports:
-#      - "8081:80"
-#    depends_on:
-#      doorman-db:
+  doorman:
+    build:
+      context: ./doorman
+      dockerfile: Dockerfile
+    restart: on-failure
+    env_file: ./doorman/.env
+    ports:
+      - "8081:80"
+    depends_on:
+      doorman-db:
+        condition: service_healthy
+      doorman-redis:
+        condition: service_healthy
+#      kafka:
 #        condition: service_healthy
-#      doorman-redis:
-#        condition: service_healthy
-##      kafka:
-##        condition: service_healthy
 
   doorman-db:
     image: postgres:17

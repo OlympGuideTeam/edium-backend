@@ -2,28 +2,27 @@ package app
 
 import (
 	"doorman/internal/config"
-	"doorman/internal/infra/postgres"
+	"doorman/internal/handler"
+	"doorman/internal/infra/db"
 	"doorman/internal/infra/redis"
-	"doorman/internal/keys"
-	"doorman/internal/otp"
-	"doorman/internal/registration"
-	"doorman/internal/tokens"
+	"doorman/internal/repository"
+	otpsvc "doorman/internal/service/otp"
 )
 
 type App struct {
-	OtpHandler          *otp.Handler
-	RegistrationHandler *registration.Handler
-	TokensHandler       *tokens.Handler
-	KeysHandler         *keys.Handler
+	OtpHandler          *handler.OTPHandler
+	RegistrationHandler *handler.RegistrationHandler
+	TokenHandler        *handler.TokenHandler
+	KeysHandler         *handler.KeysHandler
 }
 
 func New(cfg *config.Config) (*App, error) {
-	_, err := redis.New(cfg.Redis)
+	rdb, err := redis.New(cfg.Redis)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = postgres.New(cfg.Postgres)
+	pgdb, err := db.NewDB(cfg.Postgres)
 	if err != nil {
 		return nil, err
 	}
@@ -35,10 +34,19 @@ func New(cfg *config.Config) (*App, error) {
 	//	cfg.Kafka.UserDeletedTopic,
 	//)
 
+	txManager := db.NewTxManager(pgdb)
+
+	otpStore := repository.NewRedisOTPStore(rdb)
+	identityStore := repository.NewPgIdentityStore(pgdb)
+
+	otpService := otpsvc.NewService(txManager, identityStore, _, otpStore)
+
+	otpHandler := handler.NewHandler(otpService)
+
 	return &App{
-		OtpHandler:          &otp.Handler{},
-		RegistrationHandler: &registration.Handler{},
-		TokensHandler:       &tokens.Handler{},
-		KeysHandler:         &keys.Handler{},
+		OtpHandler:          otpHandler,
+		TokenHandler:        &handler.TokenHandler{},
+		KeysHandler:         &handler.KeysHandler{},
+		RegistrationHandler: &handler.RegistrationHandler{},
 	}, nil
 }

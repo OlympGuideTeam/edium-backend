@@ -28,8 +28,8 @@ func main() {
 
 	api.POST("/auth/register", application.RegistrationHandler.Register)
 
-	api.POST("/auth/refresh", application.TokensHandler.Refresh)
-	api.POST("/auth/logout", application.TokensHandler.Logout)
+	api.POST("/auth/refresh", application.TokenHandler.Refresh)
+	api.POST("/auth/logout", application.TokenHandler.Logout)
 
 	r.GET("/.well-known/jwks.json", application.KeysHandler.GetJWKS)
 

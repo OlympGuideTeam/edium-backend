@@ -1,4 +1,4 @@
-package postgres
+package db
 
 import (
 	"database/sql"
@@ -7,7 +7,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func New(cfg config.PostgresConfig) (*sql.DB, error) {
+func NewDB(cfg config.PostgresConfig) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		cfg.Host,
