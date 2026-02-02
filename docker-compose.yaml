@@ -53,16 +53,18 @@ services:
     restart: on-failure
     env_file: ./doorman/.env
     volumes:
-      - ./migrations:/liquibase/changelog
+      - ./doorman/migrations:/liquibase/changelog
     environment:
-      - LIQUIBASE_COMMAND_USERNAME=$POSTGRES_USER
-      - LIQUIBASE_COMMAND_PASSWORD=$POSTGRES_PASSWORD
-      - LIQUIBASE_COMMAND_UPDATE_URL=jdbc:postgresql://doorman-db:5432/$POSTGRES_NAME
-      - LIQUIBASE_COMMAND_CHANGELOG_FILE=doorman/migrations/changelog/db.changelog-master.xml
+      - LIQUIBASE_COMMAND_USERNAME=${POSTGRES_USER}
+      - LIQUIBASE_COMMAND_PASSWORD=${POSTGRES_PASSWORD}
+      - LIQUIBASE_COMMAND_UPDATE_URL=jdbc:postgresql://doorman-db:5432/${POSTGRES_DB}
+      - LIQUIBASE_COMMAND_CHANGELOG_FILE=changelog/db.changelog-master.xml
       - LIQUIBASE_COMMAND_DRIVER=org.postgresql.Driver
+      - LIQUIBASE_COMMAND_DEFAULTSCHEMANAME=public
     depends_on:
       - doorman-db
     entrypoint: [ "liquibase", "update" ]
+    # TODO - при ребилде ликва забывает о миграциях, хотя в databasechangelog всё есть
 
 #  kafka:
 #    image: confluentinc/cp-kafka:7.6.0
@@ -83,7 +85,7 @@ services:
 #      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
 #      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
 #    volumes:
-#      - kafka_data:/var/lib/kafka/data
+#      - doorman_kafka_data:/var/lib/kafka/data
 #    healthcheck:
 #      test: [ "CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1" ]
 #      interval: 10s
@@ -116,4 +118,4 @@ services:
 volumes:
   doorman_db_data:
   doorman_redis_data:
-  kafka_data:
+  doorman_kafka_data:

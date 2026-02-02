@@ -16,7 +16,9 @@ func NewRedisOTPStore(client *redis.Client) *RedisOTPStore {
 }
 
 func (s *RedisOTPStore) Exists(ctx context.Context, phone string) (exists bool, err error) {
-	count, err := s.client.Exists(ctx, phone).Result()
+	key := fmt.Sprintf("otp:%s", phone)
+	count, err := s.client.Exists(ctx, key).Result()
+
 	return count > 0, err
 }
 
