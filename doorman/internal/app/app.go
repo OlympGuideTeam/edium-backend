@@ -38,8 +38,9 @@ func New(cfg *config.Config) (*App, error) {
 
 	otpStore := repository.NewRedisOTPStore(rdb)
 	identityStore := repository.NewPgIdentityStore(pgdb)
+	scheduler := repository.NewPgScheduler(pgdb)
 
-	otpService := otpsvc.NewService(txManager, identityStore, _, otpStore)
+	otpService := otpsvc.NewService(txManager, identityStore, scheduler, otpStore)
 
 	otpHandler := handler.NewHandler(otpService)
 
