@@ -6,7 +6,11 @@ services:
       context: ./doorman
       dockerfile: Dockerfile
     restart: on-failure
-    env_file: ./doorman/.env
+    environment:
+      POSTGRES_USER: ${DOORMAN_PG_USER}
+      POSTGRES_PASSWORD: ${DOORMAN_PG_PWD}
+      POSTGRES_DB: ${DOORMAN_PG_DB}
+      REDIS_PASSWORD: ${DOORMAN_REDIS_PWD}
     ports:
       - "8081:80"
     depends_on:
@@ -14,13 +18,18 @@ services:
         condition: service_healthy
       doorman-redis:
         condition: service_healthy
-#      kafka:
-#        condition: service_healthy
+      doorman-flyway:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
 
   doorman-db:
     image: postgres:17
     restart: unless-stopped
-    env_file: ./doorman/.env
+    environment:
+      POSTGRES_USER: ${DOORMAN_PG_USER}
+      POSTGRES_PASSWORD: ${DOORMAN_PG_PWD}
+      POSTGRES_DB: ${DOORMAN_PG_DB}
     ports:
       - "5433:5432"
     volumes:
@@ -31,10 +40,28 @@ services:
       timeout: 3s
       retries: 20
 
+  doorman-flyway:
+    image: flyway/flyway:latest
+    restart: no
+    command: ["migrate"]
+    environment:
+      - FLYWAY_URL=jdbc:postgresql://doorman-db:5432/${DOORMAN_PG_DB}
+      - FLYWAY_USER=${DOORMAN_PG_USER}
+      - FLYWAY_PASSWORD=${DOORMAN_PG_PWD}
+      - FLYWAY_LOCATIONS=filesystem:/app/migrations
+      - FLYWAY_VALIDATE_MIGRATION_NAMING=true
+      - FLYWAY_BASELINE_ON_MIGRATE=true
+    volumes:
+      - ./doorman/migrations:/app/migrations
+    depends_on:
+      doorman-db:
+        condition: service_healthy
+
   doorman-redis:
     image: redis:8
     restart: unless-stopped
-    env_file: ./doorman/.env
+    environment:
+      REDIS_PASSWORD: ${DOORMAN_REDIS_PWD}
     command: >
       sh -c 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes'
     ports:
@@ -48,74 +75,20 @@ services:
       timeout: 3s
       retries: 20
 
-  doorman-liquibase:
-    image: liquibase/liquibase:latest
-    restart: on-failure
-    env_file: ./doorman/.env
+  nats:
+    image: nats:2.10
+    restart: unless-stopped
+    command:
+      - "--js"
+      - "--sd=/data"
+      - "--name=nats"
+    ports:
+      - "4222:4222"
+      - "8222:8222"
     volumes:
-      - ./doorman/migrations:/liquibase/changelog
-    environment:
-      - LIQUIBASE_COMMAND_USERNAME=${POSTGRES_USER}
-      - LIQUIBASE_COMMAND_PASSWORD=${POSTGRES_PASSWORD}
-      - LIQUIBASE_COMMAND_UPDATE_URL=jdbc:postgresql://doorman-db:5432/${POSTGRES_DB}
-      - LIQUIBASE_COMMAND_CHANGELOG_FILE=changelog/db.changelog-master.xml
-      - LIQUIBASE_COMMAND_DRIVER=org.postgresql.Driver
-      - LIQUIBASE_COMMAND_DEFAULTSCHEMANAME=public
-    depends_on:
-      - doorman-db
-    entrypoint: [ "liquibase", "update" ]
-    # TODO - при ребилде ликва забывает о миграциях, хотя в databasechangelog всё есть
-
-#  kafka:
-#    image: confluentinc/cp-kafka:7.6.0
-#    environment:
-#      KAFKA_NODE_ID: 1
-#      KAFKA_PROCESS_ROLES: broker,controller
-#      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-#
-#      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
-#      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-#
-#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-#      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-#      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-#
-#      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
-#      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
-#    volumes:
-#      - doorman_kafka_data:/var/lib/kafka/data
-#    healthcheck:
-#      test: [ "CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1" ]
-#      interval: 10s
-#      timeout: 5s
-#      retries: 10
-#
-#  kafka-ui:
-#    image: provectuslabs/kafka-ui:latest
-#    container_name: kafka-ui
-#    ports:
-#      - "8090:8080"
-#    depends_on:
-#      kafka:
-#        condition: service_healthy
-#    environment:
-#      KAFKA_CLUSTERS_0_NAME: local
-#      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-
-  terraform:
-    image: hashicorp/terraform:1.6
-    working_dir: /data
-    volumes:
-    - ./infra/terraform:/data
-    depends_on:
-      kafka:
-        condition: service_healthy
-    profiles: ["ops"]
-    entrypoint: ["terraform"]
+      - nats_data:/data
 
 volumes:
+  nats_data:
   doorman_db_data:
   doorman_redis_data:
-  doorman_kafka_data:
