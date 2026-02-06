@@ -12,7 +12,7 @@ type OTPHandler struct {
 	service IOTPService
 }
 
-func NewHandler(service IOTPService) *OTPHandler {
+func NewOTPHandler(service IOTPService) *OTPHandler {
 	return &OTPHandler{
 		service: service,
 	}
