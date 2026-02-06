@@ -9,7 +9,7 @@ type Config struct {
 	App      AppConfig
 	Postgres PostgresConfig
 	Redis    RedisConfig
-	Kafka    KafkaConfig
+	Keys     KeysConfig
 }
 
 type AppConfig struct {
@@ -31,10 +31,9 @@ type RedisConfig struct {
 	Host     string `env:"REDIS_HOST" envDefault:"doorman-redis"`
 }
 
-type KafkaConfig struct {
-	Brokers          []string `env:"KAFKA_BROKERS" envDefault:"kafka:9092"`
-	ClientID         string   `env:"KAFKA_CLIENT_ID" envDefault:"doorman"`
-	UserDeletedTopic string   `env:"KAFKA_USER_DELETED_TOPIC" envDefault:"user.deleted"`
+type KeysConfig struct {
+	JwtRSAPrivateKey string `env:"JWT_RSA_PRIVATE_KEY"`
+	JwtActiveKID     string `env:"JWT_ACTIVE_KID" envDefault:"key-1"`
 }
 
 func Load() (*Config, error) {

@@ -240,7 +240,8 @@ components:
           type: integer
           description: TTL access token in seconds
           example: 900
-        
+
+
     OtpRegistrationTokenResponse:
       type: object
       properties: 
@@ -319,7 +320,8 @@ components:
         refresh_token:
           type: string
           description: Рефреш токен для обновления 
-            
+
+
     ErrorResponse:
       type: object
       required: [error, description]

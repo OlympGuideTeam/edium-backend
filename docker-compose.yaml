@@ -11,6 +11,7 @@ services:
       POSTGRES_PASSWORD: ${DOORMAN_PG_PWD}
       POSTGRES_DB: ${DOORMAN_PG_DB}
       REDIS_PASSWORD: ${DOORMAN_REDIS_PWD}
+      JWT_RSA_PRIVATE_KEY: ${JWT_RSA_PRIVATE_KEY}
     ports:
       - "8081:80"
     depends_on:
