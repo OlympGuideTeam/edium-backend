@@ -48,14 +48,14 @@ func (h *Handler) Verify(c *gin.Context) {
 	}
 
 	switch result := verifyResult.(type) {
-	case AuthTokens:
+	case *AuthTokens:
 		response := dto.AuthTokensResponse{
 			AccessToken:  result.AccessToken,
 			RefreshToken: result.RefreshToken,
 			ExpiresIn:    result.ExpiresIn,
 		}
 		c.JSON(http.StatusOK, response)
-	case RegistrationToken:
+	case *RegistrationToken:
 		response := dto.RegistrationTokenResponse{
 			RegistrationToken: result.Token,
 		}

@@ -28,12 +28,10 @@ type IdentityStore interface {
 	GetByPhone(ctx context.Context, phone string) (*domain.Identity, error)
 }
 
-type KeyStore interface {
-	GenerateAuthTokens(userID string, accessTTL time.Duration, refreshTTL time.Duration) (
-		accessToken string, refreshToken string, expiresIn int64, err error,
-	)
-}
-
 type TaskScheduler interface {
 	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
+}
+
+type JWTPublisher interface {
+	IssueTokens(ctx context.Context, userID string) (string, string, int64, error)
 }
