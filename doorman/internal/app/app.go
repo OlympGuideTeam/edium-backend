@@ -35,13 +35,16 @@ func New(cfg *config.Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	otpStore := repository.NewRedisOTPStore(rdb)
 	regTokenStore := repository.NewRedisRegTokenStore(rdb)
+	refreshTokenStore := repository.NewRedisRefreshTokenStore(rdb)
+
 	identityStore := repository.NewPgIdentityStore(pgdb)
 	scheduler := repository.NewPgScheduler(pgdb)
 
-	otpService := otpsvc.NewService(identityStore, regTokenStore, keyStore, otpStore, scheduler)
-	jwtService := jwtsvc.NewService(keyStore)
+	jwtService := jwtsvc.NewService(keyStore, refreshTokenStore)
+	otpService := otpsvc.NewService(identityStore, regTokenStore, otpStore, scheduler, jwtService)
 
 	otpHandler := otphandler.NewHandler(otpService)
 	keyHandler := keyhandler.NewHandler(jwtService)

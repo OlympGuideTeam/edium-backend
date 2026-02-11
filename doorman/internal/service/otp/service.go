@@ -17,8 +17,6 @@ import (
 const (
 	otpTTL         = 3 * time.Minute
 	regTokenTTL    = 15 * time.Minute
-	accessTTL      = 15 * time.Minute
-	refreshTTL     = 30 * 24 * time.Hour
 	maxOTPAttempts = 3
 	regTokenLength = 32
 )
@@ -26,29 +24,29 @@ const (
 type Service struct {
 	identityStore IdentityStore
 	regTokenStore RegTokenStore
-	keyStore      KeyStore
 	otpStore      OTPStore
 	taskScheduler TaskScheduler
+	jwtPublisher  JWTPublisher
 }
 
 type OtpData struct {
-	hash     string
-	attempts int
+	Hash     string `redis:"hash"`
+	Attempts int    `redis:"attempts"`
 }
 
 func NewService(
 	identityStore IdentityStore,
 	regTokenStore RegTokenStore,
-	keyStore KeyStore,
 	otpStore OTPStore,
 	taskScheduler TaskScheduler,
+	jwtPublisher JWTPublisher,
 ) *Service {
 	return &Service{
 		identityStore: identityStore,
 		regTokenStore: regTokenStore,
 		taskScheduler: taskScheduler,
-		keyStore:      keyStore,
 		otpStore:      otpStore,
+		jwtPublisher:  jwtPublisher,
 	}
 }
 
@@ -111,11 +109,11 @@ func (s *Service) VerifyOTP(ctx context.Context, phone string, otp uint64) (otph
 		return nil, ErrNotFoundOrExpired
 	}
 
-	if otpData.attempts >= maxOTPAttempts {
+	if otpData.Attempts >= maxOTPAttempts {
 		return nil, ErrAttemptsExceeded
 	}
 
-	if !s.isValidOTP(otpData.hash, otp) {
+	if !s.isValidOTP(otpData.Hash, otp) {
 		if err = s.otpStore.IncrAttempts(ctx, phone); err != nil {
 			return nil, err
 		}
@@ -144,15 +142,11 @@ func (s *Service) issueResult(ctx context.Context, phone string) (otphandler.Ver
 		return nil, ErrPhoneUnavailable
 	}
 
-	return s.issueAuthTokens(identity.ID)
+	return s.issueAuthTokens(ctx, identity.ID)
 }
 
-func (s *Service) issueAuthTokens(userID string) (*otphandler.AuthTokens, error) {
-	accessToken, refreshToken, expiresIn, err := s.keyStore.GenerateAuthTokens(
-		userID,
-		accessTTL,
-		refreshTTL,
-	)
+func (s *Service) issueAuthTokens(ctx context.Context, userID string) (*otphandler.AuthTokens, error) {
+	accessToken, refreshToken, expiresIn, err := s.jwtPublisher.IssueTokens(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

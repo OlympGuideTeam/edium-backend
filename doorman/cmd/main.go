@@ -31,7 +31,7 @@ func main() {
 	api.POST("/auth/refresh", application.TokenHandler.Refresh)
 	api.POST("/auth/logout", application.TokenHandler.Logout)
 
-	api.GET("/.well-known/jwks.json", application.KeysHandler.GetJWKS)
+	api.GET("/.well-known/jwks.json", application.KeyHandler.GetJWKS)
 
 	err = r.Run(fmt.Sprintf(":%d", cfg.App.Port))
 	if err != nil {
