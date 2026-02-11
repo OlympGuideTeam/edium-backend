@@ -3,6 +3,8 @@ package app
 import (
 	"doorman/internal/config"
 	"doorman/internal/handler"
+	keyhandler "doorman/internal/handler/key"
+	otphandler "doorman/internal/handler/otp"
 	"doorman/internal/infra/db"
 	"doorman/internal/infra/redis"
 	"doorman/internal/repository"
@@ -11,10 +13,10 @@ import (
 )
 
 type App struct {
-	OtpHandler          *handler.OTPHandler
+	OtpHandler          *otphandler.Handler
 	RegistrationHandler *handler.RegistrationHandler
 	TokenHandler        *handler.TokenHandler
-	KeysHandler         *handler.KeysHandler
+	KeyHandler          *keyhandler.Handler
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -27,25 +29,26 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	txManager := db.NewTxManager(pgdb)
+	// txManager := db.NewTxManager(pgdb)
 
 	keyStore, err := repository.NewInMemoryKeysStoreWithOneKey(cfg.Keys)
 	if err != nil {
 		return nil, err
 	}
 	otpStore := repository.NewRedisOTPStore(rdb)
+	regTokenStore := repository.NewRedisRegTokenStore(rdb)
 	identityStore := repository.NewPgIdentityStore(pgdb)
 	scheduler := repository.NewPgScheduler(pgdb)
 
-	otpService := otpsvc.NewService(txManager, identityStore, scheduler, otpStore)
+	otpService := otpsvc.NewService(identityStore, regTokenStore, keyStore, otpStore, scheduler)
 	jwtService := jwtsvc.NewService(keyStore)
 
-	otpHandler := handler.NewOTPHandler(otpService)
-	keysHandler := handler.NewKeysHandler(jwtService)
+	otpHandler := otphandler.NewHandler(otpService)
+	keyHandler := keyhandler.NewHandler(jwtService)
 
 	return &App{
 		OtpHandler:          otpHandler,
-		KeysHandler:         keysHandler,
+		KeyHandler:          keyHandler,
 		TokenHandler:        &handler.TokenHandler{},
 		RegistrationHandler: &handler.RegistrationHandler{},
 	}, nil
