@@ -83,19 +83,29 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/AuthTokensResponse'
                   - $ref: '#/components/schemas/OtpRegistrationTokenResponse'
-        '401':
-          description: Неверный или истекший код
+        '400':
+          description: Неверный или истёкший код
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
-                otpExpired:
+                otpNotFoundOrExpired:
                   value:
-                    error: OTP_EXPIRED
+                    error: OTP_NOT_FOUND_OR_EXPIRED
                 otpInvalid:
                   value:
                     error: OTP_INVALID
+        '403':
+          description: Пользователь с таким номером удален/заблокирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                phoneUnavailable:
+                  value:
+                    error: PHONE_UNAVAILABLE
         '429':
           description: Слишком много попыток
           content:

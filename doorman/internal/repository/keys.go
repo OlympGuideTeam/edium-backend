@@ -6,8 +6,20 @@ import (
 	"doorman/internal/config"
 	"encoding/pem"
 	"errors"
+	"github.com/golang-jwt/jwt/v5"
 	"strings"
+	"time"
 )
+
+type AccessClaims struct {
+	UserID string `json:"uid"`
+	jwt.RegisteredClaims
+}
+
+type RefreshClaims struct {
+	UserID string `json:"uid"`
+	jwt.RegisteredClaims
+}
 
 type InMemoryKeyStore struct {
 	ActiveKID   string
@@ -52,4 +64,56 @@ func NewInMemoryKeysStoreWithOneKey(config config.KeysConfig) (*InMemoryKeyStore
 
 func (ks *InMemoryKeyStore) GetPublicKeys() map[string]*rsa.PublicKey {
 	return ks.PublicKeys
+}
+
+func (ks *InMemoryKeyStore) GenerateAuthTokens(
+	userID string,
+	accessTTL time.Duration,
+	refreshTTL time.Duration,
+) (accessToken string, refreshToken string, expiresIn int64, err error) {
+
+	privateKey, ok := ks.PrivateKeys[ks.ActiveKID]
+	if !ok {
+		return "", "", 0, errors.New("active private key not found")
+	}
+
+	now := time.Now()
+
+	// Access
+	accessClaims := AccessClaims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(accessTTL)),
+		},
+	}
+
+	access := jwt.NewWithClaims(jwt.SigningMethodRS256, accessClaims)
+	access.Header["kid"] = ks.ActiveKID
+
+	accessToken, err = access.SignedString(privateKey)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	// Refresh
+	refreshClaims := RefreshClaims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID,
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(refreshTTL)),
+		},
+	}
+
+	refresh := jwt.NewWithClaims(jwt.SigningMethodRS256, refreshClaims)
+	refresh.Header["kid"] = ks.ActiveKID
+
+	refreshToken, err = refresh.SignedString(privateKey)
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	return accessToken, refreshToken, int64(accessTTL.Seconds()), nil
 }

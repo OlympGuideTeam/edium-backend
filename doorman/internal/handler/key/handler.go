@@ -1,21 +1,21 @@
-package handler
+package keyhandler
 
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
-type KeysHandler struct {
+type Handler struct {
 	service IKeyService
 }
 
-func NewKeysHandler(service IKeyService) *KeysHandler {
-	return &KeysHandler{
+func NewHandler(service IKeyService) *Handler {
+	return &Handler{
 		service: service,
 	}
 }
 
-func (h *KeysHandler) GetJWKS(c *gin.Context) {
+func (h *Handler) GetJWKS(c *gin.Context) {
 	resp := h.service.GetPublicKeys()
 
 	c.Header("Cache-Control", "public, max-age=3600")
