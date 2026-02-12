@@ -2,6 +2,7 @@ package jwtsvc
 
 import (
 	"context"
+	tokenhandler "doorman/internal/handler/token"
 	"doorman/internal/transport/dto"
 	"encoding/base64"
 	"math/big"
@@ -45,7 +46,7 @@ func (s *Service) GetPublicKeys() dto.JWKSResponse {
 }
 
 func (s *Service) IssueTokens(ctx context.Context, userID string) (string, string, int64, error) {
-	accessToken, refreshToken, expiresIn, err := s.keyStore.GenerateAuthTokens(
+	authTokens, err := s.keyStore.GenerateAuthTokens(
 		userID,
 		accessTTL,
 		refreshTTL,
@@ -54,10 +55,55 @@ func (s *Service) IssueTokens(ctx context.Context, userID string) (string, strin
 		return "", "", 0, err
 	}
 
-	err = s.refreshTokenStore.Save(ctx, userID, refreshToken)
+	err = s.refreshTokenStore.SaveToken(ctx, authTokens.RefreshJti, userID, refreshTTL)
 	if err != nil {
 		return "", "", 0, err
 	}
 
-	return accessToken, refreshToken, expiresIn, nil
+	return authTokens.AccessToken, authTokens.RefreshToken, authTokens.ExpiresIn, nil
+}
+
+func (s *Service) Logout(ctx context.Context, refreshToken string) error {
+	claims, err := s.keyStore.ParseRefreshToken(refreshToken)
+	if err != nil {
+		return err
+	}
+
+	userID, err := s.refreshTokenStore.GetAndDelToken(ctx, claims.ID)
+	if err != nil {
+		return err
+	}
+
+	if userID != claims.Subject {
+		return ErrRefreshTokenInvalid
+	}
+
+	return nil
+}
+
+func (s *Service) Refresh(ctx context.Context, refreshToken string) (*tokenhandler.AuthTokens, error) {
+	claims, err := s.keyStore.ParseRefreshToken(refreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	userID, err := s.refreshTokenStore.GetAndDelToken(ctx, claims.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if userID != claims.Subject {
+		return nil, ErrRefreshTokenInvalid
+	}
+
+	accessToken, refreshToken, expiresIn, err := s.IssueTokens(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &tokenhandler.AuthTokens{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    uint64(expiresIn),
+	}, nil
 }

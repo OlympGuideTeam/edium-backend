@@ -1,6 +1,7 @@
 package otphandler
 
 import (
+	tokenhandler "doorman/internal/handler/token"
 	"doorman/internal/pkg/apperr"
 	"doorman/internal/pkg/httpx"
 	"doorman/internal/transport/dto"
@@ -48,7 +49,7 @@ func (h *Handler) Verify(c *gin.Context) {
 	}
 
 	switch result := verifyResult.(type) {
-	case *AuthTokens:
+	case *tokenhandler.AuthTokens:
 		response := dto.AuthTokensResponse{
 			AccessToken:  result.AccessToken,
 			RefreshToken: result.RefreshToken,

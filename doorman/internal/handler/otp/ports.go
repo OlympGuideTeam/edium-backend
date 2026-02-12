@@ -6,22 +6,14 @@ import (
 )
 
 type VerifyResult interface {
-	isVerifyResult()
+	IsVerifyResult()
 }
-
-type AuthTokens struct {
-	AccessToken  string
-	RefreshToken string
-	ExpiresIn    uint64
-}
-
-func (AuthTokens) isVerifyResult() {}
 
 type RegistrationToken struct {
 	Token string
 }
 
-func (RegistrationToken) isVerifyResult() {}
+func (RegistrationToken) IsVerifyResult() {}
 
 type IOTPService interface {
 	SendOTP(ctx context.Context, phone string, channel domain.Channel) error

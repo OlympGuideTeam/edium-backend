@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"doorman/internal/domain"
 	otphandler "doorman/internal/handler/otp"
+	tokenhandler "doorman/internal/handler/token"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -145,13 +146,13 @@ func (s *Service) issueResult(ctx context.Context, phone string) (otphandler.Ver
 	return s.issueAuthTokens(ctx, identity.ID)
 }
 
-func (s *Service) issueAuthTokens(ctx context.Context, userID string) (*otphandler.AuthTokens, error) {
+func (s *Service) issueAuthTokens(ctx context.Context, userID string) (*tokenhandler.AuthTokens, error) {
 	accessToken, refreshToken, expiresIn, err := s.jwtPublisher.IssueTokens(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &otphandler.AuthTokens{
+	return &tokenhandler.AuthTokens{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    uint64(expiresIn),
