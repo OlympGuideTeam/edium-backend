@@ -2,9 +2,10 @@ package app
 
 import (
 	"doorman/internal/config"
-	"doorman/internal/handler"
 	keyhandler "doorman/internal/handler/key"
 	otphandler "doorman/internal/handler/otp"
+	reghandler "doorman/internal/handler/registration"
+	tokenhandler "doorman/internal/handler/token"
 	"doorman/internal/infra/db"
 	"doorman/internal/infra/redis"
 	"doorman/internal/repository"
@@ -14,8 +15,8 @@ import (
 
 type App struct {
 	OtpHandler          *otphandler.Handler
-	RegistrationHandler *handler.RegistrationHandler
-	TokenHandler        *handler.TokenHandler
+	RegistrationHandler *reghandler.Handler
+	TokenHandler        *tokenhandler.Handler
 	KeyHandler          *keyhandler.Handler
 }
 
@@ -46,13 +47,14 @@ func New(cfg *config.Config) (*App, error) {
 	jwtService := jwtsvc.NewService(keyStore, refreshTokenStore)
 	otpService := otpsvc.NewService(identityStore, regTokenStore, otpStore, scheduler, jwtService)
 
+	tokenHandler := tokenhandler.NewHandler(jwtService)
 	otpHandler := otphandler.NewHandler(otpService)
 	keyHandler := keyhandler.NewHandler(jwtService)
 
 	return &App{
 		OtpHandler:          otpHandler,
 		KeyHandler:          keyHandler,
-		TokenHandler:        &handler.TokenHandler{},
-		RegistrationHandler: &handler.RegistrationHandler{},
+		TokenHandler:        tokenHandler,
+		RegistrationHandler: &reghandler.Handler{},
 	}, nil
 }

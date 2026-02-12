@@ -4,22 +4,14 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"doorman/internal/config"
+	jwtsvc "doorman/internal/service/jwt"
 	"encoding/pem"
 	"errors"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"strings"
 	"time"
 )
-
-type AccessClaims struct {
-	UserID string `json:"uid"`
-	jwt.RegisteredClaims
-}
-
-type RefreshClaims struct {
-	UserID string `json:"uid"`
-	jwt.RegisteredClaims
-}
 
 type InMemoryKeyStore struct {
 	ActiveKID   string
@@ -70,17 +62,17 @@ func (ks *InMemoryKeyStore) GenerateAuthTokens(
 	userID string,
 	accessTTL time.Duration,
 	refreshTTL time.Duration,
-) (accessToken string, refreshToken string, expiresIn int64, err error) {
+) (*jwtsvc.AuthTokensData, error) {
 
 	privateKey, ok := ks.PrivateKeys[ks.ActiveKID]
 	if !ok {
-		return "", "", 0, errors.New("active private key not found")
+		return nil, errors.New("active private key not found")
 	}
 
 	now := time.Now()
 
 	// Access
-	accessClaims := AccessClaims{
+	accessClaims := jwtsvc.AccessClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID,
@@ -92,16 +84,17 @@ func (ks *InMemoryKeyStore) GenerateAuthTokens(
 	access := jwt.NewWithClaims(jwt.SigningMethodRS256, accessClaims)
 	access.Header["kid"] = ks.ActiveKID
 
-	accessToken, err = access.SignedString(privateKey)
+	accessToken, err := access.SignedString(privateKey)
 	if err != nil {
-		return "", "", 0, err
+		return nil, err
 	}
 
 	// Refresh
-	refreshClaims := RefreshClaims{
+	refreshClaims := jwtsvc.RefreshClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID,
+			ID:        uuid.NewString(),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(refreshTTL)),
 		},
@@ -110,10 +103,55 @@ func (ks *InMemoryKeyStore) GenerateAuthTokens(
 	refresh := jwt.NewWithClaims(jwt.SigningMethodRS256, refreshClaims)
 	refresh.Header["kid"] = ks.ActiveKID
 
-	refreshToken, err = refresh.SignedString(privateKey)
+	refreshToken, err := refresh.SignedString(privateKey)
 	if err != nil {
-		return "", "", 0, err
+		return nil, err
 	}
 
-	return accessToken, refreshToken, int64(accessTTL.Seconds()), nil
+	return &jwtsvc.AuthTokensData{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		RefreshJti:   refreshClaims.ID,
+		ExpiresIn:    int64(accessTTL.Seconds()),
+	}, nil
+}
+
+func (ks *InMemoryKeyStore) ParseRefreshToken(tokenString string) (*jwtsvc.RefreshClaims, error) {
+	claims := &jwtsvc.RefreshClaims{}
+
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+				return nil, jwtsvc.ErrRefreshTokenInvalid
+			}
+
+			kid, ok := token.Header["kid"].(string)
+			if !ok {
+				return nil, jwtsvc.ErrRefreshTokenInvalid
+			}
+
+			pubKey, ok := ks.PublicKeys[kid]
+			if !ok {
+				return nil, jwtsvc.ErrRefreshTokenInvalid
+			}
+
+			return pubKey, nil
+		},
+	)
+
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, jwtsvc.ErrRefreshTokenExpired
+		}
+
+		return nil, jwtsvc.ErrRefreshTokenInvalid
+	}
+
+	if !token.Valid {
+		return nil, jwtsvc.ErrRefreshTokenInvalid
+	}
+
+	return claims, nil
 }

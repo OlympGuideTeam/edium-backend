@@ -116,6 +116,7 @@ paths:
                 otpAttemptsExceeded:
                   value:
                     error: OTP_ATTEMPTS_EXCEEDED
+
   /auth/register:
     post:
       tags: [Registration]
@@ -145,7 +146,6 @@ paths:
                 registrationTokenInvalid:
                   value:
                     error: REGISTRATION_TOKEN_INVALID
-
 
   /auth/refresh:
     post:
@@ -178,16 +178,32 @@ paths:
                   value:
                     error: REFRESH_TOKEN_INVALID
 
-
   /auth/logout:
     post:
       tags: [Tokens]
       summary: Выход из аккаунта
-      security:
-        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
       responses:
         '204':
           description: Успешно вышел
+        '401':
+          description: Невалидный или истёкший refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                otpNotFoundOrExpired:
+                  value:
+                    error: REFRESH_TOKEN_INVALID
+                otpInvalid:
+                  value:
+                    error: REFRESH_TOKEN_EXPIRED
 
   /.well-known/jwks.json:
     get:
@@ -202,12 +218,6 @@ paths:
                 $ref: '#/components/schemas/JWKSResponse'
 
 components:
-
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
 
   schemas:
 
@@ -250,7 +260,6 @@ components:
           type: integer
           description: TTL access token in seconds
           example: 900
-
 
     OtpRegistrationTokenResponse:
       type: object
@@ -331,6 +340,13 @@ components:
           type: string
           description: Рефреш токен для обновления 
 
+    LogoutRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+          description: Рефреш токен для логаута
 
     ErrorResponse:
       type: object
