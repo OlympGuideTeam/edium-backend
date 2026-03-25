@@ -26,7 +26,7 @@ services:
       POSTGRES_DB: ${DOORMAN_PG_DB}
       POSTGRES_HOST: ${PG_HOST}
       POSTGRES_PORT: "6432"
-      POSTGRES_SSLMODE: verify-full
+      POSTGRES_SSLMODE: require
       REDIS_PASSWORD: ${DOORMAN_REDIS_PWD}
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: "6380"
@@ -47,7 +47,7 @@ services:
     restart: "no"
     command: ["migrate"]
     environment:
-      FLYWAY_URL: "jdbc:postgresql://${PG_HOST}:6432/${DOORMAN_PG_DB}?sslmode=verify-full"
+      FLYWAY_URL: "jdbc:postgresql://${PG_HOST}:6432/${DOORMAN_PG_DB}?sslmode=require"
       FLYWAY_USER: ${DOORMAN_PG_USER}
       FLYWAY_PASSWORD: ${DOORMAN_PG_PWD}
       FLYWAY_LOCATIONS: "filesystem:/app/migrations"
