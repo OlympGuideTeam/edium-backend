@@ -3,5 +3,5 @@ package nats
 const (
 	SubjectOTPRequest = "doorman.otp.send"
 	SubjectOTPSent    = "herald.otp.sent"
-	QueueOTPRequest   = "doorman-otp-consumers"
+	QueueOTPSent      = "herald-otp-sent-consumers"
 )

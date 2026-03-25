@@ -2,8 +2,8 @@ package nats
 
 import (
 	"context"
-	"doorman/internal/pkg/correlation"
 	"fmt"
+	"herald/internal/pkg/correlation"
 
 	natsgo "github.com/nats-io/nats.go"
 )
