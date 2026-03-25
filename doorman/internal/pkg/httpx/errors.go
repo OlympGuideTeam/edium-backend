@@ -1,10 +1,12 @@
 package httpx
 
 import (
-	"doorman/internal/pkg/apperr"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"doorman/internal/pkg/apperr"
+
+	"github.com/gin-gonic/gin"
 )
 
 type ErrorResponse struct {
