@@ -22,7 +22,6 @@ import json
 import os
 import random
 from pathlib import Path
-from typing import Optional
 
 
 # ---------------------------------------------------------------------------
@@ -31,8 +30,6 @@ from typing import Optional
 
 class OCRDataset:
     def __init__(self, metadata_path: str, processor, max_target_length: int = 128):
-        from PIL import Image
-
         self.processor = processor
         self.max_target_length = max_target_length
         self.samples: list[dict] = []
@@ -47,7 +44,6 @@ class OCRDataset:
         return len(self.samples)
 
     def __getitem__(self, idx):
-        import torch
         from PIL import Image
 
         sample = self.samples[idx]
@@ -74,7 +70,7 @@ def split_metadata(metadata_path: str, val_ratio: float = 0.1, seed: int = 42) -
     """Разбивает metadata.jsonl на train/val, сохраняет рядом."""
     base = Path(metadata_path).parent
     with open(metadata_path, encoding="utf-8") as f:
-        lines = [l for l in f.readlines() if l.strip()]
+        lines = [line for line in f.readlines() if line.strip()]
 
     random.seed(seed)
     random.shuffle(lines)
