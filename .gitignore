@@ -29,3 +29,11 @@ go.work.sum
 
 # Editor/IDE
 .idea/
+
+.DS_Store
+
+ml/books/
+
+ml/dataset-*
+
+*/__pycache__/*
