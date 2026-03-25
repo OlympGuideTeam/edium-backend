@@ -9,10 +9,6 @@
 
 ### Ручки
 
-Другие пользователи
-- `GET`    `/caesar/v1/users`
-- `GET`    `/caesar/v1/users/{userId}`
-
 Личный кабинет
 - `GET`    `/caesar/v1/users/me`
 - `PATCH`  `/caesar/v1/users/me`
@@ -26,10 +22,8 @@
 - `GET` `/caesar/v1/classes/me` - классы, где я владелец, ученик, учитель
 
 Приглашения
-- `POST`   `/caesar/v1/classes/{classId}/invitations`
-- `GET`    `/caesar/v1/invitations/me`
+- `GET`   `/caesar/v1/classes/{classId}/invitations`
 - `POST`   `/caesar/v1/invitations/{invitationId}/accept`
-- `POST`   `/caesar/v1/invitations/{invitationId}/reject`
 
 Участия
 - `GET` `/caesar/v1/classes/{classId}/members`
@@ -37,6 +31,7 @@
 
 Курсы 
 - `POST` `/caesar/v1/courses`
+- `GET` `/caesar/v1/classes/{classId}/courses/`
 - `GET` `/caesar/v1/courses/{courseId}`
 - `PATCH` `/caesar/v1/courses/{courseId}`
 - `DELETE` `/caesar/v1/courses/{courseId}`
