@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"doorman/internal/domain"
-	"doorman/internal/infra/db"
 	"fmt"
+	"herald/internal/domain"
+	"herald/internal/infra/db"
 	"time"
 
 	"github.com/google/uuid"
