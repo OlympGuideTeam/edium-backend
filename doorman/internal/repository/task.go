@@ -1,0 +1,111 @@
+package repository
+
+import (
+	"context"
+	"database/sql"
+	"doorman/internal/domain"
+	"doorman/internal/infra/db"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+)
+
+const claimPendingQuery = `
+WITH claimed AS (
+    SELECT id
+    FROM task
+    WHERE task_type = $1
+      AND status    = $2
+      AND available_at <= NOW()
+    ORDER BY available_at
+    FOR UPDATE SKIP LOCKED
+    LIMIT $3
+)
+UPDATE task
+SET status     = $4,
+    attempts   = attempts + 1,
+    updated_at = NOW()
+FROM claimed
+WHERE task.id = claimed.id
+RETURNING task.id, task.task_type, task.payload, task.status,
+          task.attempts, task.available_at, task.max_attempts`
+
+const markDoneQuery = `
+UPDATE task
+SET status = $1, updated_at = NOW()
+WHERE id = $2`
+
+const markFailedQuery = `
+UPDATE task
+SET status       = CASE WHEN attempts >= max_attempts THEN $1 ELSE $2 END,
+    last_error   = $3,
+    available_at = NOW() + $4,
+    updated_at   = NOW()
+WHERE id = $5`
+
+// PgTaskRepository читает и обновляет задачи из таблицы task.
+type PgTaskRepository struct {
+	db *sql.DB
+}
+
+func NewPgTaskRepository(db *sql.DB) *PgTaskRepository {
+	return &PgTaskRepository{db: db}
+}
+
+// Schedule планирует новую задачу. Участвует в транзакции, если она есть в ctx.
+func (r *PgTaskRepository) Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error {
+	executor := db.ExecutorFromContext(ctx, r.db)
+	_, err := executor.ExecContext(ctx,
+		`INSERT INTO task (task_type, payload) VALUES ($1, $2)`, taskType, payload)
+	return err
+}
+
+// ClaimPending атомарно берёт в обработку до limit задач указанного типа,
+// используя SELECT … FOR UPDATE SKIP LOCKED.
+// Возвращённые задачи переведены в статус processing.
+func (r *PgTaskRepository) ClaimPending(ctx context.Context, taskType domain.TaskType, limit int) ([]domain.Task, error) {
+	rows, err := r.db.QueryContext(ctx, claimPendingQuery,
+		taskType, domain.TaskStatusPending, limit, domain.TaskStatusProcessing,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("ClaimPending: %w", err)
+	}
+	defer rows.Close()
+
+	var tasks []domain.Task
+	for rows.Next() {
+		var t domain.Task
+		var maxAttempts int64
+		if err := rows.Scan(
+			&t.ID, &t.Type, &t.Payload, &t.Status,
+			&t.Attempts, &t.AvailableAt, &maxAttempts,
+		); err != nil {
+			return nil, fmt.Errorf("ClaimPending scan: %w", err)
+		}
+		t.MaxAttempts = &maxAttempts
+		tasks = append(tasks, t)
+	}
+	return tasks, rows.Err()
+}
+
+// MarkDone переводит задачу в статус done.
+func (r *PgTaskRepository) MarkDone(ctx context.Context, id uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, markDoneQuery, domain.TaskStatusDone, id)
+	if err != nil {
+		return fmt.Errorf("MarkDone: %w", err)
+	}
+	return nil
+}
+
+// MarkFailed сохраняет ошибку. Если attempts >= max_attempts — статус failed,
+// иначе возвращает задачу в pending с задержкой retryAfter.
+func (r *PgTaskRepository) MarkFailed(ctx context.Context, id uuid.UUID, reason string, retryAfter time.Duration) error {
+	_, err := r.db.ExecContext(ctx, markFailedQuery,
+		domain.TaskStatusFailed, domain.TaskStatusPending, reason, retryAfter, id,
+	)
+	if err != nil {
+		return fmt.Errorf("MarkFailed: %w", err)
+	}
+	return nil
+}
