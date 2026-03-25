@@ -25,7 +25,6 @@ type taskRepository interface {
 	MarkFailed(ctx context.Context, id uuid.UUID, reason string, retryAfter time.Duration) error
 }
 
-// OTPSentPublisher читает задачи otp_sent из БД и публикует их в Herald через NATS.
 type OTPSentPublisher struct {
 	tasks     taskRepository
 	publisher *natsinf.Publisher
@@ -35,9 +34,8 @@ func NewOTPSentPublisher(tasks taskRepository, publisher *natsinf.Publisher) *OT
 	return &OTPSentPublisher{tasks: tasks, publisher: publisher}
 }
 
-// Run запускает polling-цикл до отмены ctx.
 func (w *OTPSentPublisher) Run(ctx context.Context) error {
-	log.Printf("[otp-sent-publisher] запуск, интервал=%s", otpSentPollInterval)
+	log.Printf("[otp-sent-publisher] started, interval=%s", otpSentPollInterval)
 	ticker := time.NewTicker(otpSentPollInterval)
 	defer ticker.Stop()
 
@@ -47,7 +45,7 @@ func (w *OTPSentPublisher) Run(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			if err := w.processBatch(ctx); err != nil {
-				log.Printf("[otp-sent-publisher] ошибка обработки батча: %v", err)
+				log.Printf("[otp-sent-publisher] batch error: %v", err)
 			}
 		}
 	}
@@ -65,10 +63,9 @@ func (w *OTPSentPublisher) processBatch(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("ClaimPending: %w", err)
 	}
-
 	for _, t := range tasks {
 		if err := w.processTask(ctx, t); err != nil {
-			log.Printf("[otp-sent-publisher] task_id=%s ошибка: %v", t.ID, err)
+			log.Printf("[otp-sent-publisher] task_id=%s error: %v", t.ID, err)
 			_ = w.tasks.MarkFailed(ctx, t.ID, err.Error(), otpSentRetryAfter)
 		}
 	}
@@ -78,7 +75,7 @@ func (w *OTPSentPublisher) processBatch(ctx context.Context) error {
 func (w *OTPSentPublisher) processTask(ctx context.Context, t domain.Task) error {
 	var payload otpSentPayload
 	if err := json.Unmarshal(t.Payload, &payload); err != nil {
-		return fmt.Errorf("разбор payload: %w", err)
+		return fmt.Errorf("decode payload: %w", err)
 	}
 
 	pubCtx := ctx
@@ -86,17 +83,15 @@ func (w *OTPSentPublisher) processTask(ctx context.Context, t domain.Task) error
 		pubCtx = correlation.WithID(ctx, payload.CorrelationID)
 	}
 
-	log.Printf("[otp-sent-publisher] task_id=%s correlation_id=%s phone=%s",
-		t.ID, payload.CorrelationID, payload.Phone)
+	log.Printf("[otp-sent-publisher] task_id=%s correlation_id=%s", t.ID, payload.CorrelationID)
 
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("сериализация: %w", err)
+		return fmt.Errorf("marshal payload: %w", err)
 	}
 
 	if err := w.publisher.Publish(pubCtx, natsinf.SubjectOTPSent, data); err != nil {
-		return fmt.Errorf("публикация: %w", err)
+		return fmt.Errorf("publish: %w", err)
 	}
-
 	return w.tasks.MarkDone(ctx, t.ID)
 }
