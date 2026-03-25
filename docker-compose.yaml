@@ -88,7 +88,59 @@ services:
     volumes:
       - nats_data:/data
 
+  herald:
+    build:
+      context: ./herald
+      dockerfile: Dockerfile
+    restart: on-failure
+    environment:
+      POSTGRES_DSN: postgres://${HERALD_PG_USER}:${HERALD_PG_PWD}@herald-db:5432/${HERALD_PG_DB}?sslmode=disable
+      NATS_URL: nats://nats:4222
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+    depends_on:
+      herald-db:
+        condition: service_healthy
+      herald-flyway:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+
+  herald-db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${HERALD_PG_USER}
+      POSTGRES_PASSWORD: ${HERALD_PG_PWD}
+      POSTGRES_DB: ${HERALD_PG_DB}
+    ports:
+      - "5434:5432"
+    volumes:
+      - herald_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  herald-flyway:
+    image: flyway/flyway:latest
+    restart: no
+    command: ["migrate"]
+    environment:
+      - FLYWAY_URL=jdbc:postgresql://herald-db:5432/${HERALD_PG_DB}
+      - FLYWAY_USER=${HERALD_PG_USER}
+      - FLYWAY_PASSWORD=${HERALD_PG_PWD}
+      - FLYWAY_LOCATIONS=filesystem:/app/migrations
+      - FLYWAY_VALIDATE_MIGRATION_NAMING=true
+      - FLYWAY_BASELINE_ON_MIGRATE=true
+    volumes:
+      - ./herald/migrations:/app/migrations
+    depends_on:
+      herald-db:
+        condition: service_healthy
+
 volumes:
   nats_data:
   doorman_db_data:
   doorman_redis_data:
+  herald_db_data:
