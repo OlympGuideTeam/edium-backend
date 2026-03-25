@@ -1,3 +1,5 @@
+SET search_path TO doorman;
+
 CREATE TYPE task_status AS ENUM (
     'pending',
     'processing',
