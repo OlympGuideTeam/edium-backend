@@ -1,0 +1,64 @@
+name: edium-ml
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - ml-api
+    networks:
+      - edium
+
+  ml-api:
+    image: cr.yandex/${YC_REGISTRY_ID}/edium-ml:${IMAGE_TAG:-latest}
+    restart: on-failure
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    volumes:
+      - model_cache:/app/models
+    expose:
+      - "8000"
+    deploy:
+      resources:
+        limits:
+          memory: 12G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - edium
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+    ports:
+      - "9100:9100"
+    networks:
+      - edium
+
+volumes:
+  caddy_data:
+  caddy_config:
+  model_cache:
+
+networks:
+  edium:
+    driver: bridge

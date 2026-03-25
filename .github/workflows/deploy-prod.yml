@@ -1,0 +1,85 @@
+name: Deploy Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Тег образа для деплоя (например, main-a1b2c3d)"
+        required: true
+        type: string
+      services:
+        description: "Какие сервисы деплоить"
+        required: true
+        type: choice
+        options:
+          - all
+          - doorman
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: cr.yandex/${{ secrets.YC_REGISTRY_ID }}
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Проверка образа
+        run: |
+          echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+          docker manifest inspect ${{ env.REGISTRY }}/edium-doorman:${{ inputs.image_tag }}
+          echo "Образ существует: edium-doorman:${{ inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Копирование файлов на сервер
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_VM_HOST }}
+          username: deploy
+          key: ${{ secrets.PROD_VM_SSH_KEY }}
+          source: "infra/compose/prod/docker-compose.yml,infra/caddy/Caddyfile.prod,doorman/migrations/"
+          target: /tmp/edium-deploy/
+          strip_components: 0
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_VM_HOST }}
+          username: deploy
+          key: ${{ secrets.PROD_VM_SSH_KEY }}
+          script: |
+            set -e
+
+            # Подготовка файлов
+            cp /tmp/edium-deploy/infra/compose/prod/docker-compose.yml /opt/edium/docker-compose.yml
+            cp /tmp/edium-deploy/infra/caddy/Caddyfile.prod /opt/edium/Caddyfile
+            mkdir -p /opt/edium/migrations/doorman
+            cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
+
+            cd /opt/edium
+
+            # Выставляем тег
+            export IMAGE_TAG=${{ inputs.image_tag }}
+
+            # Авторизация в CR
+            echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+
+            # Обновление и запуск
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+
+            # Очистка
+            rm -rf /tmp/edium-deploy
+
+            echo "Prod deploy завершён: ${{ inputs.image_tag }}"
+
+      - name: Итог
+        run: |
+          echo "## Production Deploy" >> $GITHUB_STEP_SUMMARY
+          echo "- **Тег:** ${{ inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Сервисы:** ${{ inputs.services }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Статус:** Успешно" >> $GITHUB_STEP_SUMMARY

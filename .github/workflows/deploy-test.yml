@@ -1,0 +1,130 @@
+name: Deploy Test
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: cr.yandex/${{ secrets.YC_REGISTRY_ID }}
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      doorman: ${{ steps.filter.outputs.doorman }}
+      ml: ${{ steps.filter.outputs.ml }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            doorman:
+              - 'doorman/**'
+            ml:
+              - 'ml/**'
+
+  # ========================
+  # Build и push образов
+  # ========================
+
+  build-doorman:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.doorman == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-doorman
+          TAG=main-${GITHUB_SHA::7}
+
+          docker build -t ${IMAGE}:${TAG} doorman/
+          docker push ${IMAGE}:${TAG}
+
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  build-ml:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ml == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-ml
+          TAG=main-${GITHUB_SHA::7}
+
+          docker build -t ${IMAGE}:${TAG} ml/
+          docker push ${IMAGE}:${TAG}
+
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  # ========================
+  # Deploy на test VM
+  # ========================
+
+  deploy-test:
+    needs: [build-doorman, build-ml]
+    if: always() && (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') && (needs.build-ml.result == 'success' || needs.build-ml.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Копирование файлов на сервер
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.TEST_VM_HOST }}
+          username: deploy
+          key: ${{ secrets.TEST_VM_SSH_KEY }}
+          source: "infra/compose/test/docker-compose.yml,infra/caddy/Caddyfile.test,doorman/migrations/"
+          target: /tmp/edium-deploy/
+          strip_components: 0
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TEST_VM_HOST }}
+          username: deploy
+          key: ${{ secrets.TEST_VM_SSH_KEY }}
+          script: |
+            set -e
+
+            # Подготовка файлов
+            cp /tmp/edium-deploy/infra/compose/test/docker-compose.yml /opt/edium/docker-compose.yml
+            cp /tmp/edium-deploy/infra/caddy/Caddyfile.test /opt/edium/Caddyfile
+            mkdir -p /opt/edium/migrations/doorman
+            cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
+
+            cd /opt/edium
+
+            # Авторизация в CR
+            echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+
+            # Обновление и запуск
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+
+            # Очистка
+            rm -rf /tmp/edium-deploy
+
+            echo "Deploy завершён"
