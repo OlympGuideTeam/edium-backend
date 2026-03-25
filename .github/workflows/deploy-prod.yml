@@ -61,8 +61,24 @@ jobs:
 
             cd /opt/edium
 
-            # Выставляем тег
-            export IMAGE_TAG=${{ inputs.image_tag }}
+            # Создание .env из секретов
+            cat > .env <<'ENVEOF'
+            YC_REGISTRY_ID=${{ secrets.YC_REGISTRY_ID }}
+            IMAGE_TAG=${{ inputs.image_tag }}
+            DOORMAN_PG_USER=${{ secrets.DOORMAN_PG_USER }}
+            DOORMAN_PG_PWD=${{ secrets.DOORMAN_PG_PWD }}
+            DOORMAN_PG_DB=${{ secrets.DOORMAN_PG_DB }}
+            PG_HOST=${{ secrets.PG_HOST }}
+            DOORMAN_REDIS_PWD=${{ secrets.DOORMAN_REDIS_PWD }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            JWT_ACTIVE_KID=${{ secrets.JWT_ACTIVE_KID }}
+            ENVEOF
+            sed -i 's/^[[:space:]]*//' .env
+
+            # RSA-ключ: многострочный PEM → одна строка с \n
+            printf 'JWT_RSA_PRIVATE_KEY=' >> .env
+            printf '%s' '${{ secrets.JWT_RSA_PRIVATE_KEY }}' | awk 'NR>1{printf "\\n"}{printf "%s",$0}' >> .env
+            echo >> .env
 
             # Авторизация в CR
             echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
