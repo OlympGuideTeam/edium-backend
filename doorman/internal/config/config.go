@@ -10,6 +10,7 @@ type Config struct {
 	Postgres PostgresConfig
 	Redis    RedisConfig
 	Keys     KeysConfig
+	NATS     NATSConfig
 }
 
 type AppConfig struct {
@@ -17,23 +18,20 @@ type AppConfig struct {
 }
 
 type PostgresConfig struct {
-	DB       string `env:"POSTGRES_DB,required"`
-	User     string `env:"POSTGRES_USER,required"`
-	Password string `env:"POSTGRES_PASSWORD,required"`
-	Port     int    `env:"POSTGRES_PORT" envDefault:"5432"`
-	Host     string `env:"POSTGRES_HOST" envDefault:"doorman-db"`
-	SSLMode  string `env:"POSTGRES_SSLMODE" envDefault:"disable"`
+	DSN string `env:"POSTGRES_DSN,required"`
 }
 
 type RedisConfig struct {
-	Password string `env:"REDIS_PASSWORD,required"`
-	Port     int    `env:"REDIS_PORT" envDefault:"6379"`
-	Host     string `env:"REDIS_HOST" envDefault:"doorman-redis"`
+	URL string `env:"REDIS_URL,required"`
 }
 
 type KeysConfig struct {
 	JwtRSAPrivateKey string `env:"JWT_RSA_PRIVATE_KEY"`
 	JwtActiveKID     string `env:"JWT_ACTIVE_KID" envDefault:"key-1"`
+}
+
+type NATSConfig struct {
+	URL string `env:"NATS_URL" envDefault:"nats://nats:4222"`
 }
 
 func Load() (*Config, error) {

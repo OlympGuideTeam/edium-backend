@@ -7,10 +7,12 @@ import (
 	reghandler "doorman/internal/handler/registration"
 	tokenhandler "doorman/internal/handler/token"
 	"doorman/internal/infra/db"
+	natsinf "doorman/internal/infra/nats"
 	"doorman/internal/infra/redis"
 	"doorman/internal/repository"
 	jwtsvc "doorman/internal/service/jwt"
 	otpsvc "doorman/internal/service/otp"
+	"doorman/internal/worker"
 )
 
 type App struct {
@@ -18,6 +20,9 @@ type App struct {
 	RegistrationHandler *reghandler.Handler
 	TokenHandler        *tokenhandler.Handler
 	KeyHandler          *keyhandler.Handler
+
+	OTPRequestConsumer *worker.OTPRequestConsumer
+	OTPSentPublisher   *worker.OTPSentPublisher
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -26,6 +31,11 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 	pgdb, err := db.NewDB(cfg.Postgres)
+	if err != nil {
+		return nil, err
+	}
+
+	natsConn, err := natsinf.New(cfg.NATS)
 	if err != nil {
 		return nil, err
 	}
@@ -42,19 +52,25 @@ func New(cfg *config.Config) (*App, error) {
 	refreshTokenStore := repository.NewRedisRefreshTokenStore(rdb)
 
 	identityStore := repository.NewPgIdentityStore(pgdb)
-	scheduler := repository.NewPgScheduler(pgdb)
+	taskRepo := repository.NewPgTaskRepository(pgdb)
 
 	jwtService := jwtsvc.NewService(keyStore, refreshTokenStore)
-	otpService := otpsvc.NewService(identityStore, regTokenStore, otpStore, scheduler, jwtService)
+	otpService := otpsvc.NewService(identityStore, regTokenStore, otpStore, taskRepo, jwtService)
 
 	tokenHandler := tokenhandler.NewHandler(jwtService)
 	otpHandler := otphandler.NewHandler(otpService)
 	keyHandler := keyhandler.NewHandler(jwtService)
+
+	natsPublisher := natsinf.NewPublisher(natsConn)
+	natsSubscriber := natsinf.NewSubscriber(natsConn)
 
 	return &App{
 		OtpHandler:          otpHandler,
 		KeyHandler:          keyHandler,
 		TokenHandler:        tokenHandler,
 		RegistrationHandler: &reghandler.Handler{},
+
+		OTPRequestConsumer: worker.NewOTPRequestConsumer(natsSubscriber, otpService),
+		OTPSentPublisher:   worker.NewOTPSentPublisher(taskRepo, natsPublisher),
 	}, nil
 }
