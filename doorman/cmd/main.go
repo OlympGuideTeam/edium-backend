@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"doorman/internal/app"
 	"doorman/internal/config"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"log"
+	"os/signal"
+	"syscall"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -18,6 +22,21 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	// Запускаем воркеры в фоне.
+	go func() {
+		if err := application.OTPRequestConsumer.Run(ctx); err != nil {
+			log.Printf("OTPRequestConsumer завершился: %v", err)
+		}
+	}()
+	go func() {
+		if err := application.OTPSentPublisher.Run(ctx); err != nil {
+			log.Printf("OTPSentPublisher завершился: %v", err)
+		}
+	}()
 
 	r := gin.Default()
 
@@ -33,8 +52,7 @@ func main() {
 
 	api.GET("/.well-known/jwks.json", application.KeyHandler.GetJWKS)
 
-	err = r.Run(fmt.Sprintf(":%d", cfg.App.Port))
-	if err != nil {
+	if err = r.Run(fmt.Sprintf(":%d", cfg.App.Port)); err != nil {
 		log.Fatal(err)
 	}
 }
