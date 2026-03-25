@@ -1,8 +1,8 @@
 package nats
 
 import (
-	"doorman/internal/config"
 	"fmt"
+	"herald/internal/config"
 
 	"github.com/nats-io/nats.go"
 )

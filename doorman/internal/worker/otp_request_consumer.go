@@ -14,7 +14,6 @@ type otpSender interface {
 	SendOTP(ctx context.Context, phone string, channel domain.Channel) error
 }
 
-// OTPRequestConsumer читает запросы на отправку OTP из NATS и вызывает сервис.
 type OTPRequestConsumer struct {
 	subscriber *natsinf.Subscriber
 	service    otpSender
@@ -24,9 +23,8 @@ func NewOTPRequestConsumer(subscriber *natsinf.Subscriber, service otpSender) *O
 	return &OTPRequestConsumer{subscriber: subscriber, service: service}
 }
 
-// Run блокируется до отмены ctx.
 func (c *OTPRequestConsumer) Run(ctx context.Context) error {
-	log.Printf("[otp-request-consumer] подписка на %s", natsinf.SubjectOTPRequest)
+	log.Printf("[otp-request-consumer] subscribing to %s", natsinf.SubjectOTPRequest)
 	return c.subscriber.QueueSubscribe(ctx, natsinf.SubjectOTPRequest, natsinf.QueueOTPRequest, c.handle)
 }
 
@@ -39,7 +37,7 @@ type otpRequestMsg struct {
 func (c *OTPRequestConsumer) handle(ctx context.Context, data []byte) error {
 	var msg otpRequestMsg
 	if err := json.Unmarshal(data, &msg); err != nil {
-		return fmt.Errorf("разбор сообщения: %w", err)
+		return fmt.Errorf("decode message: %w", err)
 	}
 
 	if msg.CorrelationID != "" {
