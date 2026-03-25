@@ -1,0 +1,18 @@
+# Yandex Cloud
+cloud_id    = "b1gXXXXXXXXXXXXXX"
+folder_id   = "b1gXXXXXXXXXXXXXX"
+sa_key_file = "key.json"
+
+# SSH
+ssh_public_key    = "ssh-ed25519 AAAA... user@host"
+ssh_allowed_cidrs = ["YOUR_IP/32"]
+
+# Doorman
+doorman_pg_password_test = "CHANGE_ME"
+doorman_pg_password_prod = "CHANGE_ME"
+
+# Redis
+redis_password = "CHANGE_ME"
+
+# Domain
+domain = "edium.online"
