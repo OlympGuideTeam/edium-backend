@@ -52,7 +52,9 @@ func (s *RedisOTPStore) Get(ctx context.Context, phone string) (*otpsvc.OtpData,
 	}
 
 	var otp otpsvc.OtpData
-	err = cmd.Scan(&otp)
+	if err = cmd.Scan(&otp); err != nil {
+		return nil, err
+	}
 
 	return &otp, nil
 }
