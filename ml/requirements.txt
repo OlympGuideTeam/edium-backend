@@ -1,0 +1,29 @@
+# Core
+PyMuPDF
+Pillow
+python-dotenv
+
+# LLM / API
+openai
+
+# OCR — baseline models (для бенчмарка)
+surya-ocr
+easyocr
+paddleocr
+
+# Layout detection
+ultralytics          # YOLOv8
+
+# Text recognition
+transformers>=4.56.1,<5.0.0
+torch
+torchvision
+
+# Training / evaluation
+datasets             # HuggingFace datasets
+evaluate             # CER / WER метрики
+
+# Notebooks
+jupyter
+ipywidgets
+matplotlib
