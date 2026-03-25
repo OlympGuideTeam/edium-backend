@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build ./...)",
+      "Bash(go test ./...)",
+      "Bash(go test -v ./...)",
+      "Bash(go test -run *)",
+      "Bash(go fmt ./...)",
+      "Bash(gofmt -w *)",
+      "Bash(goimports -w *)",
+      "Bash(golangci-lint run *)",
+      "Bash(go vet ./...)",
+      "Bash(go mod tidy)",
+      "Bash(go mod download)",
+      "Bash(make *)",
+      "Bash(docker-compose *)",
+      "Bash(docker compose *)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(pip install *)",
+      "Bash(pip3 install *)",
+      "Bash(ruff check *)",
+      "Bash(ruff format *)",
+      "Bash(black *)",
+      "Bash(pytest *)",
+      "Bash(cd ml && *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"\nimport sys, json, os, subprocess\ntry:\n    data = json.load(sys.stdin)\n    f = data.get('file_path', '')\nexcept:\n    sys.exit(0)\nif f.endswith('.go'):\n    subprocess.run(['goimports', '-w', f], capture_output=True)\n    subprocess.run(['gofmt', '-w', f], capture_output=True)\nelif f.endswith('.py'):\n    subprocess.run(['ruff', 'format', f], capture_output=True)\n\""
+          }
+        ]
+      }
+    ]
+  }
+}
