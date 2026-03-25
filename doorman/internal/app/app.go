@@ -40,8 +40,6 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	// txManager := db.NewTxManager(pgdb)
-
 	keyStore, err := repository.NewInMemoryKeysStoreWithOneKey(cfg.Keys)
 	if err != nil {
 		return nil, err
