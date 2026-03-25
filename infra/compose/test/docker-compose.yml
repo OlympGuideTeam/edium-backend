@@ -1,0 +1,108 @@
+name: edium-test
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - doorman
+    networks:
+      - edium
+
+  doorman:
+    image: cr.yandex/${YC_REGISTRY_ID}/edium-doorman:latest
+    restart: on-failure
+    environment:
+      APP_PORT: "80"
+      POSTGRES_USER: ${DOORMAN_PG_USER}
+      POSTGRES_PASSWORD: ${DOORMAN_PG_PWD}
+      POSTGRES_DB: ${DOORMAN_PG_DB}
+      POSTGRES_HOST: ${PG_HOST}
+      POSTGRES_PORT: "6432"
+      POSTGRES_SSLMODE: verify-full
+      REDIS_PASSWORD: ${DOORMAN_REDIS_PWD}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: "6380"
+      JWT_RSA_PRIVATE_KEY: ${JWT_RSA_PRIVATE_KEY}
+      JWT_ACTIVE_KID: ${JWT_ACTIVE_KID:-key-1}
+    expose:
+      - "80"
+    depends_on:
+      doorman-flyway:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+    networks:
+      - edium
+
+  doorman-flyway:
+    image: flyway/flyway:latest
+    restart: "no"
+    command: ["migrate"]
+    environment:
+      FLYWAY_URL: "jdbc:postgresql://${PG_HOST}:6432/${DOORMAN_PG_DB}?sslmode=verify-full"
+      FLYWAY_USER: ${DOORMAN_PG_USER}
+      FLYWAY_PASSWORD: ${DOORMAN_PG_PWD}
+      FLYWAY_LOCATIONS: "filesystem:/app/migrations"
+      FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+    volumes:
+      - ./migrations/doorman:/app/migrations
+    networks:
+      - edium
+
+  nats:
+    image: nats:2.10
+    restart: unless-stopped
+    command: ["--js", "--sd=/data", "--name=nats"]
+    volumes:
+      - nats_data:/data
+    networks:
+      - edium
+
+  # Node exporter для мониторинга с prod VM
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+    ports:
+      - "9100:9100"
+    networks:
+      - edium
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "9101:8080"
+    networks:
+      - edium
+
+volumes:
+  caddy_data:
+  caddy_config:
+  nats_data:
+
+networks:
+  edium:
+    driver: bridge
