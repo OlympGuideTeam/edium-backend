@@ -13,7 +13,7 @@ transforms:
     type: remap
     inputs: [docker]
     source: |
-      .service = replace(string!(.container_name), r'^[a-z0-9_]+-(.+)-\d+$', "$1")
+      .service = replace(string!(.container_name), r'^[a-z0-9_]+-(.+)-\d+$', "$$1")
       .stream = string!(.stream)
       .message = string!(.message)
       . = {"timestamp": .timestamp, "service": .service, "stream": .stream, "message": .message}
