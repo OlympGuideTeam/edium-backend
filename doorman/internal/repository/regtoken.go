@@ -20,6 +20,19 @@ func (s *RedisRegTokenStore) Save(ctx context.Context, phone string, regToken st
 	return s.client.Set(ctx, key, regToken, ttl).Err()
 }
 
+func (s *RedisRegTokenStore) Get(ctx context.Context, phone string) (string, error) {
+	key := s.getKey(phone)
+	val, err := s.client.Get(ctx, key).Result()
+	if err != nil {
+		return "", err
+	}
+	return val, nil
+}
+
+func (s *RedisRegTokenStore) Delete(ctx context.Context, phone string) error {
+	return s.client.Del(ctx, s.getKey(phone)).Err()
+}
+
 func (s *RedisRegTokenStore) getKey(phone string) string {
 	return fmt.Sprintf("regtoken:%s", phone)
 }
