@@ -65,7 +65,7 @@ resource "yandex_vpc_security_group" "db" {
   ingress {
     description    = "Redis"
     protocol       = "TCP"
-    port           = 6380
+    port           = 6379
     v4_cidr_blocks = [for s in yandex_vpc_subnet.this : s.v4_cidr_blocks[0]]
   }
 
