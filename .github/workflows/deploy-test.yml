@@ -121,7 +121,7 @@ jobs:
           host: ${{ secrets.TEST_VM_HOST }}
           username: deploy
           key: ${{ secrets.TEST_VM_SSH_KEY }}
-          source: "infra/compose/test/docker-compose.yml,infra/caddy/Caddyfile.test,doorman/migrations/,herald/migrations/"
+          source: "infra/compose/test/docker-compose.yml,infra/compose/test/Caddyfile,doorman/migrations/,herald/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -136,7 +136,7 @@ jobs:
 
             # Подготовка файлов
             cp /tmp/edium-deploy/infra/compose/test/docker-compose.yml /opt/edium/docker-compose.yml
-            cp /tmp/edium-deploy/infra/caddy/Caddyfile.test /opt/edium/Caddyfile
+            cp /tmp/edium-deploy/infra/compose/test/Caddyfile /opt/edium/Caddyfile
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/

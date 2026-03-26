@@ -41,7 +41,7 @@ jobs:
           host: ${{ secrets.PROD_VM_HOST }}
           username: deploy
           key: ${{ secrets.PROD_VM_SSH_KEY }}
-          source: "infra/compose/prod/docker-compose.yml,infra/caddy/Caddyfile.prod,doorman/migrations/,herald/migrations/"
+          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,doorman/migrations/,herald/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -56,7 +56,7 @@ jobs:
 
             # Подготовка файлов
             cp /tmp/edium-deploy/infra/compose/prod/docker-compose.yml /opt/edium/docker-compose.yml
-            cp /tmp/edium-deploy/infra/caddy/Caddyfile.prod /opt/edium/Caddyfile
+            cp /tmp/edium-deploy/infra/compose/prod/Caddyfile /opt/edium/Caddyfile
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
