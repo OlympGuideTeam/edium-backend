@@ -1,0 +1,50 @@
+repos:
+  # Общие проверки
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+
+  # Go — golangci-lint
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v2.1.6
+    hooks:
+      - id: golangci-lint
+        name: golangci-lint (doorman)
+        files: ^doorman/
+        entry: bash -c 'cd doorman && golangci-lint run'
+      - id: golangci-lint
+        name: golangci-lint (herald)
+        files: ^herald/
+        entry: bash -c 'cd herald && golangci-lint run'
+
+  # Python — ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^ml/
+      - id: ruff-format
+        files: ^ml/
+
+  # Terraform
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.99.1
+    hooks:
+      - id: terraform_fmt
+      - id: terraform_validate
+        args: [--hook-config=--retry-once-with-cleanup=true]
+
+  # YAML
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        args: [-c, .yamllint.yml]
