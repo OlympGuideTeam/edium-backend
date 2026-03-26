@@ -1,3 +1,5 @@
+version: "2"
+
 run:
   timeout: 5m
 
@@ -6,26 +8,27 @@ linters:
     - errcheck
     - govet
     - staticcheck
-    - unused
-    - gosimple
     - ineffassign
-    - typecheck
     - gocritic
+    - misspell
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+      disabled-checks:
+        - hugeParam
+    misspell:
+      locale: US
+
+formatters:
+  enable:
     - gofmt
     - goimports
-    - misspell
-
-linters-settings:
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - performance
-    disabled-checks:
-      - hugeParam
-  goimports:
-    local-prefixes: github.com/OlympGuideTeam/edium-backend
-  misspell:
-    locale: US
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/OlympGuideTeam/edium-backend
 
 issues:
   exclude-rules:
