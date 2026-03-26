@@ -11,6 +11,10 @@ ssh_allowed_cidrs = ["YOUR_IP/32"]
 doorman_pg_password_test = "CHANGE_ME"
 doorman_pg_password_prod = "CHANGE_ME"
 
+# Herald
+herald_pg_password_test = "CHANGE_ME"
+herald_pg_password_prod = "CHANGE_ME"
+
 # Redis
 redis_password = "CHANGE_ME"
 
