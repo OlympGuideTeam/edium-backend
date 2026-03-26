@@ -121,7 +121,7 @@ jobs:
           host: ${{ secrets.TEST_VM_HOST }}
           username: deploy
           key: ${{ secrets.TEST_VM_SSH_KEY }}
-          source: "infra/compose/test/docker-compose.yml,infra/compose/test/Caddyfile,doorman/migrations/,herald/migrations/"
+          source: "infra/compose/test/docker-compose.yml,infra/compose/test/Caddyfile,infra/compose/test/vector.yaml,infra/compose/test/clickhouse/,infra/compose/test/grafana/,doorman/migrations/,herald/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -137,6 +137,10 @@ jobs:
             # Подготовка файлов
             cp /tmp/edium-deploy/infra/compose/test/docker-compose.yml /opt/edium/docker-compose.yml
             cp /tmp/edium-deploy/infra/compose/test/Caddyfile /opt/edium/Caddyfile
+            cp /tmp/edium-deploy/infra/compose/test/vector.yaml /opt/edium/vector.yaml
+            mkdir -p /opt/edium/clickhouse /opt/edium/grafana/datasources
+            cp /tmp/edium-deploy/infra/compose/test/clickhouse/init.sql /opt/edium/clickhouse/init.sql
+            cp /tmp/edium-deploy/infra/compose/test/grafana/datasources/clickhouse.yaml /opt/edium/grafana/datasources/clickhouse.yaml
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
@@ -157,6 +161,9 @@ jobs:
             HERALD_PG_PWD=${{ secrets.HERALD_PG_PWD }}
             HERALD_PG_DB=${{ secrets.HERALD_PG_DB }}
             TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+            CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
+            GRAFANA_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}
+            GRAFANA_CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 
