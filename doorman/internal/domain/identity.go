@@ -1,5 +1,7 @@
 package domain
 
+import "github.com/google/uuid"
+
 type IdentityStatus string
 
 var (
@@ -9,7 +11,7 @@ var (
 )
 
 type Identity struct {
-	ID     string
+	ID     uuid.UUID
 	Status IdentityStatus
 	Phone  string
 }

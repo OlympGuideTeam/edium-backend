@@ -5,8 +5,9 @@ import (
 	"doorman/internal/pkg/apperr"
 	"doorman/internal/pkg/httpx"
 	"doorman/internal/transport/dto"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {

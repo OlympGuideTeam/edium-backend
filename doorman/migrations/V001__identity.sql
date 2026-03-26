@@ -8,9 +8,9 @@ CREATE TYPE identity_status AS ENUM (
 );
 
 CREATE TABLE identity (
-    id            TEXT PRIMARY KEY,
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     phone         TEXT NOT NULL,
-    status        identity_status NOT NULL,
+    status        identity_status NOT NULL DEFAULT 'active',
 
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
