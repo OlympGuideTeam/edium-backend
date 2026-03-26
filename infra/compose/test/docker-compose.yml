@@ -21,17 +21,12 @@ services:
     restart: on-failure
     environment:
       APP_PORT: "80"
-      POSTGRES_USER: ${DOORMAN_PG_USER}
-      POSTGRES_PASSWORD: ${DOORMAN_PG_PWD}
-      POSTGRES_DB: ${DOORMAN_PG_DB}
-      POSTGRES_HOST: ${PG_HOST}
-      POSTGRES_PORT: "6432"
-      POSTGRES_SSLMODE: require
-      REDIS_PASSWORD: ${DOORMAN_REDIS_PWD}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: "6380"
+      POSTGRES_DSN: "postgres://${DOORMAN_PG_USER}:${DOORMAN_PG_PWD}@${PG_HOST}:6432/${DOORMAN_PG_DB}?sslmode=require"
+      REDIS_URL: "redis://:${DOORMAN_REDIS_PWD}@${REDIS_HOST}:6380/0"
+      NATS_URL: "nats://nats:4222"
       JWT_RSA_PRIVATE_KEY: ${JWT_RSA_PRIVATE_KEY}
       JWT_ACTIVE_KID: ${JWT_ACTIVE_KID:-key-1}
+      OTEL_ENDPOINT: ""
     expose:
       - "80"
     depends_on:
