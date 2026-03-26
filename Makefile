@@ -1,14 +1,23 @@
 run:
 	docker-compose up -d --build
 
+run-podman:
+	podman compose up -d --build
+
 down:
 	docker-compose down
+
+down-podman:
+	podman compose down
 
 clean:
 	docker-compose down --volumes
 
+clean-podman:
+	podman compose down --volumes
+
 genrsa:
-	openssl genrsa -out private.pem 2048
+	@python3 scripts/genrsa.py
 
 # === Линтеры ===
 
