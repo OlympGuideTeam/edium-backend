@@ -13,7 +13,7 @@ resource "yandex_mdb_postgresql_cluster" "this" {
     }
 
     postgresql_config = {
-      max_connections = 200
+      max_connections = 400
     }
   }
 
