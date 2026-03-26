@@ -1,0 +1,33 @@
+sources:
+  docker:
+    type: docker_logs
+    exclude_containers:
+      - "vector"
+      - "clickhouse"
+      - "grafana"
+      - "cadvisor"
+      - "node-exporter"
+
+transforms:
+  clean:
+    type: remap
+    inputs: [docker]
+    source: |
+      .service = replace(string!(.container_name), r'^[a-z0-9_]+-(.+)-\d+$', "$1")
+      .stream = string!(.stream)
+      .message = string!(.message)
+      . = {"timestamp": .timestamp, "service": .service, "stream": .stream, "message": .message}
+
+sinks:
+  clickhouse:
+    type: clickhouse
+    inputs: [clean]
+    endpoint: "http://clickhouse:8123"
+    database: logs
+    table: logs
+    auth:
+      strategy: basic
+      user: vector
+      password: "${CLICKHOUSE_PASSWORD}"
+    batch:
+      timeout_secs: 5
