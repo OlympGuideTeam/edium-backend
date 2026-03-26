@@ -22,7 +22,7 @@ services:
     environment:
       APP_PORT: "80"
       POSTGRES_DSN: "postgres://${DOORMAN_PG_USER}:${DOORMAN_PG_PWD}@${PG_HOST}:6432/${DOORMAN_PG_DB}?sslmode=require"
-      REDIS_URL: "redis://:${DOORMAN_REDIS_PWD}@${REDIS_HOST}:6380/0"
+      REDIS_URL: "redis://:${DOORMAN_REDIS_PWD}@${REDIS_HOST}:6379/0"
       NATS_URL: "nats://nats:4222"
       JWT_RSA_PRIVATE_KEY: ${JWT_RSA_PRIVATE_KEY}
       JWT_ACTIVE_KID: ${JWT_ACTIVE_KID:-key-1}
