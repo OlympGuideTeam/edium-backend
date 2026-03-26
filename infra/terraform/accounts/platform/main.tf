@@ -119,5 +119,10 @@ module "dns" {
       ttl  = 300
       data = [module.vm_prod.external_ip]
     }
+    "grafana-test" = {
+      type = "A"
+      ttl  = 300
+      data = [module.vm_test.external_ip]
+    }
   }
 }
