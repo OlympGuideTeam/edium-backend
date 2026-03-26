@@ -44,7 +44,6 @@ SET status       = CASE WHEN attempts >= max_attempts THEN $1 ELSE $2 END,
     updated_at   = NOW()
 WHERE id = $5`
 
-// PgTaskRepository читает и обновляет задачи из таблицы task.
 type PgTaskRepository struct {
 	db *sql.DB
 }
@@ -53,7 +52,6 @@ func NewPgTaskRepository(db *sql.DB) *PgTaskRepository {
 	return &PgTaskRepository{db: db}
 }
 
-// Schedule планирует новую задачу. Участвует в транзакции, если она есть в ctx.
 func (r *PgTaskRepository) Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error {
 	executor := db.ExecutorFromContext(ctx, r.db)
 	_, err := executor.ExecContext(ctx,
@@ -61,9 +59,6 @@ func (r *PgTaskRepository) Schedule(ctx context.Context, taskType domain.TaskTyp
 	return err
 }
 
-// ClaimPending атомарно берёт в обработку до limit задач указанного типа,
-// используя SELECT … FOR UPDATE SKIP LOCKED.
-// Возвращённые задачи переведены в статус processing.
 func (r *PgTaskRepository) ClaimPending(ctx context.Context, taskType domain.TaskType, limit int) ([]domain.Task, error) {
 	rows, err := r.db.QueryContext(ctx, claimPendingQuery,
 		taskType, domain.TaskStatusPending, limit, domain.TaskStatusProcessing,
@@ -89,7 +84,6 @@ func (r *PgTaskRepository) ClaimPending(ctx context.Context, taskType domain.Tas
 	return tasks, rows.Err()
 }
 
-// MarkDone переводит задачу в статус done.
 func (r *PgTaskRepository) MarkDone(ctx context.Context, id uuid.UUID) error {
 	_, err := r.db.ExecContext(ctx, markDoneQuery, domain.TaskStatusDone, id)
 	if err != nil {
@@ -98,8 +92,6 @@ func (r *PgTaskRepository) MarkDone(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// MarkFailed сохраняет ошибку. Если attempts >= max_attempts — статус failed,
-// иначе возвращает задачу в pending с задержкой retryAfter.
 func (r *PgTaskRepository) MarkFailed(ctx context.Context, id uuid.UUID, reason string, retryAfter time.Duration) error {
 	_, err := r.db.ExecContext(ctx, markFailedQuery,
 		domain.TaskStatusFailed, domain.TaskStatusPending, reason, retryAfter, id,

@@ -118,13 +118,13 @@ func (s *Service) VerifyOTP(ctx context.Context, phone string, otp uint64) (otph
 	}
 
 	if !s.isValidOTP(otpData.Hash, otp) {
-		if err = s.otpStore.IncrAttempts(ctx, phone); err != nil {
+		if err := s.otpStore.IncrAttempts(ctx, phone); err != nil {
 			return nil, err
 		}
 		return nil, ErrInvalid
 	}
 
-	if err = s.otpStore.Delete(ctx, phone); err != nil {
+	if err := s.otpStore.Delete(ctx, phone); err != nil {
 		return nil, err
 	}
 
@@ -168,7 +168,7 @@ func (s *Service) issueRegistrationToken(ctx context.Context, phone string) (*ot
 		return nil, err
 	}
 
-	if err = s.regTokenStore.Save(ctx, phone, token, regTokenTTL); err != nil {
+	if err := s.regTokenStore.Save(ctx, phone, token, regTokenTTL); err != nil {
 		return nil, err
 	}
 
