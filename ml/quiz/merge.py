@@ -2,7 +2,6 @@
 """Склеивает несколько JSONL в один файл (по порядку аргументов, без дедупликации)."""
 import argparse
 import shutil
-import sys
 
 
 def main():

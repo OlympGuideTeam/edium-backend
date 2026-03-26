@@ -7,11 +7,10 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-// New создаёт подключение к NATS.
 func New(cfg config.NATSConfig) (*nats.Conn, error) {
 	conn, err := nats.Connect(cfg.URL)
 	if err != nil {
-		return nil, fmt.Errorf("подключение к NATS: %w", err)
+		return nil, fmt.Errorf("nats connect: %w", err)
 	}
 	return conn, nil
 }
