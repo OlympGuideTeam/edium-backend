@@ -10,18 +10,18 @@ import (
 	"log"
 )
 
-type otpSender interface {
-	SendOTP(ctx context.Context, phone string, channel domain.Channel) error
+type taskScheduler interface {
+	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
 }
 
-// OTPRequestConsumer читает запросы на отправку OTP из NATS и вызывает сервис.
+// OTPRequestConsumer читает запросы на отправку OTP из NATS и сохраняет задачу в БД.
 type OTPRequestConsumer struct {
 	subscriber *natsinf.Subscriber
-	service    otpSender
+	tasks      taskScheduler
 }
 
-func NewOTPRequestConsumer(subscriber *natsinf.Subscriber, service otpSender) *OTPRequestConsumer {
-	return &OTPRequestConsumer{subscriber: subscriber, service: service}
+func NewOTPRequestConsumer(subscriber *natsinf.Subscriber, tasks taskScheduler) *OTPRequestConsumer {
+	return &OTPRequestConsumer{subscriber: subscriber, tasks: tasks}
 }
 
 // Run блокируется до отмены ctx.
@@ -49,5 +49,5 @@ func (c *OTPRequestConsumer) handle(ctx context.Context, data []byte) error {
 	log.Printf("[otp-request-consumer] correlation_id=%s phone=%s channel=%s",
 		correlation.IDFromContext(ctx), msg.Phone, msg.Channel)
 
-	return c.service.SendOTP(ctx, msg.Phone, msg.Channel)
+	return c.tasks.Schedule(ctx, domain.OTPRequest, data)
 }
