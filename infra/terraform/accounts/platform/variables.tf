@@ -45,6 +45,20 @@ variable "doorman_pg_password_prod" {
   sensitive   = true
 }
 
+# --- Herald ---
+
+variable "herald_pg_password_test" {
+  description = "Пароль PostgreSQL для Herald (test)"
+  type        = string
+  sensitive   = true
+}
+
+variable "herald_pg_password_prod" {
+  description = "Пароль PostgreSQL для Herald (prod)"
+  type        = string
+  sensitive   = true
+}
+
 variable "redis_password" {
   description = "Пароль Redis"
   type        = string

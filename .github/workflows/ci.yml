@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       doorman: ${{ steps.filter.outputs.doorman }}
+      herald: ${{ steps.filter.outputs.herald }}
       ml: ${{ steps.filter.outputs.ml }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
@@ -22,6 +23,8 @@ jobs:
           filters: |
             doorman:
               - 'doorman/**'
+            herald:
+              - 'herald/**'
             ml:
               - 'ml/**'
             infra:
@@ -97,6 +100,60 @@ jobs:
           path: doorman/coverage.out
 
   # ========================
+  # Go — Herald
+  # ========================
+
+  lint-herald:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.herald == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: herald
+          version: v2.11.0
+
+  test-herald:
+    needs: lint-herald
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: herald_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Запуск тестов
+        working-directory: herald
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_DSN: "postgres://test:test@localhost:5432/herald_test?sslmode=disable"
+          TELEGRAM_BOT_TOKEN: "fake-token-for-tests"
+          NATS_URL: ""
+      - name: Загрузка покрытия
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-herald
+          path: herald/coverage.out
+
+  # ========================
   # Python — ML
   # ========================
 
@@ -131,25 +188,4 @@ jobs:
       - name: Запуск тестов
         run: cd ml && pytest -v
 
-  # ========================
-  # Terraform — валидация
-  # ========================
-
-  validate-terraform:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.infra == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        account: [platform, ml]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.9"
-      - name: Terraform init
-        working-directory: infra/terraform/accounts/${{ matrix.account }}
-        run: terraform init -backend=false
-      - name: Terraform validate
-        working-directory: infra/terraform/accounts/${{ matrix.account }}
-        run: terraform validate
+  # Terraform plan/apply — см. .github/workflows/terraform.yml

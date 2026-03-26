@@ -73,11 +73,15 @@ module "postgres" {
   databases = {
     "doorman_test" = { owner = "doorman_test" }
     "doorman_prod" = { owner = "doorman_prod" }
+    "herald_test"  = { owner = "herald_test" }
+    "herald_prod"  = { owner = "herald_prod" }
   }
 
   users = {
     "doorman_test" = { password = var.doorman_pg_password_test }
     "doorman_prod" = { password = var.doorman_pg_password_prod }
+    "herald_test"  = { password = var.herald_pg_password_test }
+    "herald_prod"  = { password = var.herald_pg_password_prod }
   }
 }
 
