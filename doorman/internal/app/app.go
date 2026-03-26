@@ -12,6 +12,7 @@ import (
 	"doorman/internal/repository"
 	jwtsvc "doorman/internal/service/jwt"
 	otpsvc "doorman/internal/service/otp"
+	regsvc "doorman/internal/service/registration"
 	"doorman/internal/worker"
 )
 
@@ -21,8 +22,12 @@ type App struct {
 	TokenHandler        *tokenhandler.Handler
 	KeyHandler          *keyhandler.Handler
 
-	OTPRequestConsumer *worker.OTPRequestConsumer
-	OTPSentPublisher   *worker.OTPSentPublisher
+	OTPRequestConsumer   *worker.OTPRequestConsumer
+	OTPRequestProcessor  *worker.OTPRequestProcessor
+	OTPSentPublisher     *worker.OTPSentPublisher
+	UserCreatedPublisher *worker.UserCreatedPublisher
+	UserDeletedConsumer  *worker.UserDeletedConsumer
+	UserDeletedProcessor *worker.UserDeletedProcessor
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -40,6 +45,8 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	txManager := db.NewTxManager(pgdb)
+
 	keyStore, err := repository.NewInMemoryKeysStoreWithOneKey(cfg.Keys)
 	if err != nil {
 		return nil, err
@@ -54,10 +61,12 @@ func New(cfg *config.Config) (*App, error) {
 
 	jwtService := jwtsvc.NewService(keyStore, refreshTokenStore)
 	otpService := otpsvc.NewService(identityStore, regTokenStore, otpStore, taskRepo, jwtService)
+	registrationService := regsvc.NewService(identityStore, regTokenStore, taskRepo, jwtService, txManager)
 
 	tokenHandler := tokenhandler.NewHandler(jwtService)
 	otpHandler := otphandler.NewHandler(otpService)
 	keyHandler := keyhandler.NewHandler(jwtService)
+	registrationHandler := reghandler.NewHandler(registrationService)
 
 	natsPublisher := natsinf.NewPublisher(natsConn)
 	natsSubscriber := natsinf.NewSubscriber(natsConn)
@@ -66,9 +75,13 @@ func New(cfg *config.Config) (*App, error) {
 		OtpHandler:          otpHandler,
 		KeyHandler:          keyHandler,
 		TokenHandler:        tokenHandler,
-		RegistrationHandler: &reghandler.Handler{},
+		RegistrationHandler: registrationHandler,
 
-		OTPRequestConsumer: worker.NewOTPRequestConsumer(natsSubscriber, otpService),
-		OTPSentPublisher:   worker.NewOTPSentPublisher(taskRepo, natsPublisher),
+		OTPRequestConsumer:   worker.NewOTPRequestConsumer(natsSubscriber, taskRepo),
+		OTPRequestProcessor:  worker.NewOTPRequestProcessor(taskRepo, otpService),
+		OTPSentPublisher:     worker.NewOTPSentPublisher(taskRepo, natsPublisher),
+		UserCreatedPublisher: worker.NewUserCreatedPublisher(taskRepo, natsPublisher),
+		UserDeletedConsumer:  worker.NewUserDeletedConsumer(natsSubscriber, taskRepo),
+		UserDeletedProcessor: worker.NewUserDeletedProcessor(taskRepo, identityStore, refreshTokenStore),
 	}, nil
 }

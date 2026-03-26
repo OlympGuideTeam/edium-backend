@@ -120,6 +120,13 @@ paths:
   /auth/register:
     post:
       tags: [Registration]
+      parameters:
+        - name: X-Reg-Token
+          in: header
+          required: true
+          description: Токен регистрации, полученный из /otp/verify
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -232,8 +239,8 @@ components:
         channel:
           type: string
           enum:
-            - sms
-            - max
+            - tg
+            - vk
 
     OtpVerifyRequest:
       type: object
@@ -288,12 +295,12 @@ components:
 
     RegisterRequest:
       type: object
-      required: [name, surname, phone, registration_token]
-      properties: 
+      required: [name, surname, phone]
+      properties:
         name:
           type: string
           example: Senya
-        surname: 
+        surname:
           type: string
           example: Titarenkovich
         phone:
