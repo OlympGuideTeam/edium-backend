@@ -3,11 +3,13 @@ package worker
 import (
 	"context"
 	"doorman/internal/domain"
-	"doorman/internal/pkg/correlation"
+	"doorman/internal/infra/telemetry"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
+
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -39,7 +41,7 @@ func NewUserDeletedProcessor(
 }
 
 func (w *UserDeletedProcessor) Run(ctx context.Context) error {
-	log.Printf("[user-deleted-processor] started, interval=%s", userDeletedPollInterval)
+	slog.Info("user-deleted-processor: запущен", "interval", userDeletedPollInterval)
 	ticker := time.NewTicker(userDeletedPollInterval)
 	defer ticker.Stop()
 
@@ -49,7 +51,7 @@ func (w *UserDeletedProcessor) Run(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			if err := w.processBatch(ctx); err != nil {
-				log.Printf("[user-deleted-processor] batch error: %v", err)
+				slog.Error("user-deleted-processor: ошибка батча", "err", err)
 			}
 		}
 	}
@@ -60,9 +62,10 @@ func (w *UserDeletedProcessor) processBatch(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("ClaimPending: %w", err)
 	}
-	for _, t := range tasks {
+	for i := range tasks {
+		t := tasks[i]
 		if err := w.processTask(ctx, t); err != nil {
-			log.Printf("[user-deleted-processor] task_id=%s error: %v", t.ID, err)
+			slog.Error("user-deleted-processor: ошибка задачи", "task_id", t.ID, "err", err)
 			_ = w.tasks.MarkFailed(ctx, t.ID, err.Error(), userDeletedRetryAfter)
 		}
 	}
@@ -71,19 +74,16 @@ func (w *UserDeletedProcessor) processBatch(ctx context.Context) error {
 
 func (w *UserDeletedProcessor) processTask(ctx context.Context, t domain.Task) error {
 	var payload struct {
-		UserID        string `json:"user_id"`
-		CorrelationID string `json:"correlation_id,omitempty"`
+		UserID string `json:"user_id"`
 	}
 	if err := json.Unmarshal(t.Payload, &payload); err != nil {
 		return fmt.Errorf("decode payload: %w", err)
 	}
 
-	if payload.CorrelationID != "" {
-		ctx = correlation.WithID(ctx, payload.CorrelationID)
-	}
+	ctx, span := otel.Tracer("doorman").Start(telemetry.Extract(ctx, t.TraceCtx), "worker.user_deleted_processor")
+	defer span.End()
 
-	log.Printf("[user-deleted-processor] task_id=%s correlation_id=%s user_id=%s",
-		t.ID, payload.CorrelationID, payload.UserID)
+	slog.InfoContext(ctx, "user-deleted-processor: обработка", "task_id", t.ID, "user_id", payload.UserID)
 
 	if err := w.identity.UpdateStatus(ctx, payload.UserID, domain.IdentityStatusDeleted); err != nil {
 		return fmt.Errorf("UpdateStatus: %w", err)

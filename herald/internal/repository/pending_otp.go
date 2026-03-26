@@ -17,11 +17,11 @@ func NewPgPendingOTPRepository(database *sql.DB) *PgPendingOTPRepository {
 	return &PgPendingOTPRepository{db: database}
 }
 
-func (r *PgPendingOTPRepository) Save(ctx context.Context, correlationID string, chatID int64) error {
+func (r *PgPendingOTPRepository) Save(ctx context.Context, phone string, chatID int64) error {
 	executor := db.ExecutorFromContext(ctx, r.db)
 	_, err := executor.ExecContext(ctx,
-		`INSERT INTO pending_otp (correlation_id, chat_id) VALUES ($1, $2)`,
-		correlationID, chatID,
+		`INSERT INTO pending_otp (phone, chat_id) VALUES ($1, $2) ON CONFLICT (phone) DO UPDATE SET chat_id = $2, expires_at = NOW() + INTERVAL '10 minutes'`,
+		phone, chatID,
 	)
 	if err != nil {
 		return fmt.Errorf("PendingOTP.Save: %w", err)
@@ -29,17 +29,15 @@ func (r *PgPendingOTPRepository) Save(ctx context.Context, correlationID string,
 	return nil
 }
 
-func (r *PgPendingOTPRepository) Get(ctx context.Context, correlationID string) (*domain.PendingOTP, error) {
+func (r *PgPendingOTPRepository) Get(ctx context.Context, phone string) (*domain.PendingOTP, error) {
 	executor := db.ExecutorFromContext(ctx, r.db)
 	row := executor.QueryRowContext(ctx,
-		`SELECT correlation_id, chat_id, expires_at
-         FROM pending_otp
-         WHERE correlation_id = $1 AND expires_at > NOW()`,
-		correlationID,
+		`SELECT phone, chat_id, expires_at FROM pending_otp WHERE phone = $1 AND expires_at > NOW()`,
+		phone,
 	)
 
 	var p domain.PendingOTP
-	if err := row.Scan(&p.CorrelationID, &p.ChatID, &p.ExpiresAt); err != nil {
+	if err := row.Scan(&p.Phone, &p.ChatID, &p.ExpiresAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -48,11 +46,9 @@ func (r *PgPendingOTPRepository) Get(ctx context.Context, correlationID string) 
 	return &p, nil
 }
 
-func (r *PgPendingOTPRepository) Delete(ctx context.Context, correlationID string) error {
+func (r *PgPendingOTPRepository) Delete(ctx context.Context, phone string) error {
 	executor := db.ExecutorFromContext(ctx, r.db)
-	_, err := executor.ExecContext(ctx,
-		`DELETE FROM pending_otp WHERE correlation_id = $1`, correlationID,
-	)
+	_, err := executor.ExecContext(ctx, `DELETE FROM pending_otp WHERE phone = $1`, phone)
 	if err != nil {
 		return fmt.Errorf("PendingOTP.Delete: %w", err)
 	}

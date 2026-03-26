@@ -4,10 +4,9 @@ import (
 	"context"
 	"doorman/internal/domain"
 	natsinf "doorman/internal/infra/nats"
-	"doorman/internal/pkg/correlation"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 )
 
 type taskScheduler interface {
@@ -24,14 +23,13 @@ func NewOTPRequestConsumer(subscriber *natsinf.Subscriber, tasks taskScheduler) 
 }
 
 func (c *OTPRequestConsumer) Run(ctx context.Context) error {
-	log.Printf("[otp-request-consumer] subscribing to %s", natsinf.SubjectOTPRequest)
+	slog.Info("otp-request-consumer: подписка", "subject", natsinf.SubjectOTPRequest)
 	return c.subscriber.QueueSubscribe(ctx, natsinf.SubjectOTPRequest, natsinf.QueueOTPRequest, c.handle)
 }
 
 type otpRequestMsg struct {
-	Phone         string         `json:"phone"`
-	Channel       domain.Channel `json:"channel"`
-	CorrelationID string         `json:"correlation_id,omitempty"`
+	Phone   string         `json:"phone"`
+	Channel domain.Channel `json:"channel"`
 }
 
 func (c *OTPRequestConsumer) handle(ctx context.Context, data []byte) error {
@@ -39,13 +37,6 @@ func (c *OTPRequestConsumer) handle(ctx context.Context, data []byte) error {
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return fmt.Errorf("decode message: %w", err)
 	}
-
-	if msg.CorrelationID != "" {
-		ctx = correlation.WithID(ctx, msg.CorrelationID)
-	}
-
-	log.Printf("[otp-request-consumer] correlation_id=%s phone=%s channel=%s",
-		correlation.IDFromContext(ctx), msg.Phone, msg.Channel)
-
+	slog.InfoContext(ctx, "otp-request-consumer: получено", "phone", msg.Phone, "channel", msg.Channel)
 	return c.tasks.Schedule(ctx, domain.OTPRequest, data)
 }
