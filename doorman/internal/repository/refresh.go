@@ -4,8 +4,9 @@ import (
 	"context"
 	jwtsvc "doorman/internal/service/jwt"
 	"errors"
-	"github.com/redis/go-redis/v9"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 func NewRedisRefreshTokenStore(client *redis.Client) *RefreshTokenStore {

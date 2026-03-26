@@ -3,8 +3,8 @@ package regsvc
 import (
 	"context"
 	"doorman/internal/domain"
-	"doorman/internal/pkg/correlation"
 	tokenhandler "doorman/internal/handler/token"
+	"doorman/internal/pkg/correlation"
 	"encoding/json"
 )
 
