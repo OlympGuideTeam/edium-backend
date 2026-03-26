@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       doorman: ${{ steps.filter.outputs.doorman }}
+      herald: ${{ steps.filter.outputs.herald }}
       ml: ${{ steps.filter.outputs.ml }}
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +25,8 @@ jobs:
           filters: |
             doorman:
               - 'doorman/**'
+            herald:
+              - 'herald/**'
             ml:
               - 'ml/**'
 
@@ -47,6 +50,29 @@ jobs:
           TAG=main-${GITHUB_SHA::7}
 
           docker build -t ${IMAGE}:${TAG} doorman/
+          docker push ${IMAGE}:${TAG}
+
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  build-herald:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.herald == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-herald
+          TAG=main-${GITHUB_SHA::7}
+
+          docker build -t ${IMAGE}:${TAG} herald/
           docker push ${IMAGE}:${TAG}
 
           docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
@@ -82,8 +108,8 @@ jobs:
   # ========================
 
   deploy-test:
-    needs: [build-doorman, build-ml]
-    if: always() && (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') && (needs.build-ml.result == 'success' || needs.build-ml.result == 'skipped')
+    needs: [build-doorman, build-herald, build-ml]
+    if: always() && (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') && (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') && (needs.build-ml.result == 'success' || needs.build-ml.result == 'skipped')
     runs-on: ubuntu-latest
     environment: test
     steps:
@@ -95,7 +121,7 @@ jobs:
           host: ${{ secrets.TEST_VM_HOST }}
           username: deploy
           key: ${{ secrets.TEST_VM_SSH_KEY }}
-          source: "infra/compose/test/docker-compose.yml,infra/caddy/Caddyfile.test,doorman/migrations/"
+          source: "infra/compose/test/docker-compose.yml,infra/caddy/Caddyfile.test,doorman/migrations/,herald/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -111,8 +137,9 @@ jobs:
             # Подготовка файлов
             cp /tmp/edium-deploy/infra/compose/test/docker-compose.yml /opt/edium/docker-compose.yml
             cp /tmp/edium-deploy/infra/caddy/Caddyfile.test /opt/edium/Caddyfile
-            mkdir -p /opt/edium/migrations/doorman
+            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
+            cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
 
             cd /opt/edium
 
@@ -126,6 +153,10 @@ jobs:
             DOORMAN_REDIS_PWD=${{ secrets.DOORMAN_REDIS_PWD }}
             REDIS_HOST=${{ secrets.REDIS_HOST }}
             JWT_ACTIVE_KID=${{ secrets.JWT_ACTIVE_KID }}
+            HERALD_PG_USER=${{ secrets.HERALD_PG_USER }}
+            HERALD_PG_PWD=${{ secrets.HERALD_PG_PWD }}
+            HERALD_PG_DB=${{ secrets.HERALD_PG_DB }}
+            TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 
