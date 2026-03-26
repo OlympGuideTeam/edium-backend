@@ -13,6 +13,7 @@ services:
       - caddy_config:/config
     depends_on:
       - doorman
+      - grafana
     networks:
       - edium
 
@@ -113,10 +114,62 @@ services:
     networks:
       - edium
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_USER: vector
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DB: logs
+    volumes:
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - clickhouse_data:/var/lib/clickhouse
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    networks:
+      - edium
+
+  vector:
+    image: timberio/vector:0.42.0-alpine
+    restart: unless-stopped
+    volumes:
+      - ./vector.yaml:/etc/vector/vector.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+    depends_on:
+      - clickhouse
+    networks:
+      - edium
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    volumes:
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana_data:/var/lib/grafana
+    expose:
+      - "3000"
+    depends_on:
+      - clickhouse
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - edium
+
 volumes:
   caddy_data:
   caddy_config:
   nats_data:
+  clickhouse_data:
+  grafana_data:
 
 networks:
   edium:
