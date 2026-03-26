@@ -85,6 +85,25 @@ edium-backend/
 
 **Телефон:** regex `^\+[1-9]\d{1,14}$`
 
+**Воркеры (Transactional Outbox):**
+
+Входящие NATS-события сначала сохраняются в таблицу `task`, затем обрабатываются отдельным воркером-процессором. Это гарантирует exactly-once при перезапусках.
+
+| Воркер | Тип | NATS / DB | Действие |
+|--------|-----|-----------|---------|
+| `OTPRequestConsumer` | consumer | `doorman.otp.send` → DB `otp_request` | сохраняет задачу |
+| `OTPRequestProcessor` | processor | DB `otp_request` | вызывает `SendOTP` |
+| `OTPSentPublisher` | publisher | DB `otp_sent` → `herald.otp.sent` | публикует в NATS |
+| `UserCreatedPublisher` | publisher | DB `user_created` → `doorman.user.created` | публикует в NATS |
+| `UserDeletedConsumer` | consumer | `caesar.user.deleted` → DB `user_deleted` | сохраняет задачу |
+| `UserDeletedProcessor` | processor | DB `user_deleted` | `status=deleted` + удаляет JWT-токены |
+
+**Payload задач:**
+- `otp_request`: `{phone, channel, correlation_id}`
+- `otp_sent`: `{phone, otp, channel, correlation_id}`
+- `user_created`: `{user_id, phone, name, surname, correlation_id}`
+- `user_deleted`: `{user_id, correlation_id}`
+
 ## Riddler — квизы и WebSocket
 
 **Типы квизов:**

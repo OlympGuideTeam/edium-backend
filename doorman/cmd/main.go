@@ -37,6 +37,26 @@ func main() {
 			log.Printf("OTPSentPublisher завершился: %v", err)
 		}
 	}()
+	go func() {
+		if err := application.UserCreatedPublisher.Run(ctx); err != nil {
+			log.Printf("UserCreatedPublisher завершился: %v", err)
+		}
+	}()
+	go func() {
+		if err := application.OTPRequestProcessor.Run(ctx); err != nil {
+			log.Printf("OTPRequestProcessor завершился: %v", err)
+		}
+	}()
+	go func() {
+		if err := application.UserDeletedConsumer.Run(ctx); err != nil {
+			log.Printf("UserDeletedConsumer завершился: %v", err)
+		}
+	}()
+	go func() {
+		if err := application.UserDeletedProcessor.Run(ctx); err != nil {
+			log.Printf("UserDeletedProcessor завершился: %v", err)
+		}
+	}()
 
 	r := gin.Default()
 

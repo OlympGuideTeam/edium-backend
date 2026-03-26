@@ -146,7 +146,7 @@ func (s *Service) issueResult(ctx context.Context, phone string) (otphandler.Ver
 		return nil, ErrPhoneUnavailable
 	}
 
-	return s.issueAuthTokens(ctx, identity.ID)
+	return s.issueAuthTokens(ctx, identity.ID.String())
 }
 
 func (s *Service) issueAuthTokens(ctx context.Context, userID string) (*tokenhandler.AuthTokens, error) {

@@ -24,7 +24,7 @@ type RegTokenStore interface {
 }
 
 type IdentityStore interface {
-	Create(ctx context.Context, identity domain.Identity) error
+	Create(ctx context.Context, phone string) (domain.Identity, error)
 	GetByPhone(ctx context.Context, phone string) (*domain.Identity, error)
 }
 
