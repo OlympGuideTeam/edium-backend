@@ -74,7 +74,7 @@ func (r *PgTaskRepository) ClaimPending(ctx context.Context, taskType domain.Tas
 	if err != nil {
 		return nil, fmt.Errorf("ClaimPending: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tasks []domain.Task
 	for rows.Next() {
