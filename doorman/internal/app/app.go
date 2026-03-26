@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"doorman/internal/config"
 	keyhandler "doorman/internal/handler/key"
 	otphandler "doorman/internal/handler/otp"
@@ -14,6 +15,11 @@ import (
 	otpsvc "doorman/internal/service/otp"
 	regsvc "doorman/internal/service/registration"
 	"doorman/internal/worker"
+	"fmt"
+	"log/slog"
+
+	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 type App struct {
@@ -71,7 +77,7 @@ func New(cfg *config.Config) (*App, error) {
 	natsPublisher := natsinf.NewPublisher(natsConn)
 	natsSubscriber := natsinf.NewSubscriber(natsConn)
 
-	return &App{
+	a := &App{
 		OtpHandler:          otpHandler,
 		KeyHandler:          keyHandler,
 		TokenHandler:        tokenHandler,
@@ -83,5 +89,46 @@ func New(cfg *config.Config) (*App, error) {
 		UserCreatedPublisher: worker.NewUserCreatedPublisher(taskRepo, natsPublisher),
 		UserDeletedConsumer:  worker.NewUserDeletedConsumer(natsSubscriber, taskRepo),
 		UserDeletedProcessor: worker.NewUserDeletedProcessor(taskRepo, identityStore, refreshTokenStore),
-	}, nil
+	}
+	return a, nil
+}
+
+func (a *App) Workers() map[string]func(context.Context) error {
+	return map[string]func(context.Context) error{
+		"OTPRequestConsumer":   a.OTPRequestConsumer.Run,
+		"OTPRequestProcessor":  a.OTPRequestProcessor.Run,
+		"OTPSentPublisher":     a.OTPSentPublisher.Run,
+		"UserCreatedPublisher": a.UserCreatedPublisher.Run,
+		"UserDeletedConsumer":  a.UserDeletedConsumer.Run,
+		"UserDeletedProcessor": a.UserDeletedProcessor.Run,
+	}
+}
+
+func (a *App) Router(serviceName string) *gin.Engine {
+	r := gin.Default()
+	r.Use(otelgin.Middleware(serviceName))
+
+	api := r.Group("/api/v1")
+	api.POST("/otp/send", a.OtpHandler.Send)
+	api.POST("/otp/verify", a.OtpHandler.Verify)
+	api.POST("/auth/register", a.RegistrationHandler.Register)
+	api.POST("/auth/refresh", a.TokenHandler.Refresh)
+	api.POST("/auth/logout", a.TokenHandler.Logout)
+	api.GET("/.well-known/jwks.json", a.KeyHandler.GetJWKS)
+
+	return r
+}
+
+func (a *App) Run(ctx context.Context, cfg *config.Config) error {
+	for name, run := range a.Workers() {
+		go func() {
+			if err := run(ctx); err != nil {
+				slog.Error("воркер завершился с ошибкой", "worker", name, "err", err)
+			}
+		}()
+	}
+	if err := a.Router(cfg.OTel.ServiceName).Run(fmt.Sprintf(":%d", cfg.App.Port)); err != nil {
+		return fmt.Errorf("сервер: %w", err)
+	}
+	return nil
 }

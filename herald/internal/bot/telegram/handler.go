@@ -2,11 +2,10 @@ package telegram
 
 import (
 	"context"
-	"herald/internal/pkg/correlation"
-	"log"
+	"log/slog"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
 )
 
 type Handler struct {
@@ -23,7 +22,7 @@ func (h *Handler) Run(ctx context.Context) error {
 	u.Timeout = 60
 
 	updates := h.bot.GetUpdatesChan(u)
-	log.Printf("[tg-bot] started, username=@%s", h.bot.Self.UserName)
+	slog.Info("tg-bot: запущен", "username", h.bot.Self.UserName)
 
 	for {
 		select {
@@ -44,7 +43,6 @@ func (h *Handler) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 		return
 	}
 
-	ctx = correlation.WithID(ctx, uuid.New().String())
 	msg := update.Message
 	chatID := msg.Chat.ID
 
@@ -57,15 +55,18 @@ func (h *Handler) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 }
 
 func (h *Handler) handleContact(ctx context.Context, chatID int64, contact *tgbotapi.Contact) {
+	ctx, span := otel.Tracer("herald").Start(ctx, "tg.handleContact")
+	defer span.End()
+
 	phone := contact.PhoneNumber
 	if len(phone) > 0 && phone[0] != '+' {
 		phone = "+" + phone
 	}
 
-	log.Printf("[tg-bot] contact received correlation_id=%s chat_id=%d", correlation.IDFromContext(ctx), chatID)
+	slog.InfoContext(ctx, "tg-bot: контакт получен", "chat_id", chatID)
 
 	if err := h.service.RequestOTP(ctx, chatID, phone); err != nil {
-		log.Printf("[tg-bot] RequestOTP error correlation_id=%s: %v", correlation.IDFromContext(ctx), err)
+		slog.ErrorContext(ctx, "tg-bot: ошибка RequestOTP", "chat_id", chatID, "err", err)
 		h.sendMsg(tgbotapi.NewMessage(chatID, "Произошла ошибка. Попробуйте ещё раз."))
 		return
 	}
@@ -87,6 +88,6 @@ func (h *Handler) sendContactRequest(chatID int64) {
 
 func (h *Handler) sendMsg(msg tgbotapi.Chattable) {
 	if _, err := h.bot.Send(msg); err != nil {
-		log.Printf("[tg-bot] send error: %v", err)
+		slog.Error("tg-bot: ошибка отправки", "err", err)
 	}
 }

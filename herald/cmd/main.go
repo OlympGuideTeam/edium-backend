@@ -4,45 +4,44 @@ import (
 	"context"
 	"herald/internal/app"
 	"herald/internal/config"
-	"log"
+	"herald/internal/infra/telemetry"
+	"herald/internal/pkg/logger"
+	"log/slog"
+	"os"
 	"os/signal"
 	"syscall"
 )
 
 func main() {
+	slog.SetDefault(slog.New(logger.NewContextHandler(
+		slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}),
+	)))
+
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	application, err := app.New(cfg)
-	if err != nil {
-		log.Fatal(err)
+		slog.Error("загрузка конфигурации", "err", err)
+		os.Exit(1)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	go func() {
-		if err := application.OTPRequestPublisher.Run(ctx); err != nil {
-			log.Printf("OTPRequestPublisher завершился: %v", err)
-		}
-	}()
-
-	go func() {
-		if err := application.OTPSentConsumer.Run(ctx); err != nil {
-			log.Printf("OTPSentConsumer завершился: %v", err)
-		}
-	}()
-
-	go func() {
-		if err := application.OTPDeliveryWorker.Run(ctx); err != nil {
-			log.Printf("OTPDeliveryWorker завершился: %v", err)
-		}
-	}()
-
-	// Telegram long polling — основной цикл.
-	if err := application.TGHandler.Run(ctx); err != nil {
-		log.Printf("TGHandler завершился: %v", err)
+	if err := run(ctx, cfg); err != nil {
+		slog.Error("приложение завершилось с ошибкой", "err", err)
 	}
+}
+
+func run(ctx context.Context, cfg *config.Config) error {
+	shutdown, err := telemetry.Init(ctx, cfg.OTel.Endpoint, cfg.OTel.ServiceName)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = shutdown(context.Background()) }()
+
+	application, err := app.New(cfg)
+	if err != nil {
+		return err
+	}
+
+	return application.Run(ctx, cfg)
 }

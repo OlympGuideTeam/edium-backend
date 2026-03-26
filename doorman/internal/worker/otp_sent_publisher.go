@@ -4,13 +4,14 @@ import (
 	"context"
 	"doorman/internal/domain"
 	natsinf "doorman/internal/infra/nats"
-	"doorman/internal/pkg/correlation"
+	"doorman/internal/infra/telemetry"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -35,7 +36,7 @@ func NewOTPSentPublisher(tasks taskRepository, publisher *natsinf.Publisher) *OT
 }
 
 func (w *OTPSentPublisher) Run(ctx context.Context) error {
-	log.Printf("[otp-sent-publisher] started, interval=%s", otpSentPollInterval)
+	slog.Info("otp-sent-publisher: запущен", "interval", otpSentPollInterval)
 	ticker := time.NewTicker(otpSentPollInterval)
 	defer ticker.Stop()
 
@@ -45,17 +46,16 @@ func (w *OTPSentPublisher) Run(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			if err := w.processBatch(ctx); err != nil {
-				log.Printf("[otp-sent-publisher] batch error: %v", err)
+				slog.Error("otp-sent-publisher: ошибка батча", "err", err)
 			}
 		}
 	}
 }
 
 type otpSentPayload struct {
-	Phone         string         `json:"phone"`
-	OTP           uint64         `json:"otp"`
-	Channel       domain.Channel `json:"channel"`
-	CorrelationID string         `json:"correlation_id,omitempty"`
+	Phone   string         `json:"phone"`
+	OTP     uint64         `json:"otp"`
+	Channel domain.Channel `json:"channel"`
 }
 
 func (w *OTPSentPublisher) processBatch(ctx context.Context) error {
@@ -63,9 +63,10 @@ func (w *OTPSentPublisher) processBatch(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("ClaimPending: %w", err)
 	}
-	for _, t := range tasks {
+	for i := range tasks {
+		t := tasks[i]
 		if err := w.processTask(ctx, t); err != nil {
-			log.Printf("[otp-sent-publisher] task_id=%s error: %v", t.ID, err)
+			slog.Error("otp-sent-publisher: ошибка задачи", "task_id", t.ID, "err", err)
 			_ = w.tasks.MarkFailed(ctx, t.ID, err.Error(), otpSentRetryAfter)
 		}
 	}
@@ -78,19 +79,17 @@ func (w *OTPSentPublisher) processTask(ctx context.Context, t domain.Task) error
 		return fmt.Errorf("decode payload: %w", err)
 	}
 
-	pubCtx := ctx
-	if payload.CorrelationID != "" {
-		pubCtx = correlation.WithID(ctx, payload.CorrelationID)
-	}
+	ctx, span := otel.Tracer("doorman").Start(telemetry.Extract(ctx, t.TraceCtx), "worker.otp_sent_publisher")
+	defer span.End()
 
-	log.Printf("[otp-sent-publisher] task_id=%s correlation_id=%s", t.ID, payload.CorrelationID)
+	slog.InfoContext(ctx, "otp-sent-publisher: публикация", "task_id", t.ID)
 
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
 	}
 
-	if err := w.publisher.Publish(pubCtx, natsinf.SubjectOTPSent, data); err != nil {
+	if err := w.publisher.Publish(ctx, natsinf.SubjectOTPSent, data); err != nil {
 		return fmt.Errorf("publish: %w", err)
 	}
 	return w.tasks.MarkDone(ctx, t.ID)
