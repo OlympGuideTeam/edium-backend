@@ -3,10 +3,23 @@ package nats
 import (
 	"context"
 	"fmt"
-	"herald/internal/pkg/correlation"
 
 	natsgo "github.com/nats-io/nats.go"
+	"go.opentelemetry.io/otel/propagation"
 )
+
+var propagator = propagation.NewCompositeTextMapPropagator(
+	propagation.TraceContext{},
+	propagation.Baggage{},
+)
+
+type natsHeaderCarrier struct {
+	header natsgo.Header
+}
+
+func (c natsHeaderCarrier) Get(key string) string      { return c.header.Get(key) }
+func (c natsHeaderCarrier) Set(key string, val string) { c.header.Set(key, val) }
+func (c natsHeaderCarrier) Keys() []string             { return nil }
 
 type Publisher struct {
 	conn *natsgo.Conn
@@ -22,9 +35,7 @@ func (p *Publisher) Publish(ctx context.Context, subject string, data []byte) er
 		Data:    data,
 		Header:  natsgo.Header{},
 	}
-	if id := correlation.IDFromContext(ctx); id != "" {
-		msg.Header.Set("X-Correlation-Id", id)
-	}
+	propagator.Inject(ctx, natsHeaderCarrier{header: msg.Header})
 	if err := p.conn.PublishMsg(msg); err != nil {
 		return fmt.Errorf("publish to %s: %w", subject, err)
 	}

@@ -4,11 +4,13 @@ import (
 	"context"
 	"doorman/internal/domain"
 	natsinf "doorman/internal/infra/nats"
-	"doorman/internal/pkg/correlation"
+	"doorman/internal/infra/telemetry"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
+
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -27,7 +29,7 @@ func NewUserCreatedPublisher(tasks taskRepository, publisher *natsinf.Publisher)
 }
 
 func (w *UserCreatedPublisher) Run(ctx context.Context) error {
-	log.Printf("[user-created-publisher] started, interval=%s", userCreatedPollInterval)
+	slog.Info("user-created-publisher: запущен", "interval", userCreatedPollInterval)
 	ticker := time.NewTicker(userCreatedPollInterval)
 	defer ticker.Stop()
 
@@ -37,18 +39,17 @@ func (w *UserCreatedPublisher) Run(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			if err := w.processBatch(ctx); err != nil {
-				log.Printf("[user-created-publisher] batch error: %v", err)
+				slog.Error("user-created-publisher: ошибка батча", "err", err)
 			}
 		}
 	}
 }
 
 type userCreatedMsg struct {
-	UserID        string `json:"user_id"`
-	Phone         string `json:"phone"`
-	Name          string `json:"name"`
-	Surname       string `json:"surname"`
-	CorrelationID string `json:"correlation_id,omitempty"`
+	UserID  string `json:"user_id"`
+	Phone   string `json:"phone"`
+	Name    string `json:"name"`
+	Surname string `json:"surname"`
 }
 
 func (w *UserCreatedPublisher) processBatch(ctx context.Context) error {
@@ -56,9 +57,10 @@ func (w *UserCreatedPublisher) processBatch(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("ClaimPending: %w", err)
 	}
-	for _, t := range tasks {
+	for i := range tasks {
+		t := tasks[i]
 		if err := w.processTask(ctx, t); err != nil {
-			log.Printf("[user-created-publisher] task_id=%s error: %v", t.ID, err)
+			slog.Error("user-created-publisher: ошибка задачи", "task_id", t.ID, "err", err)
 			_ = w.tasks.MarkFailed(ctx, t.ID, err.Error(), userCreatedRetryAfter)
 		}
 	}
@@ -71,20 +73,17 @@ func (w *UserCreatedPublisher) processTask(ctx context.Context, t domain.Task) e
 		return fmt.Errorf("decode payload: %w", err)
 	}
 
-	pubCtx := ctx
-	if payload.CorrelationID != "" {
-		pubCtx = correlation.WithID(ctx, payload.CorrelationID)
-	}
+	ctx, span := otel.Tracer("doorman").Start(telemetry.Extract(ctx, t.TraceCtx), "worker.user_created_publisher")
+	defer span.End()
 
-	log.Printf("[user-created-publisher] task_id=%s correlation_id=%s user_id=%s",
-		t.ID, payload.CorrelationID, payload.UserID)
+	slog.InfoContext(ctx, "user-created-publisher: публикация", "task_id", t.ID, "user_id", payload.UserID)
 
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
 	}
 
-	if err := w.publisher.Publish(pubCtx, natsinf.SubjectUserCreated, data); err != nil {
+	if err := w.publisher.Publish(ctx, natsinf.SubjectUserCreated, data); err != nil {
 		return fmt.Errorf("publish: %w", err)
 	}
 	return w.tasks.MarkDone(ctx, t.ID)

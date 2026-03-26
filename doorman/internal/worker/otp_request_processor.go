@@ -3,11 +3,13 @@ package worker
 import (
 	"context"
 	"doorman/internal/domain"
-	"doorman/internal/pkg/correlation"
+	"doorman/internal/infra/telemetry"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
+
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -30,7 +32,7 @@ func NewOTPRequestProcessor(tasks taskRepository, service otpSender) *OTPRequest
 }
 
 func (w *OTPRequestProcessor) Run(ctx context.Context) error {
-	log.Printf("[otp-request-processor] started, interval=%s", otpRequestPollInterval)
+	slog.Info("otp-request-processor: запущен", "interval", otpRequestPollInterval)
 	ticker := time.NewTicker(otpRequestPollInterval)
 	defer ticker.Stop()
 
@@ -40,7 +42,7 @@ func (w *OTPRequestProcessor) Run(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			if err := w.processBatch(ctx); err != nil {
-				log.Printf("[otp-request-processor] batch error: %v", err)
+				slog.Error("otp-request-processor: ошибка батча", "err", err)
 			}
 		}
 	}
@@ -51,9 +53,10 @@ func (w *OTPRequestProcessor) processBatch(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("ClaimPending: %w", err)
 	}
-	for _, t := range tasks {
+	for i := range tasks {
+		t := tasks[i]
 		if err := w.processTask(ctx, t); err != nil {
-			log.Printf("[otp-request-processor] task_id=%s error: %v", t.ID, err)
+			slog.Error("otp-request-processor: ошибка задачи", "task_id", t.ID, "err", err)
 			_ = w.tasks.MarkFailed(ctx, t.ID, err.Error(), otpRequestRetryAfter)
 		}
 	}
@@ -62,20 +65,17 @@ func (w *OTPRequestProcessor) processBatch(ctx context.Context) error {
 
 func (w *OTPRequestProcessor) processTask(ctx context.Context, t domain.Task) error {
 	var payload struct {
-		Phone         string         `json:"phone"`
-		Channel       domain.Channel `json:"channel"`
-		CorrelationID string         `json:"correlation_id,omitempty"`
+		Phone   string         `json:"phone"`
+		Channel domain.Channel `json:"channel"`
 	}
 	if err := json.Unmarshal(t.Payload, &payload); err != nil {
 		return fmt.Errorf("decode payload: %w", err)
 	}
 
-	if payload.CorrelationID != "" {
-		ctx = correlation.WithID(ctx, payload.CorrelationID)
-	}
+	ctx, span := otel.Tracer("doorman").Start(telemetry.Extract(ctx, t.TraceCtx), "worker.otp_request_processor")
+	defer span.End()
 
-	log.Printf("[otp-request-processor] task_id=%s correlation_id=%s phone=%s",
-		t.ID, payload.CorrelationID, payload.Phone)
+	slog.InfoContext(ctx, "otp-request-processor: обработка", "task_id", t.ID, "phone", payload.Phone)
 
 	if err := w.service.SendOTP(ctx, payload.Phone, payload.Channel); err != nil {
 		return err

@@ -25,10 +25,11 @@ var (
 )
 
 type Task struct {
-	ID      uuid.UUID
-	Type    TaskType
-	Status  TaskStatus
-	Payload []byte
+	ID       uuid.UUID
+	Type     TaskType
+	Status   TaskStatus
+	Payload  []byte
+	TraceCtx string
 
 	Attempts    int64
 	AvailableAt time.Time
