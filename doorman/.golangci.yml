@@ -20,6 +20,11 @@ linters:
         - hugeParam
     misspell:
       locale: US
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
 
 formatters:
   enable:
@@ -29,9 +34,3 @@ formatters:
     goimports:
       local-prefixes:
         - github.com/OlympGuideTeam/edium-backend
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
