@@ -34,7 +34,6 @@ jobs:
               - 'infra/terraform/modules/**'
               - 'infra/terraform/accounts/platform/**'
             ml:
-              - 'infra/terraform/modules/**'
               - 'infra/terraform/accounts/ml/**'
 
   # ========================
