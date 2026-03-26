@@ -1,0 +1,3 @@
+api.edium.online {
+    reverse_proxy doorman:80
+}
