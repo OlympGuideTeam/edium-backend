@@ -1,6 +1,3 @@
-CREATE SCHEMA doorman;
-SET search_path TO doorman;
-
 CREATE TYPE identity_status AS ENUM (
     'active',
     'blocked',
@@ -19,12 +16,12 @@ CREATE TABLE identity (
 );
 
 CREATE OR REPLACE FUNCTION set_updated_at()
-    RETURNS TRIGGER AS '
+    RETURNS TRIGGER AS $$
     BEGIN
         NEW.updated_at = now();
         RETURN NEW;
     END;
-' LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_identity_updated_at
     BEFORE UPDATE ON identity
