@@ -4,8 +4,9 @@ import (
 	"context"
 	otpsvc "doorman/internal/service/otp"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type RedisOTPStore struct {
@@ -52,7 +53,7 @@ func (s *RedisOTPStore) Get(ctx context.Context, phone string) (*otpsvc.OtpData,
 	}
 
 	var otp otpsvc.OtpData
-	if err = cmd.Scan(&otp); err != nil {
+	if err := cmd.Scan(&otp); err != nil {
 		return nil, err
 	}
 

@@ -7,10 +7,11 @@ import (
 	jwtsvc "doorman/internal/service/jwt"
 	"encoding/pem"
 	"errors"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"strings"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type InMemoryKeyStore struct {
