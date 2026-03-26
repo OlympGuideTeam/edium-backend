@@ -10,6 +10,7 @@ type Config struct {
 	Postgres PostgresConfig
 	NATS     NATSConfig
 	Telegram TelegramConfig
+	OTel     OTelConfig
 }
 
 type AppConfig struct {
@@ -26,6 +27,11 @@ type NATSConfig struct {
 
 type TelegramConfig struct {
 	BotToken string `env:"TELEGRAM_BOT_TOKEN,required"`
+}
+
+type OTelConfig struct {
+	Endpoint    string `env:"OTEL_ENDPOINT" envDefault:"jaeger:4317"`
+	ServiceName string `env:"OTEL_SERVICE_NAME" envDefault:"herald"`
 }
 
 func Load() (*Config, error) {

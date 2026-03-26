@@ -89,22 +89,43 @@ edium-backend/
 
 **Воркеры (Transactional Outbox):**
 
-Входящие NATS-события сначала сохраняются в таблицу `task`, затем обрабатываются отдельным воркером-процессором. Это гарантирует exactly-once при перезапусках.
+Входящие NATS-события сначала сохраняются в таблицу `task`, затем обрабатываются отдельным воркером-процессором. Это гарантирует exactly-once при перезапусках. Сквозной `trace_id` передаётся через W3C `traceparent` в колонке `task.trace_ctx`.
 
 | Воркер | Тип | NATS / DB | Действие |
 |--------|-----|-----------|---------|
-| `OTPRequestConsumer` | consumer | `doorman.otp.send` → DB `otp_request` | сохраняет задачу |
+| `OTPRequestConsumer` | consumer | `herald.otp.requested` → DB `otp_request` | сохраняет задачу |
 | `OTPRequestProcessor` | processor | DB `otp_request` | вызывает `SendOTP` |
-| `OTPSentPublisher` | publisher | DB `otp_sent` → `herald.otp.sent` | публикует в NATS |
+| `OTPSentPublisher` | publisher | DB `otp_sent` → `doorman.otp.sent` | публикует в NATS |
 | `UserCreatedPublisher` | publisher | DB `user_created` → `doorman.user.created` | публикует в NATS |
 | `UserDeletedConsumer` | consumer | `caesar.user.deleted` → DB `user_deleted` | сохраняет задачу |
 | `UserDeletedProcessor` | processor | DB `user_deleted` | `status=deleted` + удаляет JWT-токены |
 
 **Payload задач:**
-- `otp_request`: `{phone, channel, correlation_id}`
-- `otp_sent`: `{phone, otp, channel, correlation_id}`
-- `user_created`: `{user_id, phone, name, surname, correlation_id}`
-- `user_deleted`: `{user_id, correlation_id}`
+- `otp_request`: `{phone, channel}`
+- `otp_sent`: `{phone, otp, channel}`
+- `user_created`: `{user_id, phone, name, surname}`
+- `user_deleted`: `{user_id}`
+
+## Herald — уведомления
+
+**Задача:** Telegram-бот принимает номер телефона от пользователя и связывает его с `chat_id`. Когда Doorman отправляет OTP, Herald доставляет его в нужный чат.
+
+**Флоу:**
+1. Пользователь отправляет контакт боту → `handleContact` → `RequestOTP(chatID, phone)` → сохраняет `PendingOTP{phone, chat_id}` в Redis + создаёт задачу `otp_request` в outbox
+2. Doorman генерирует OTP и публикует в `doorman.otp.sent`
+3. Herald доставляет OTP в Telegram по `chat_id` из `pending_otp`
+
+**Воркеры:**
+
+| Воркер | Тип | NATS / DB | Действие |
+|--------|-----|-----------|---------|
+| `OTPRequestPublisher` | publisher | DB `otp_request` → `herald.otp.requested` | публикует запрос в NATS |
+| `OTPSentConsumer` | consumer | `doorman.otp.sent` → DB `otp_sent` | сохраняет задачу |
+| `OTPSentProcessor` | processor | DB `otp_sent` | смотрит `pending_otp` по `phone`, шлёт Telegram, удаляет `pending_otp` |
+
+**Хранилище `pending_otp`:** Redis, ключ — номер телефона, содержит `chat_id` и TTL 10 минут.
+
+**Сквозной trace_id:** root span создаётся в `handleContact` → передаётся через `task.trace_ctx` → восстанавливается в каждом процессоре.
 
 ## Riddler — квизы и WebSocket
 

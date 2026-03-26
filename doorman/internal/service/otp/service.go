@@ -7,7 +7,6 @@ import (
 	"doorman/internal/domain"
 	otphandler "doorman/internal/handler/otp"
 	tokenhandler "doorman/internal/handler/token"
-	"doorman/internal/pkg/correlation"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -86,15 +85,13 @@ func (s *Service) SendOTP(ctx context.Context, phone string, channel domain.Chan
 	}
 
 	payload, err := json.Marshal(struct {
-		Phone         string         `json:"phone"`
-		OTP           uint64         `json:"otp"`
-		Channel       domain.Channel `json:"channel"`
-		CorrelationID string         `json:"correlation_id,omitempty"`
+		Phone   string         `json:"phone"`
+		OTP     uint64         `json:"otp"`
+		Channel domain.Channel `json:"channel"`
 	}{
-		Phone:         phone,
-		OTP:           otp,
-		Channel:       channel,
-		CorrelationID: correlation.IDFromContext(ctx),
+		Phone:   phone,
+		OTP:     otp,
+		Channel: channel,
 	})
 	if err != nil {
 		return err
