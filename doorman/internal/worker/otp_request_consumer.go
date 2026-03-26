@@ -14,7 +14,6 @@ type taskScheduler interface {
 	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
 }
 
-// OTPRequestConsumer читает запросы на отправку OTP из NATS и сохраняет задачу в БД.
 type OTPRequestConsumer struct {
 	subscriber *natsinf.Subscriber
 	tasks      taskScheduler
@@ -24,9 +23,8 @@ func NewOTPRequestConsumer(subscriber *natsinf.Subscriber, tasks taskScheduler) 
 	return &OTPRequestConsumer{subscriber: subscriber, tasks: tasks}
 }
 
-// Run блокируется до отмены ctx.
 func (c *OTPRequestConsumer) Run(ctx context.Context) error {
-	log.Printf("[otp-request-consumer] подписка на %s", natsinf.SubjectOTPRequest)
+	log.Printf("[otp-request-consumer] subscribing to %s", natsinf.SubjectOTPRequest)
 	return c.subscriber.QueueSubscribe(ctx, natsinf.SubjectOTPRequest, natsinf.QueueOTPRequest, c.handle)
 }
 
@@ -39,7 +37,7 @@ type otpRequestMsg struct {
 func (c *OTPRequestConsumer) handle(ctx context.Context, data []byte) error {
 	var msg otpRequestMsg
 	if err := json.Unmarshal(data, &msg); err != nil {
-		return fmt.Errorf("разбор сообщения: %w", err)
+		return fmt.Errorf("decode message: %w", err)
 	}
 
 	if msg.CorrelationID != "" {

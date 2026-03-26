@@ -72,7 +72,7 @@ func main() {
 
 	api.GET("/.well-known/jwks.json", application.KeyHandler.GetJWKS)
 
-	if err = r.Run(fmt.Sprintf(":%d", cfg.App.Port)); err != nil {
-		log.Fatal(err)
+	if err := r.Run(fmt.Sprintf(":%d", cfg.App.Port)); err != nil {
+		log.Printf("сервер завершился с ошибкой: %v", err)
 	}
 }

@@ -14,7 +14,6 @@ Fine-tune YOLOv8 для детекции текстовых регионов н�
 from __future__ import annotations
 
 import argparse
-import os
 from pathlib import Path
 
 
@@ -142,7 +141,7 @@ def main():
         name=args.name,
     )
 
-    print(f"\nОценка на val:")
+    print("\nОценка на val:")
     evaluate(best_weights, data_yaml, args.imgsz, args.device)
 
 
