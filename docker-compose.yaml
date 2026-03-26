@@ -79,7 +79,7 @@ services:
       retries: 20
 
   jaeger:
-    image: jaegertracing/all-in-one:1.62
+    image: jaegertracing/all-in-one:1.68.0
     restart: unless-stopped
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
