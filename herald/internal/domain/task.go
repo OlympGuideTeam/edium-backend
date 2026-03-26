@@ -18,15 +18,17 @@ var (
 type TaskType string
 
 var (
-	OTPRequest  TaskType = "otp_request"
-	OTPDelivery TaskType = "otp_delivery"
+	OTPRequest TaskType = "otp_request"
+	OTPSent    TaskType = "otp_sent"
 )
 
 type Task struct {
-	ID          uuid.UUID
-	Type        TaskType
-	Status      TaskStatus
-	Payload     []byte
+	ID       uuid.UUID
+	Type     TaskType
+	Status   TaskStatus
+	Payload  []byte
+	TraceCtx string
+
 	Attempts    int64
 	MaxAttempts *int64
 	AvailableAt time.Time

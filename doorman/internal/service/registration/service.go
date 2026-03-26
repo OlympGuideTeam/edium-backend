@@ -4,7 +4,6 @@ import (
 	"context"
 	"doorman/internal/domain"
 	tokenhandler "doorman/internal/handler/token"
-	"doorman/internal/pkg/correlation"
 	"encoding/json"
 )
 
@@ -33,11 +32,10 @@ func NewService(
 }
 
 type userCreatedPayload struct {
-	UserID        string `json:"user_id"`
-	Phone         string `json:"phone"`
-	Name          string `json:"name"`
-	Surname       string `json:"surname"`
-	CorrelationID string `json:"correlation_id,omitempty"`
+	UserID  string `json:"user_id"`
+	Phone   string `json:"phone"`
+	Name    string `json:"name"`
+	Surname string `json:"surname"`
 }
 
 func (s *Service) Register(ctx context.Context, phone, name, surname, regToken string) (*tokenhandler.AuthTokens, error) {
@@ -57,11 +55,10 @@ func (s *Service) Register(ctx context.Context, phone, name, surname, regToken s
 		}
 
 		payload, err := json.Marshal(userCreatedPayload{
-			UserID:        identity.ID.String(),
-			Phone:         phone,
-			Name:          name,
-			Surname:       surname,
-			CorrelationID: correlation.IDFromContext(ctx),
+			UserID:  identity.ID.String(),
+			Phone:   phone,
+			Name:    name,
+			Surname: surname,
 		})
 		if err != nil {
 			return err
