@@ -4,33 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"herald/internal/domain"
 	natsinf "herald/internal/infra/nats"
-	"herald/internal/pkg/correlation"
-	"log"
+	"log/slog"
 )
 
-type otpSentService interface {
-	HandleOTPSent(ctx context.Context, correlationID string, otp uint64) error
+type otpSentScheduler interface {
+	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
 }
 
 type OTPSentConsumer struct {
 	subscriber *natsinf.Subscriber
-	service    otpSentService
+	tasks      otpSentScheduler
 }
 
-func NewOTPSentConsumer(subscriber *natsinf.Subscriber, service otpSentService) *OTPSentConsumer {
-	return &OTPSentConsumer{subscriber: subscriber, service: service}
+func NewOTPSentConsumer(subscriber *natsinf.Subscriber, tasks otpSentScheduler) *OTPSentConsumer {
+	return &OTPSentConsumer{subscriber: subscriber, tasks: tasks}
 }
 
 func (c *OTPSentConsumer) Run(ctx context.Context) error {
-	log.Printf("[otp-sent-consumer] subscribing to %s", natsinf.SubjectOTPSent)
+	slog.Info("otp-sent-consumer: подписка", "subject", natsinf.SubjectOTPSent)
 	return c.subscriber.QueueSubscribe(ctx, natsinf.SubjectOTPSent, natsinf.QueueOTPSent, c.handle)
 }
 
 type otpSentMsg struct {
-	Phone         string `json:"phone"`
-	OTP           uint64 `json:"otp"`
-	CorrelationID string `json:"correlation_id,omitempty"`
+	Phone string `json:"phone"`
+	OTP   uint64 `json:"otp"`
 }
 
 func (c *OTPSentConsumer) handle(ctx context.Context, data []byte) error {
@@ -38,11 +37,6 @@ func (c *OTPSentConsumer) handle(ctx context.Context, data []byte) error {
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return fmt.Errorf("decode message: %w", err)
 	}
-
-	if msg.CorrelationID != "" {
-		ctx = correlation.WithID(ctx, msg.CorrelationID)
-	}
-
-	log.Printf("[otp-sent-consumer] correlation_id=%s", correlation.IDFromContext(ctx))
-	return c.service.HandleOTPSent(ctx, msg.CorrelationID, msg.OTP)
+	slog.InfoContext(ctx, "otp-sent-consumer: получено", "phone", msg.Phone)
+	return c.tasks.Schedule(ctx, domain.OTPSent, data)
 }

@@ -11,6 +11,7 @@ services:
       REDIS_URL: redis://:${DOORMAN_REDIS_PWD}@doorman-redis:6379/0
       NATS_URL: nats://nats:4222
       JWT_RSA_PRIVATE_KEY: ${JWT_RSA_PRIVATE_KEY}
+      OTEL_ENDPOINT: jaeger:4317
     ports:
       - "8081:80"
     depends_on:
@@ -21,6 +22,8 @@ services:
       doorman-flyway:
         condition: service_completed_successfully
       nats:
+        condition: service_started
+      jaeger:
         condition: service_started
 
   doorman-db:
@@ -75,6 +78,15 @@ services:
       timeout: 3s
       retries: 20
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.62
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+
   nats:
     image: nats:2.10
     restart: unless-stopped
@@ -97,7 +109,10 @@ services:
       POSTGRES_DSN: postgres://${HERALD_PG_USER}:${HERALD_PG_PWD}@herald-db:5432/${HERALD_PG_DB}?sslmode=disable
       NATS_URL: nats://nats:4222
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      OTEL_ENDPOINT: jaeger:4317
     depends_on:
+      jaeger:
+        condition: service_started
       herald-db:
         condition: service_healthy
       herald-flyway:

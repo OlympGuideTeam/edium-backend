@@ -11,6 +11,7 @@ type Config struct {
 	Redis    RedisConfig
 	Keys     KeysConfig
 	NATS     NATSConfig
+	OTel     OTelConfig
 }
 
 type AppConfig struct {
@@ -32,6 +33,11 @@ type KeysConfig struct {
 
 type NATSConfig struct {
 	URL string `env:"NATS_URL" envDefault:"nats://nats:4222"`
+}
+
+type OTelConfig struct {
+	Endpoint    string `env:"OTEL_ENDPOINT" envDefault:"jaeger:4317"`
+	ServiceName string `env:"OTEL_SERVICE_NAME" envDefault:"doorman"`
 }
 
 func Load() (*Config, error) {

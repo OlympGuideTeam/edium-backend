@@ -2,9 +2,8 @@ package nats
 
 import (
 	"context"
-	"doorman/internal/pkg/correlation"
 	"fmt"
-	"log"
+	"log/slog"
 
 	natsgo "github.com/nats-io/nats.go"
 )
@@ -22,13 +21,9 @@ func NewSubscriber(conn *natsgo.Conn) *Subscriber {
 // QueueSubscribe балансирует между репликами сервиса; блокируется до отмены ctx.
 func (s *Subscriber) QueueSubscribe(ctx context.Context, subject, queue string, handler MsgHandler) error {
 	sub, err := s.conn.QueueSubscribe(subject, queue, func(msg *natsgo.Msg) {
-		msgCtx := ctx
-		if id := msg.Header.Get("X-Correlation-Id"); id != "" {
-			msgCtx = correlation.WithID(ctx, id)
-		}
+		msgCtx := propagator.Extract(ctx, natsHeaderCarrier{header: msg.Header})
 		if err := handler(msgCtx, msg.Data); err != nil {
-			log.Printf("[nats] handler error subject=%s correlation_id=%s: %v",
-				subject, msg.Header.Get("X-Correlation-Id"), err)
+			slog.ErrorContext(msgCtx, "ошибка обработки сообщения", "subject", subject, "err", err)
 		}
 	})
 	if err != nil {

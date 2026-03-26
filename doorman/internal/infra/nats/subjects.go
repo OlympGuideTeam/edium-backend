@@ -1,8 +1,8 @@
 package nats
 
 const (
-	SubjectOTPRequest  = "doorman.otp.send"
-	SubjectOTPSent     = "herald.otp.sent"
+	SubjectOTPRequest  = "herald.otp.requested"
+	SubjectOTPSent     = "doorman.otp.sent"
 	SubjectUserCreated = "doorman.user.created"
 	SubjectUserDeleted = "caesar.user.deleted"
 

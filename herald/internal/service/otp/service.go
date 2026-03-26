@@ -5,10 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"herald/internal/domain"
-	"herald/internal/pkg/correlation"
-	"log"
-
-	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -26,64 +22,31 @@ func NewService(txManager TxManager, tasks TaskRepository, pendingOTP PendingOTP
 }
 
 type otpRequestPayload struct {
-	Phone         string         `json:"phone"`
-	Channel       domain.Channel `json:"channel"`
-	CorrelationID string         `json:"correlation_id"`
-}
-
-type otpDeliveryPayload struct {
-	ChatID        int64  `json:"chat_id"`
-	OTP           uint64 `json:"otp"`
-	CorrelationID string `json:"correlation_id"`
+	Phone   string         `json:"phone"`
+	Channel domain.Channel `json:"channel"`
 }
 
 func (s *Service) RequestOTP(ctx context.Context, chatID int64, phone string) error {
-	correlationID := correlation.IDFromContext(ctx)
-	if correlationID == "" {
-		correlationID = uuid.New().String()
-		ctx = correlation.WithID(ctx, correlationID)
-	}
-
 	payload, err := json.Marshal(otpRequestPayload{
-		Phone:         phone,
-		Channel:       domain.ChannelTG,
-		CorrelationID: correlationID,
+		Phone:   phone,
+		Channel: domain.ChannelTG,
 	})
 	if err != nil {
 		return fmt.Errorf("RequestOTP marshal: %w", err)
 	}
 
 	return s.txManager.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.pendingOTP.Save(ctx, correlationID, chatID); err != nil {
+		if err := s.pendingOTP.Save(ctx, phone, chatID); err != nil {
 			return err
 		}
 		return s.tasks.Schedule(ctx, domain.OTPRequest, payload)
 	})
 }
 
-func (s *Service) HandleOTPSent(ctx context.Context, correlationID string, otp uint64) error {
-	return s.txManager.WithTx(ctx, func(ctx context.Context) error {
-		pending, err := s.pendingOTP.Get(ctx, correlationID)
-		if err != nil {
-			return err
-		}
-		if pending == nil {
-			log.Printf("[otp-svc] pending_otp not found or expired, correlation_id=%s", correlationID)
-			return nil
-		}
+func (s *Service) GetPendingOTP(ctx context.Context, phone string) (*domain.PendingOTP, error) {
+	return s.pendingOTP.Get(ctx, phone)
+}
 
-		deliveryPayload, err := json.Marshal(otpDeliveryPayload{
-			ChatID:        pending.ChatID,
-			OTP:           otp,
-			CorrelationID: correlationID,
-		})
-		if err != nil {
-			return fmt.Errorf("HandleOTPSent marshal: %w", err)
-		}
-
-		if err := s.tasks.Schedule(ctx, domain.OTPDelivery, deliveryPayload); err != nil {
-			return err
-		}
-		return s.pendingOTP.Delete(ctx, correlationID)
-	})
+func (s *Service) DeletePendingOTP(ctx context.Context, phone string) error {
+	return s.pendingOTP.Delete(ctx, phone)
 }

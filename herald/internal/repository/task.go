@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 const claimPendingQuery = `
@@ -29,7 +31,7 @@ SET status     = $4,
 FROM claimed
 WHERE task.id = claimed.id
 RETURNING task.id, task.task_type, task.payload, task.status,
-          task.attempts, task.available_at, task.max_attempts`
+          task.attempts, task.available_at, task.max_attempts, task.trace_ctx`
 
 const markDoneQuery = `
 UPDATE task
@@ -53,9 +55,15 @@ func NewPgTaskRepository(db *sql.DB) *PgTaskRepository {
 }
 
 func (r *PgTaskRepository) Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error {
+	m := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, m)
+	traceCtx := m.Get("traceparent")
+
 	executor := db.ExecutorFromContext(ctx, r.db)
 	_, err := executor.ExecContext(ctx,
-		`INSERT INTO task (task_type, payload) VALUES ($1, $2)`, taskType, payload)
+		`INSERT INTO task (task_type, payload, trace_ctx) VALUES ($1, $2, $3)`,
+		taskType, payload, nullableString(traceCtx),
+	)
 	return err
 }
 
@@ -72,13 +80,15 @@ func (r *PgTaskRepository) ClaimPending(ctx context.Context, taskType domain.Tas
 	for rows.Next() {
 		var t domain.Task
 		var maxAttempts int64
+		var traceCtx sql.NullString
 		if err := rows.Scan(
 			&t.ID, &t.Type, &t.Payload, &t.Status,
-			&t.Attempts, &t.AvailableAt, &maxAttempts,
+			&t.Attempts, &t.AvailableAt, &maxAttempts, &traceCtx,
 		); err != nil {
 			return nil, fmt.Errorf("ClaimPending scan: %w", err)
 		}
 		t.MaxAttempts = &maxAttempts
+		t.TraceCtx = traceCtx.String
 		tasks = append(tasks, t)
 	}
 	return tasks, rows.Err()
@@ -100,4 +110,11 @@ func (r *PgTaskRepository) MarkFailed(ctx context.Context, id uuid.UUID, reason 
 		return fmt.Errorf("MarkFailed: %w", err)
 	}
 	return nil
+}
+
+func nullableString(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
 }
