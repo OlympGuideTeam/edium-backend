@@ -21,6 +21,7 @@ const (
 )
 
 type taskRepository interface {
+	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
 	ClaimPending(ctx context.Context, taskType domain.TaskType, limit int) ([]domain.Task, error)
 	MarkDone(ctx context.Context, id uuid.UUID) error
 	MarkFailed(ctx context.Context, id uuid.UUID, reason string, retryAfter time.Duration) error
@@ -53,9 +54,10 @@ func (w *OTPSentPublisher) Run(ctx context.Context) error {
 }
 
 type otpSentPayload struct {
-	Phone   string         `json:"phone"`
-	OTP     uint64         `json:"otp"`
-	Channel domain.Channel `json:"channel"`
+	Phone     string         `json:"phone"`
+	OTP       uint64         `json:"otp"`
+	Channel   domain.Channel `json:"channel"`
+	ErrorCode string         `json:"error_code,omitempty"`
 }
 
 func (w *OTPSentPublisher) processBatch(ctx context.Context) error {
@@ -67,7 +69,9 @@ func (w *OTPSentPublisher) processBatch(ctx context.Context) error {
 		t := tasks[i]
 		if err := w.processTask(ctx, t); err != nil {
 			slog.Error("otp-sent-publisher: ошибка задачи", "task_id", t.ID, "err", err)
-			_ = w.tasks.MarkFailed(ctx, t.ID, err.Error(), otpSentRetryAfter)
+			if mfErr := w.tasks.MarkFailed(context.WithoutCancel(ctx), t.ID, err.Error(), otpSentRetryAfter); mfErr != nil {
+				slog.Error("otp-sent-publisher: не удалось сохранить ошибку задачи", "task_id", t.ID, "err", mfErr)
+			}
 		}
 	}
 	return nil
