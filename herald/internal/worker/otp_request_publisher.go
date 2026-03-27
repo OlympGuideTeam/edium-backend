@@ -66,7 +66,9 @@ func (w *OTPRequestPublisher) processBatch(ctx context.Context) error {
 		t := tasks[i]
 		if err := w.processTask(ctx, t); err != nil {
 			slog.Error("otp-request-publisher: ошибка задачи", "task_id", t.ID, "err", err)
-			_ = w.tasks.MarkFailed(ctx, t.ID, err.Error(), otpRequestRetryAfter)
+			if mfErr := w.tasks.MarkFailed(context.WithoutCancel(ctx), t.ID, err.Error(), otpRequestRetryAfter); mfErr != nil {
+				slog.Error("otp-request-publisher: не удалось сохранить ошибку задачи", "task_id", t.ID, "err", mfErr)
+			}
 		}
 	}
 	return nil

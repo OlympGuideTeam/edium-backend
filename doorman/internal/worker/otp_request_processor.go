@@ -4,7 +4,9 @@ import (
 	"context"
 	"doorman/internal/domain"
 	"doorman/internal/infra/telemetry"
+	otpsvc "doorman/internal/service/otp"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -57,7 +59,9 @@ func (w *OTPRequestProcessor) processBatch(ctx context.Context) error {
 		t := tasks[i]
 		if err := w.processTask(ctx, t); err != nil {
 			slog.Error("otp-request-processor: ошибка задачи", "task_id", t.ID, "err", err)
-			_ = w.tasks.MarkFailed(ctx, t.ID, err.Error(), otpRequestRetryAfter)
+			if mfErr := w.tasks.MarkFailed(context.WithoutCancel(ctx), t.ID, err.Error(), otpRequestRetryAfter); mfErr != nil {
+				slog.Error("otp-request-processor: не удалось сохранить ошибку задачи", "task_id", t.ID, "err", mfErr)
+			}
 		}
 	}
 	return nil
@@ -78,7 +82,30 @@ func (w *OTPRequestProcessor) processTask(ctx context.Context, t domain.Task) er
 	slog.InfoContext(ctx, "otp-request-processor: обработка", "task_id", t.ID, "phone", payload.Phone)
 
 	if err := w.service.SendOTP(ctx, payload.Phone, payload.Channel); err != nil {
+		if errors.Is(err, otpsvc.ErrAlreadySent) || errors.Is(err, otpsvc.ErrPhoneUnavailable) {
+			if schedErr := w.scheduleErrorNotification(ctx, payload.Phone, payload.Channel, err.Error()); schedErr != nil {
+				return fmt.Errorf("scheduleErrorNotification: %w", schedErr)
+			}
+			return w.tasks.MarkDone(ctx, t.ID)
+		}
 		return err
 	}
 	return w.tasks.MarkDone(ctx, t.ID)
+}
+
+func (w *OTPRequestProcessor) scheduleErrorNotification(ctx context.Context, phone string, channel domain.Channel, errorCode string) error {
+	p, err := json.Marshal(struct {
+		Phone     string         `json:"phone"`
+		OTP       uint64         `json:"otp"`
+		Channel   domain.Channel `json:"channel"`
+		ErrorCode string         `json:"error_code"`
+	}{
+		Phone:     phone,
+		Channel:   channel,
+		ErrorCode: errorCode,
+	})
+	if err != nil {
+		return err
+	}
+	return w.tasks.Schedule(ctx, domain.OTPSent, p)
 }

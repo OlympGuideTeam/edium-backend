@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	tgbot "herald/internal/bot/telegram"
+	vkbot "herald/internal/bot/vk"
 	"herald/internal/config"
+	"herald/internal/domain"
 	"herald/internal/infra/db"
 	natsinf "herald/internal/infra/nats"
 	tginfra "herald/internal/infra/telegram"
+	vkinfra "herald/internal/infra/vk"
 	"herald/internal/repository"
 	otpsvc "herald/internal/service/otp"
 	"herald/internal/worker"
@@ -16,6 +19,7 @@ import (
 
 type App struct {
 	TGHandler           *tgbot.Handler
+	VKHandler           *vkbot.Handler
 	OTPRequestPublisher *worker.OTPRequestPublisher
 	OTPSentConsumer     *worker.OTPSentConsumer
 	OTPSentProcessor    *worker.OTPSentProcessor
@@ -32,9 +36,14 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	bot, err := tginfra.New(cfg.Telegram)
+	tgBot, err := tginfra.New(cfg.Telegram)
 	if err != nil {
 		return nil, err
+	}
+
+	vkAPI, longPoll, err := vkinfra.New(cfg.VK)
+	if err != nil {
+		return nil, fmt.Errorf("vk bot init: %w", err)
 	}
 
 	txManager := db.NewTxManager(pgdb)
@@ -46,11 +55,17 @@ func New(cfg *config.Config) (*App, error) {
 	natsPublisher := natsinf.NewPublisher(natsConn)
 	natsSubscriber := natsinf.NewSubscriber(natsConn)
 
+	senders := map[domain.Channel]worker.MessageSender{
+		domain.ChannelTG: tginfra.NewSender(tgBot),
+		domain.ChannelVK: vkinfra.NewSender(vkAPI),
+	}
+
 	return &App{
-		TGHandler:           tgbot.NewHandler(bot, otpService),
+		TGHandler:           tgbot.NewHandler(tgBot, otpService),
+		VKHandler:           vkbot.NewHandler(longPoll, vkAPI, otpService),
 		OTPRequestPublisher: worker.NewOTPRequestPublisher(taskRepo, natsPublisher),
 		OTPSentConsumer:     worker.NewOTPSentConsumer(natsSubscriber, taskRepo),
-		OTPSentProcessor:    worker.NewOTPSentProcessor(taskRepo, otpService, bot),
+		OTPSentProcessor:    worker.NewOTPSentProcessor(taskRepo, otpService, senders),
 	}, nil
 }
 
@@ -59,6 +74,7 @@ func (a *App) Run(ctx context.Context, cfg *config.Config) error {
 		"OTPRequestPublisher": a.OTPRequestPublisher.Run,
 		"OTPSentConsumer":     a.OTPSentConsumer.Run,
 		"OTPSentProcessor":    a.OTPSentProcessor.Run,
+		"VKHandler":           a.VKHandler.Run,
 	}
 	for name, run := range workers {
 		go func() {
