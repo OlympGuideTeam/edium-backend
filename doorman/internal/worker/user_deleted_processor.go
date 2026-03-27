@@ -66,7 +66,9 @@ func (w *UserDeletedProcessor) processBatch(ctx context.Context) error {
 		t := tasks[i]
 		if err := w.processTask(ctx, t); err != nil {
 			slog.Error("user-deleted-processor: ошибка задачи", "task_id", t.ID, "err", err)
-			_ = w.tasks.MarkFailed(ctx, t.ID, err.Error(), userDeletedRetryAfter)
+			if mfErr := w.tasks.MarkFailed(context.WithoutCancel(ctx), t.ID, err.Error(), userDeletedRetryAfter); mfErr != nil {
+				slog.Error("user-deleted-processor: не удалось сохранить ошибку задачи", "task_id", t.ID, "err", mfErr)
+			}
 		}
 	}
 	return nil

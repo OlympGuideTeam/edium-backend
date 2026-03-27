@@ -14,7 +14,7 @@ type TaskRepository interface {
 }
 
 type PendingOTPRepository interface {
-	Save(ctx context.Context, phone string, chatID int64) error
-	Get(ctx context.Context, phone string) (*domain.PendingOTP, error)
-	Delete(ctx context.Context, phone string) error
+	Save(ctx context.Context, phone string, channel domain.Channel, chatID int64) error
+	Get(ctx context.Context, phone string, channel domain.Channel) (*domain.PendingOTP, error)
+	Delete(ctx context.Context, phone string, channel domain.Channel) error
 }
