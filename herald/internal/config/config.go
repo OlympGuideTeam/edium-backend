@@ -10,6 +10,7 @@ type Config struct {
 	Postgres PostgresConfig
 	NATS     NATSConfig
 	Telegram TelegramConfig
+	VK       VKConfig
 	OTel     OTelConfig
 }
 
@@ -27,6 +28,11 @@ type NATSConfig struct {
 
 type TelegramConfig struct {
 	BotToken string `env:"TELEGRAM_BOT_TOKEN,required"`
+}
+
+type VKConfig struct {
+	GroupToken string `env:"VK_GROUP_TOKEN,required"`
+	GroupID    int    `env:"VK_GROUP_ID,required"`
 }
 
 type OTelConfig struct {
