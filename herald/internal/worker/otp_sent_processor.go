@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 )
@@ -20,6 +19,11 @@ const (
 	otpSentRetryAfter   = 30 * time.Second
 )
 
+// MessageSender доставляет текстовое сообщение в конкретный чат бота.
+type MessageSender interface {
+	Send(ctx context.Context, chatID int64, text string) error
+}
+
 type otpSentTaskRepo interface {
 	ClaimPending(ctx context.Context, taskType domain.TaskType, limit int) ([]domain.Task, error)
 	MarkDone(ctx context.Context, id uuid.UUID) error
@@ -27,18 +31,18 @@ type otpSentTaskRepo interface {
 }
 
 type pendingOTPLookup interface {
-	GetPendingOTP(ctx context.Context, phone string) (*domain.PendingOTP, error)
-	DeletePendingOTP(ctx context.Context, phone string) error
+	GetPendingOTP(ctx context.Context, phone string, channel domain.Channel) (*domain.PendingOTP, error)
+	DeletePendingOTP(ctx context.Context, phone string, channel domain.Channel) error
 }
 
 type OTPSentProcessor struct {
 	tasks      otpSentTaskRepo
 	pendingOTP pendingOTPLookup
-	bot        *tgbotapi.BotAPI
+	senders    map[domain.Channel]MessageSender
 }
 
-func NewOTPSentProcessor(tasks otpSentTaskRepo, pendingOTP pendingOTPLookup, bot *tgbotapi.BotAPI) *OTPSentProcessor {
-	return &OTPSentProcessor{tasks: tasks, pendingOTP: pendingOTP, bot: bot}
+func NewOTPSentProcessor(tasks otpSentTaskRepo, pendingOTP pendingOTPLookup, senders map[domain.Channel]MessageSender) *OTPSentProcessor {
+	return &OTPSentProcessor{tasks: tasks, pendingOTP: pendingOTP, senders: senders}
 }
 
 func (w *OTPSentProcessor) Run(ctx context.Context) error {
@@ -67,7 +71,9 @@ func (w *OTPSentProcessor) processBatch(ctx context.Context) error {
 		t := tasks[i]
 		if err := w.processTask(ctx, t); err != nil {
 			slog.Error("otp-sent-processor: ошибка задачи", "task_id", t.ID, "err", err)
-			_ = w.tasks.MarkFailed(ctx, t.ID, err.Error(), otpSentRetryAfter)
+			if mfErr := w.tasks.MarkFailed(context.WithoutCancel(ctx), t.ID, err.Error(), otpSentRetryAfter); mfErr != nil {
+				slog.Error("otp-sent-processor: не удалось сохранить ошибку задачи", "task_id", t.ID, "err", mfErr)
+			}
 		}
 	}
 	return nil
@@ -75,8 +81,10 @@ func (w *OTPSentProcessor) processBatch(ctx context.Context) error {
 
 func (w *OTPSentProcessor) processTask(ctx context.Context, t domain.Task) error {
 	var payload struct {
-		Phone string `json:"phone"`
-		OTP   uint64 `json:"otp"`
+		Phone     string         `json:"phone"`
+		OTP       uint64         `json:"otp"`
+		Channel   domain.Channel `json:"channel"`
+		ErrorCode string         `json:"error_code,omitempty"`
 	}
 	if err := json.Unmarshal(t.Payload, &payload); err != nil {
 		return fmt.Errorf("decode payload: %w", err)
@@ -85,25 +93,47 @@ func (w *OTPSentProcessor) processTask(ctx context.Context, t domain.Task) error
 	ctx, span := otel.Tracer("herald").Start(telemetry.Extract(ctx, t.TraceCtx), "worker.otp_sent_processor")
 	defer span.End()
 
-	slog.InfoContext(ctx, "otp-sent-processor: обработка", "task_id", t.ID, "phone", payload.Phone)
+	slog.InfoContext(ctx, "otp-sent-processor: обработка", "task_id", t.ID, "channel", payload.Channel)
 
-	pending, err := w.pendingOTP.GetPendingOTP(ctx, payload.Phone)
+	pending, err := w.pendingOTP.GetPendingOTP(ctx, payload.Phone, payload.Channel)
 	if err != nil {
 		return fmt.Errorf("GetPendingOTP: %w", err)
 	}
 	if pending == nil {
-		slog.InfoContext(ctx, "otp-sent-processor: pending_otp не найден или истёк", "phone", payload.Phone)
+		slog.InfoContext(ctx, "otp-sent-processor: pending_otp не найден или истёк", "phone", payload.Phone, "channel", payload.Channel)
 		return w.tasks.MarkDone(ctx, t.ID)
 	}
 
-	msg := tgbotapi.NewMessage(pending.ChatID, fmt.Sprintf("Ваш код: %06d", payload.OTP))
-	if _, err := w.bot.Send(msg); err != nil {
-		return fmt.Errorf("send telegram message: %w", err)
+	sender, ok := w.senders[payload.Channel]
+	if !ok {
+		return fmt.Errorf("нет отправителя для канала %q", payload.Channel)
 	}
 
-	if err := w.pendingOTP.DeletePendingOTP(ctx, payload.Phone); err != nil {
+	var text string
+	if payload.ErrorCode != "" {
+		text = otpErrorMessage(payload.ErrorCode)
+	} else {
+		text = fmt.Sprintf("Ваш код: %06d", payload.OTP)
+	}
+
+	if err := sender.Send(ctx, pending.ChatID, text); err != nil {
+		return fmt.Errorf("send message (channel=%s): %w", payload.Channel, err)
+	}
+
+	if err := w.pendingOTP.DeletePendingOTP(ctx, payload.Phone, payload.Channel); err != nil {
 		return fmt.Errorf("DeletePendingOTP: %w", err)
 	}
 
 	return w.tasks.MarkDone(ctx, t.ID)
+}
+
+func otpErrorMessage(code string) string {
+	switch code {
+	case "OTP_ALREADY_SENT":
+		return "Код уже был отправлен и действует 3 минуты, затем возможна повторная отправка."
+	case "PHONE_UNAVAILABLE":
+		return "Ваш номер удалён или заблокирован. Обратитесь в поддержку."
+	default:
+		return "Произошла ошибка при отправке кода. Попробуйте позже."
+	}
 }
