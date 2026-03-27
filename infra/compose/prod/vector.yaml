@@ -15,9 +15,17 @@ transforms:
     source: |
       .service = replace(string!(.container_name), r'^[a-z0-9_]+-(.+)-\d+$', "$$1")
       .stream = string!(.stream)
-      .message = string!(.message)
+      .raw_message = string!(.message)
       .timestamp = format_timestamp!(.timestamp, format: "%Y-%m-%d %H:%M:%S%.3f")
-      . = {"timestamp": .timestamp, "service": .service, "stream": .stream, "message": .message}
+      parsed, err = parse_json(.raw_message)
+      if err == null {
+        .level = downcase(string(parsed.level) ?? "")
+        .message = string(parsed.msg) ?? .raw_message
+      } else {
+        .level = ""
+        .message = .raw_message
+      }
+      . = {"timestamp": .timestamp, "service": .service, "stream": .stream, "level": .level, "message": .message}
 
 sinks:
   clickhouse:
