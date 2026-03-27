@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"herald/internal/domain"
 	"log/slog"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -51,6 +52,11 @@ func (h *Handler) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 		return
 	}
 
+	if msg.Text == "/start" {
+		h.sendContactRequest(chatID)
+		return
+	}
+
 	h.sendContactRequest(chatID)
 }
 
@@ -65,9 +71,9 @@ func (h *Handler) handleContact(ctx context.Context, chatID int64, contact *tgbo
 
 	slog.InfoContext(ctx, "tg-bot: контакт получен", "chat_id", chatID)
 
-	if err := h.service.RequestOTP(ctx, chatID, phone); err != nil {
+	if err := h.service.RequestOTP(ctx, chatID, phone, domain.ChannelTG); err != nil {
 		slog.ErrorContext(ctx, "tg-bot: ошибка RequestOTP", "chat_id", chatID, "err", err)
-		h.sendMsg(tgbotapi.NewMessage(chatID, "Произошла ошибка. Попробуйте ещё раз."))
+		h.sendContactRequest(chatID)
 		return
 	}
 
@@ -77,7 +83,7 @@ func (h *Handler) handleContact(ctx context.Context, chatID int64, contact *tgbo
 }
 
 func (h *Handler) sendContactRequest(chatID int64) {
-	msg := tgbotapi.NewMessage(chatID, "Привет! Нажмите кнопку ниже, чтобы поделиться номером телефона и получить код входа.")
+	msg := tgbotapi.NewMessage(chatID, "Нажмите кнопку ниже, чтобы поделиться номером телефона и получить код входа в Edium.")
 	msg.ReplyMarkup = tgbotapi.NewReplyKeyboard(
 		tgbotapi.NewKeyboardButtonRow(
 			tgbotapi.NewKeyboardButtonContact("📱 Поделиться номером"),
