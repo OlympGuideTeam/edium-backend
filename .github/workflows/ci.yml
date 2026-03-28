@@ -186,7 +186,9 @@ jobs:
           cache: pip
           cache-dependency-path: ml/requirements.txt
       - name: Установка зависимостей
-        run: pip install -r ml/requirements.txt
+        run: |
+          pip install -r ml/requirements.txt
+          pip install pytest
       - name: Запуск тестов
         run: cd ml && pytest -v
 
