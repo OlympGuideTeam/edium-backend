@@ -16,11 +16,9 @@ Layout Detection — обёртка над YOLOv8.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 from PIL import Image
-
 
 # Публичный checkpoint YOLOv8, предобученный на PubLayNet.
 # При первом запуске ultralytics скачает файл автоматически.
@@ -30,7 +28,7 @@ _DEFAULT_WEIGHTS = "yolov8m.pt"  # fallback: общий YOLOv8m
 
 @dataclass
 class DetectionResult:
-    bbox: list[float]     # [x0, y0, x1, y1] в пикселях оригинального изображения
+    bbox: list[float]  # [x0, y0, x1, y1] в пикселях оригинального изображения
     conf: float
     class_id: int
     class_name: str
@@ -41,7 +39,7 @@ class LayoutDetector:
 
     CLASS_NAMES = {0: "text", 1: "title", 2: "list", 3: "figure", 4: "table"}
 
-    def __init__(self, weights: Optional[str] = None, conf_threshold: float = 0.3):
+    def __init__(self, weights: str | None = None, conf_threshold: float = 0.3):
         """
         Args:
             weights: путь к .pt файлу или None для использования дефолтных весов.
