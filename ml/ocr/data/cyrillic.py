@@ -17,7 +17,6 @@ import argparse
 import json
 from pathlib import Path
 
-
 KNOWN_DATASETS: dict[str, dict] = {
     "ai-forever/ocr": {
         "description": "Печатный OCR, русский язык. Пары изображение→текст.",
@@ -57,10 +56,7 @@ def download_dataset(dataset_name: str, output_dir: str, split: str, max_samples
 
     info = KNOWN_DATASETS.get(dataset_name)
     if info is None:
-        raise ValueError(
-            f"Неизвестный датасет: {dataset_name}. "
-            f"Используйте один из: {list(KNOWN_DATASETS)}"
-        )
+        raise ValueError(f"Неизвестный датасет: {dataset_name}. Используйте один из: {list(KNOWN_DATASETS)}")
 
     if info["image_col"] is None:
         print(f"Датасет {dataset_name} не содержит изображений, пропускаем.")
@@ -88,16 +84,13 @@ def download_dataset(dataset_name: str, output_dir: str, split: str, max_samples
                 img.save(img_path)
             else:
                 # bytes или PIL-совместимый объект
-                from PIL import Image as PILImage
                 import io
+
+                from PIL import Image as PILImage
+
                 PILImage.open(io.BytesIO(img)).save(img_path)
 
-            f.write(
-                json.dumps(
-                    {"image": str(img_path), "text": text}, ensure_ascii=False
-                )
-                + "\n"
-            )
+            f.write(json.dumps({"image": str(img_path), "text": text}, ensure_ascii=False) + "\n")
 
             if (i + 1) % 500 == 0:
                 print(f"  {i + 1}/{len(ds)}")

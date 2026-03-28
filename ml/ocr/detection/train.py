@@ -87,9 +87,9 @@ def train(
         device=device,
         project=project,
         name=name,
-        patience=15,          # early stopping
+        patience=15,  # early stopping
         save=True,
-        plots=True,           # сохраняет графики loss/metrics
+        plots=True,  # сохраняет графики loss/metrics
         val=True,
     )
     print(f"\nОбучение завершено. Результаты: {results}")
@@ -100,6 +100,7 @@ def train(
 
 def evaluate(weights: str, data_yaml: str, imgsz: int, device: str):
     from ultralytics import YOLO
+
     model = YOLO(weights)
     metrics = model.val(data=data_yaml, imgsz=imgsz, device=device)
     print(f"\nmAP50: {metrics.box.map50:.4f}")

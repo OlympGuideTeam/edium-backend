@@ -1,12 +1,13 @@
-import fitz  # PyMuPDF
+import argparse
+import ast
+import io
 import json
 import os
-import io
 import re
-import ast
-import argparse
-from PIL import Image
+
+import fitz  # PyMuPDF
 from openai import OpenAI
+from PIL import Image
 
 
 def _load_env_files():
@@ -38,6 +39,7 @@ OUTPUT_FILE = "dataset.jsonl"
 
 client = OpenAI(api_key=API_KEY)
 
+
 def _parse_page_token(token) -> tuple[int, int]:
     """
     Одна ячейка расписания: число 19 или строка "19", "6-7", " 80-82 " → (start, end) включительно.
@@ -64,7 +66,7 @@ def parse_chapter_segments(txt_filename: str) -> list[tuple[int, int | None]]:
     if not os.path.exists(txt_filename):
         print(f"Нет файла chapters: {txt_filename}")
         return []
-    with open(txt_filename, "r", encoding="utf-8") as f:
+    with open(txt_filename, encoding="utf-8") as f:
         raw = f.read().strip()
     if not raw:
         return []
@@ -100,9 +102,9 @@ def parse_chapter_segments(txt_filename: str) -> list[tuple[int, int | None]]:
 
 def init_surya():
     """Инициализирует предикторы Surya OCR (один раз при запуске)."""
+    from surya.detection import DetectionPredictor
     from surya.foundation import FoundationPredictor
     from surya.recognition import RecognitionPredictor
-    from surya.detection import DetectionPredictor
 
     print("Загрузка моделей Surya OCR...")
     foundation_predictor = FoundationPredictor()
@@ -165,7 +167,7 @@ def _surya_or_tesseract_page(
 
 def _is_cyrillic(ch):
     """Символ — кириллица (русский и др.)."""
-    return "\u0400" <= ch <= "\u04FF"
+    return "\u0400" <= ch <= "\u04ff"
 
 
 def _looks_like_valid_russian(text):
@@ -236,12 +238,7 @@ def _try_fix_encoding(raw: str) -> str | None:
 
 def _is_cjk_char(ch):
     code = ord(ch)
-    return (
-        0x3040 <= code <= 0x309F
-        or 0x30A0 <= code <= 0x30FF
-        or 0x4E00 <= code <= 0x9FFF
-        or 0xAC00 <= code <= 0xD7AF
-    )
+    return 0x3040 <= code <= 0x309F or 0x30A0 <= code <= 0x30FF or 0x4E00 <= code <= 0x9FFF or 0xAC00 <= code <= 0xD7AF
 
 
 def clean_ocr_text(text):
@@ -356,10 +353,10 @@ def generate_quiz_from_text(chapter_text):
             model=MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Вот текст параграфа:\n\n{chapter_text}"}
+                {"role": "user", "content": f"Вот текст параграфа:\n\n{chapter_text}"},
             ],
             response_format={"type": "json_object"},
-            max_tokens=2000
+            max_tokens=2000,
         )
         return json.loads(response.choices[0].message.content)
     except Exception as e:
@@ -381,6 +378,7 @@ def iter_books(books_dir: str, only_names: set[str] | None = None):
 
 
 # ================= MAIN =================
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -422,9 +420,7 @@ def main():
         print(f"Папка не найдена: {args.books_dir}")
         return
 
-    print(
-        f"Извлечение: mode={args.extract_mode}, ocr_dpi={args.ocr_dpi}, max_image_side={args.max_image_side}"
-    )
+    print(f"Извлечение: mode={args.extract_mode}, ocr_dpi={args.ocr_dpi}, max_image_side={args.max_image_side}")
 
     # Surya OCR один раз на все книги
     recognition_predictor, detection_predictor = init_surya()
@@ -494,7 +490,7 @@ def main():
                                 "book": book_name,
                                 "pages": f"{start_p}-{end_p}",
                                 "input_text": chapter_text,
-                                "output_quiz": questions
+                                "output_quiz": questions,
                             }
                             f_out.write(json.dumps(record, ensure_ascii=False) + "\n")
                             print(f"      [OK] Получено {len(questions)} вопросов.")
