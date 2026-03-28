@@ -24,15 +24,14 @@ import sys
 import fitz  # PyMuPDF
 from PIL import Image
 
-
 # ---------------------------------------------------------------------------
 # .env loader
 # ---------------------------------------------------------------------------
 
+
 def _load_env():
     base = os.path.dirname(os.path.abspath(__file__))
-    for root in (base, os.path.join(base, ".."), os.path.join(base, "..", ".."),
-                 os.path.join(base, "..", "..", "..")):
+    for root in (base, os.path.join(base, ".."), os.path.join(base, "..", ".."), os.path.join(base, "..", "..", "..")):
         path = os.path.join(root, ".env")
         if not os.path.isfile(path):
             continue
@@ -53,6 +52,7 @@ _load_env()
 # ---------------------------------------------------------------------------
 # PDF утилиты
 # ---------------------------------------------------------------------------
+
 
 def _page_to_pil(page: fitz.Page, dpi: int = 300, max_side: int = 2048) -> Image.Image:
     zoom = dpi / 72
@@ -109,6 +109,7 @@ def _parse_chapters(books_dir: str, book_name: str) -> list[int]:
 # GPT-4o Vision — ground truth для recognition
 # ---------------------------------------------------------------------------
 
+
 def _pil_to_base64(img: Image.Image) -> str:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -147,11 +148,12 @@ def _get_ground_truth_gpt(img: Image.Image, client) -> str:
 # Surya авторазметка — bboxes для detection
 # ---------------------------------------------------------------------------
 
+
 def _get_surya_bboxes(img: Image.Image) -> list[dict]:
     """Возвращает список регионов {bbox: [x0,y0,x1,y1], class: 'text'} через Surya."""
+    from surya.detection import DetectionPredictor
     from surya.foundation import FoundationPredictor
     from surya.recognition import RecognitionPredictor
-    from surya.detection import DetectionPredictor
 
     fp = FoundationPredictor()
     rp = RecognitionPredictor(fp)
@@ -182,6 +184,7 @@ def _bboxes_to_yolo(regions: list[dict], img_w: int, img_h: int) -> str:
 # ---------------------------------------------------------------------------
 # Основная логика
 # ---------------------------------------------------------------------------
+
 
 def prepare_recognition(books_dir: str, output_dir: str, pages_per_book: int, dpi: int, seed: int):
     """Экспорт страниц + ground truth текст (для обучения recognition-модели)."""
@@ -231,9 +234,7 @@ def prepare_recognition(books_dir: str, output_dir: str, pages_per_book: int, dp
                 with open(txt_path, "w", encoding="utf-8") as f:
                     f.write(gt)
 
-                meta_f.write(
-                    json.dumps({"image": img_path, "text": gt}, ensure_ascii=False) + "\n"
-                )
+                meta_f.write(json.dumps({"image": img_path, "text": gt}, ensure_ascii=False) + "\n")
                 print(f"  [ok] {stem} ({len(gt)} симв.)")
 
             doc.close()
@@ -305,6 +306,7 @@ def prepare_detection(books_dir: str, output_dir: str, pages_per_book: int, dpi:
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="Подготовка данных для OCR")
