@@ -3,20 +3,6 @@ name: Deploy Test
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      image_tag:
-        description: "Тег образа для деплоя (например, latest)"
-        required: true
-        type: string
-      services:
-        description: "Какие сервисы деплоить"
-        required: true
-        type: choice
-        options:
-          - all
-          - doorman
-          - herald
 
 permissions:
   contents: read
@@ -54,8 +40,6 @@ jobs:
   # ========================
 
   lint-go:
-    needs: detect-changes
-    if: github.event_name == 'push' && needs.detect-changes.outputs.doorman == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -123,8 +107,6 @@ jobs:
   # ========================
 
   lint-herald:
-    needs: detect-changes
-    if: github.event_name == 'push' && needs.detect-changes.outputs.herald == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -179,8 +161,6 @@ jobs:
   # ========================
 
   lint-python:
-    needs: detect-changes
-    if: github.event_name == 'push' && needs.detect-changes.outputs.ml == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -289,11 +269,10 @@ jobs:
   deploy-test:
     needs: [test-go, test-herald, test-python, build-doorman, build-herald, build-ml]
     if: |
-      github.event_name == 'push' &&
       always() &&
-      (needs.test-go.result == 'success' || needs.test-go.result == 'skipped') &&
-      (needs.test-herald.result == 'success' || needs.test-herald.result == 'skipped') &&
-      (needs.test-python.result == 'success' || needs.test-python.result == 'skipped') &&
+      needs.test-go.result == 'success' &&
+      needs.test-herald.result == 'success' &&
+      needs.test-python.result == 'success' &&
       (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') &&
       (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') &&
       (needs.build-ml.result == 'success' || needs.build-ml.result == 'skipped')
@@ -379,7 +358,7 @@ jobs:
   # ========================
 
   deploy-prod:
-    if: github.event_name == 'workflow_dispatch'
+    needs: [deploy-test]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -388,8 +367,8 @@ jobs:
       - name: Проверка образа
         run: |
           echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
-          docker manifest inspect ${{ env.REGISTRY }}/edium-doorman:${{ inputs.image_tag }}
-          echo "Образ существует: edium-doorman:${{ inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          docker manifest inspect ${{ env.REGISTRY }}/edium-doorman:latest
+          echo "Образ существует: edium-doorman:latest" >> $GITHUB_STEP_SUMMARY
 
       - name: Копирование файлов на сервер
         uses: appleboy/scp-action@v0.1.7
@@ -426,7 +405,7 @@ jobs:
             # Создание .env из секретов
             cat > .env <<'ENVEOF'
             YC_REGISTRY_ID=${{ secrets.YC_REGISTRY_ID }}
-            IMAGE_TAG=${{ inputs.image_tag }}
+            IMAGE_TAG=latest
             DOORMAN_PG_USER=${{ secrets.DOORMAN_PG_USER }}
             DOORMAN_PG_PWD=${{ secrets.DOORMAN_PG_PWD }}
             DOORMAN_PG_DB=${{ secrets.DOORMAN_PG_DB }}
@@ -462,11 +441,10 @@ jobs:
             # Очистка
             rm -rf /tmp/edium-deploy
 
-            echo "Prod deploy завершён: ${{ inputs.image_tag }}"
+            echo "Prod deploy завершён"
 
       - name: Итог
         run: |
           echo "## Production Deploy" >> $GITHUB_STEP_SUMMARY
-          echo "- **Тег:** ${{ inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Сервисы:** ${{ inputs.services }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Коммит:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Статус:** Успешно" >> $GITHUB_STEP_SUMMARY
