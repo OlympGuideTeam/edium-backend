@@ -3,6 +3,20 @@ name: Deploy Test
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Тег образа для деплоя (например, latest)"
+        required: true
+        type: string
+      services:
+        description: "Какие сервисы деплоить"
+        required: true
+        type: choice
+        options:
+          - all
+          - doorman
+          - herald
 
 permissions:
   contents: read
@@ -11,7 +25,12 @@ env:
   REGISTRY: cr.yandex/${{ secrets.YC_REGISTRY_ID }}
 
 jobs:
+  # ========================
+  # Определение изменений (только при push)
+  # ========================
+
   detect-changes:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       doorman: ${{ steps.filter.outputs.doorman }}
@@ -31,12 +50,172 @@ jobs:
               - 'ml/**'
 
   # ========================
+  # Go — Doorman
+  # ========================
+
+  lint-go:
+    needs: detect-changes
+    if: github.event_name == 'push' && needs.detect-changes.outputs.doorman == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: doorman
+          version: v2.11.0
+
+  test-go:
+    needs: lint-go
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: doorman_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Запуск тестов
+        working-directory: doorman
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: "5432"
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: doorman_test
+          REDIS_HOST: localhost
+          REDIS_PORT: "6379"
+          REDIS_PASSWORD: ""
+          JWT_RSA_PRIVATE_KEY: ${{ secrets.TEST_JWT_RSA_PRIVATE_KEY }}
+      - name: Загрузка покрытия
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-doorman
+          path: doorman/coverage.out
+
+  # ========================
+  # Go — Herald
+  # ========================
+
+  lint-herald:
+    needs: detect-changes
+    if: github.event_name == 'push' && needs.detect-changes.outputs.herald == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: herald
+          version: v2.11.0
+
+  test-herald:
+    needs: lint-herald
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: herald_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Запуск тестов
+        working-directory: herald
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_DSN: "postgres://test:test@localhost:5432/herald_test?sslmode=disable"
+          TELEGRAM_BOT_TOKEN: "fake-token-for-tests"
+          VK_GROUP_TOKEN: "fake-token-for-tests"
+          VK_GROUP_ID: "0"
+          NATS_URL: ""
+      - name: Загрузка покрытия
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-herald
+          path: herald/coverage.out
+
+  # ========================
+  # Python — ML
+  # ========================
+
+  lint-python:
+    needs: detect-changes
+    if: github.event_name == 'push' && needs.detect-changes.outputs.ml == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Установка ruff
+        run: pip install ruff
+      - name: Проверка стиля
+        run: |
+          ruff check ml/
+          ruff format --check ml/
+
+  test-python:
+    needs: lint-python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ml/requirements.txt
+      - name: Установка зависимостей
+        run: pip install -r ml/requirements.txt
+      - name: Запуск тестов
+        run: cd ml && pytest -v
+
+  # ========================
   # Build и push образов
   # ========================
 
   build-doorman:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.doorman == 'true'
+    needs: [detect-changes, test-go]
+    if: github.event_name == 'push' && needs.detect-changes.outputs.doorman == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,8 +237,8 @@ jobs:
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-herald:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.herald == 'true'
+    needs: [detect-changes, test-herald]
+    if: github.event_name == 'push' && needs.detect-changes.outputs.herald == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -81,8 +260,8 @@ jobs:
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-ml:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.ml == 'true'
+    needs: [detect-changes, test-python]
+    if: github.event_name == 'push' && needs.detect-changes.outputs.ml == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -108,8 +287,16 @@ jobs:
   # ========================
 
   deploy-test:
-    needs: [build-doorman, build-herald, build-ml]
-    if: always() && (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') && (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') && (needs.build-ml.result == 'success' || needs.build-ml.result == 'skipped')
+    needs: [test-go, test-herald, test-python, build-doorman, build-herald, build-ml]
+    if: |
+      github.event_name == 'push' &&
+      always() &&
+      (needs.test-go.result == 'success' || needs.test-go.result == 'skipped') &&
+      (needs.test-herald.result == 'success' || needs.test-herald.result == 'skipped') &&
+      (needs.test-python.result == 'success' || needs.test-python.result == 'skipped') &&
+      (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') &&
+      (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') &&
+      (needs.build-ml.result == 'success' || needs.build-ml.result == 'skipped')
     runs-on: ubuntu-latest
     environment: test
     steps:
@@ -161,6 +348,8 @@ jobs:
             HERALD_PG_PWD=${{ secrets.HERALD_PG_PWD }}
             HERALD_PG_DB=${{ secrets.HERALD_PG_DB }}
             TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+            VK_GROUP_TOKEN=${{ secrets.VK_GROUP_TOKEN }}
+            VK_GROUP_ID=${{ secrets.VK_GROUP_ID }}
             CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
             GRAFANA_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}
             GRAFANA_CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
@@ -184,3 +373,100 @@ jobs:
             rm -rf /tmp/edium-deploy
 
             echo "Deploy завершён"
+
+  # ========================
+  # Deploy на prod VM (ручной запуск)
+  # ========================
+
+  deploy-prod:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Проверка образа
+        run: |
+          echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+          docker manifest inspect ${{ env.REGISTRY }}/edium-doorman:${{ inputs.image_tag }}
+          echo "Образ существует: edium-doorman:${{ inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Копирование файлов на сервер
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_VM_HOST }}
+          username: deploy
+          key: ${{ secrets.PROD_VM_SSH_KEY }}
+          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/clickhouse/,infra/compose/prod/grafana/,doorman/migrations/,herald/migrations/"
+          target: /tmp/edium-deploy/
+          strip_components: 0
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_VM_HOST }}
+          username: deploy
+          key: ${{ secrets.PROD_VM_SSH_KEY }}
+          script: |
+            set -e
+
+            # Подготовка файлов
+            cp /tmp/edium-deploy/infra/compose/prod/docker-compose.yml /opt/edium/docker-compose.yml
+            cp /tmp/edium-deploy/infra/compose/prod/Caddyfile /opt/edium/Caddyfile
+            cp /tmp/edium-deploy/infra/compose/prod/vector.yaml /opt/edium/vector.yaml
+            mkdir -p /opt/edium/clickhouse /opt/edium/grafana/datasources
+            cp /tmp/edium-deploy/infra/compose/prod/clickhouse/init.sql /opt/edium/clickhouse/init.sql
+            cp /tmp/edium-deploy/infra/compose/prod/grafana/datasources/clickhouse.yaml /opt/edium/grafana/datasources/clickhouse.yaml
+            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
+            cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
+            cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
+
+            cd /opt/edium
+
+            # Создание .env из секретов
+            cat > .env <<'ENVEOF'
+            YC_REGISTRY_ID=${{ secrets.YC_REGISTRY_ID }}
+            IMAGE_TAG=${{ inputs.image_tag }}
+            DOORMAN_PG_USER=${{ secrets.DOORMAN_PG_USER }}
+            DOORMAN_PG_PWD=${{ secrets.DOORMAN_PG_PWD }}
+            DOORMAN_PG_DB=${{ secrets.DOORMAN_PG_DB }}
+            PG_HOST=${{ secrets.PG_HOST }}
+            DOORMAN_REDIS_PWD=${{ secrets.DOORMAN_REDIS_PWD }}
+            REDIS_HOST=${{ secrets.REDIS_HOST }}
+            JWT_ACTIVE_KID=${{ secrets.JWT_ACTIVE_KID }}
+            HERALD_PG_USER=${{ secrets.HERALD_PG_USER }}
+            HERALD_PG_PWD=${{ secrets.HERALD_PG_PWD }}
+            HERALD_PG_DB=${{ secrets.HERALD_PG_DB }}
+            TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+            VK_GROUP_TOKEN=${{ secrets.VK_GROUP_TOKEN }}
+            VK_GROUP_ID=${{ secrets.VK_GROUP_ID }}
+            CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
+            GRAFANA_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}
+            GRAFANA_CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
+            ENVEOF
+            sed -i 's/^[[:space:]]*//' .env
+
+            # RSA-ключ: многострочный PEM → одна строка с \n
+            printf 'JWT_RSA_PRIVATE_KEY=' >> .env
+            printf '%s' '${{ secrets.JWT_RSA_PRIVATE_KEY }}' | awk 'NR>1{printf "\\n"}{printf "%s",$0}' >> .env
+            echo >> .env
+
+            # Авторизация в CR
+            echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+
+            # Обновление и запуск
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+
+            # Очистка
+            rm -rf /tmp/edium-deploy
+
+            echo "Prod deploy завершён: ${{ inputs.image_tag }}"
+
+      - name: Итог
+        run: |
+          echo "## Production Deploy" >> $GITHUB_STEP_SUMMARY
+          echo "- **Тег:** ${{ inputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Сервисы:** ${{ inputs.services }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Статус:** Успешно" >> $GITHUB_STEP_SUMMARY
