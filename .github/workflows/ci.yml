@@ -46,7 +46,7 @@ jobs:
       - uses: golangci/golangci-lint-action@v7
         with:
           working-directory: doorman
-          version: v2.11.0
+          version: v2.11.4
 
   test-go:
     needs: lint-doorman
@@ -115,7 +115,7 @@ jobs:
       - uses: golangci/golangci-lint-action@v7
         with:
           working-directory: herald
-          version: v2.11.0
+          version: v2.11.4
 
   test-herald:
     needs: lint-herald
