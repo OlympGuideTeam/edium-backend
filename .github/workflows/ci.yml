@@ -145,6 +145,8 @@ jobs:
         env:
           POSTGRES_DSN: "postgres://test:test@localhost:5432/herald_test?sslmode=disable"
           TELEGRAM_BOT_TOKEN: "fake-token-for-tests"
+          VK_GROUP_TOKEN: "fake-token-for-tests"
+          VK_GROUP_ID: "0"
           NATS_URL: ""
       - name: Загрузка покрытия
         if: always()
