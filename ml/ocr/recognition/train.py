@@ -23,10 +23,10 @@ import os
 import random
 from pathlib import Path
 
-
 # ---------------------------------------------------------------------------
 # Dataset
 # ---------------------------------------------------------------------------
+
 
 class OCRDataset:
     def __init__(self, metadata_path: str, processor, max_target_length: int = 128):
@@ -92,6 +92,7 @@ def split_metadata(metadata_path: str, val_ratio: float = 0.1, seed: int = 42) -
 # CER/WER метрика
 # ---------------------------------------------------------------------------
 
+
 def compute_metrics_fn(processor):
     import evaluate
 
@@ -120,6 +121,7 @@ def compute_metrics_fn(processor):
 # Обучение
 # ---------------------------------------------------------------------------
 
+
 def train(
     data_dir: str,
     output_dir: str,
@@ -133,10 +135,10 @@ def train(
     seed: int,
 ):
     from transformers import (
-        TrOCRProcessor,
-        VisionEncoderDecoderModel,
         Seq2SeqTrainer,
         Seq2SeqTrainingArguments,
+        TrOCRProcessor,
+        VisionEncoderDecoderModel,
         default_data_collator,
     )
 
@@ -211,6 +213,7 @@ def train(
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="Fine-tune TrOCR на русских учебниках")

@@ -21,8 +21,6 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
-from typing import Optional
 
 from PIL import Image
 
@@ -30,10 +28,10 @@ from PIL import Image
 class OCRPipeline:
     def __init__(
         self,
-        detector_weights: Optional[str] = None,
-        recognizer_weights: Optional[str] = None,
+        detector_weights: str | None = None,
+        recognizer_weights: str | None = None,
         conf_threshold: float = 0.3,
-        device: Optional[str] = None,
+        device: str | None = None,
     ):
         """
         Args:
@@ -67,7 +65,7 @@ class OCRPipeline:
     def process_pdf(
         self,
         pdf_path: str,
-        pages: Optional[list[int]] = None,
+        pages: list[int] | None = None,
         dpi: int = 300,
         max_side: int = 2048,
     ) -> list[str]:
@@ -118,6 +116,7 @@ class OCRPipeline:
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def main():
     import argparse
