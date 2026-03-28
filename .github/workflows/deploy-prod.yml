@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Тег образа для деплоя (например, main-a1b2c3d)"
+        description: "Тег образа для деплоя (например, latest)"
         required: true
         type: string
       services:
@@ -82,6 +82,8 @@ jobs:
             HERALD_PG_PWD=${{ secrets.HERALD_PG_PWD }}
             HERALD_PG_DB=${{ secrets.HERALD_PG_DB }}
             TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+            VK_GROUP_TOKEN=${{ secrets.VK_GROUP_TOKEN }}
+            VK_GROUP_ID=${{ secrets.VK_GROUP_ID }}
             CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
             GRAFANA_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}
             GRAFANA_CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
