@@ -39,7 +39,7 @@ jobs:
   # Go — Doorman
   # ========================
 
-  lint-go:
+  lint-doorman:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +52,7 @@ jobs:
           version: v2.11.0
 
   test-go:
-    needs: lint-go
+    needs: lint-doorman
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -195,7 +195,7 @@ jobs:
 
   build-doorman:
     needs: [detect-changes, test-go]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.doorman == 'true'
+    if: needs.detect-changes.outputs.doorman == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
