@@ -34,7 +34,7 @@ jobs:
   # Go — Doorman
   # ========================
 
-  lint-go:
+  lint-doorman:
     needs: detect-changes
     if: needs.detect-changes.outputs.doorman == 'true'
     runs-on: ubuntu-latest
@@ -49,7 +49,7 @@ jobs:
           version: v2.11.0
 
   test-go:
-    needs: lint-go
+    needs: lint-doorman
     runs-on: ubuntu-latest
     services:
       postgres:
