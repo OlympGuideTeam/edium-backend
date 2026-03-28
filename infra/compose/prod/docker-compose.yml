@@ -71,6 +71,8 @@ services:
       POSTGRES_DSN: "postgres://${HERALD_PG_USER}:${HERALD_PG_PWD}@${PG_HOST}:6432/${HERALD_PG_DB}?sslmode=require"
       NATS_URL: "nats://nats:4222"
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      VK_GROUP_TOKEN: ${VK_GROUP_TOKEN}
+      VK_GROUP_ID: ${VK_GROUP_ID}
       OTEL_ENDPOINT: ""
     depends_on:
       herald-flyway:
