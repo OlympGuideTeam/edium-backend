@@ -20,7 +20,6 @@ import argparse
 import io
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 import fitz
 from PIL import Image
@@ -31,8 +30,8 @@ class BenchmarkResult:
     model: str
     text: str
     elapsed: float
-    cer: Optional[float] = None
-    wer: Optional[float] = None
+    cer: float | None = None
+    wer: float | None = None
 
 
 def _pdf_to_pil(pdf_path: str, page_num: int, dpi: int = 300) -> tuple[Image.Image, fitz.Page, fitz.Document]:
@@ -47,6 +46,7 @@ def _pdf_to_pil(pdf_path: str, page_num: int, dpi: int = 300) -> tuple[Image.Ima
 def _compute_metrics(pred: str, reference: str) -> tuple[float, float]:
     try:
         import evaluate
+
         cer_m = evaluate.load("cer")
         wer_m = evaluate.load("wer")
         cer = cer_m.compute(predictions=[pred], references=[reference])
@@ -60,6 +60,7 @@ def _compute_metrics(pred: str, reference: str) -> tuple[float, float]:
 # Модели
 # ---------------------------------------------------------------------------
 
+
 def run_tesseract(page: fitz.Page) -> tuple[str, float]:
     t0 = time.time()
     tp = page.get_textpage_ocr(language="rus+eng", flags=fitz.TEXT_PRESERVE_WHITESPACE)
@@ -68,9 +69,9 @@ def run_tesseract(page: fitz.Page) -> tuple[str, float]:
 
 
 def run_surya(image: Image.Image) -> tuple[str, float]:
+    from surya.detection import DetectionPredictor
     from surya.foundation import FoundationPredictor
     from surya.recognition import RecognitionPredictor
-    from surya.detection import DetectionPredictor
 
     fp = FoundationPredictor()
     rp = RecognitionPredictor(fp)
@@ -97,8 +98,8 @@ def run_easyocr(image: Image.Image) -> tuple[str, float]:
 
 
 def run_paddleocr(image: Image.Image) -> tuple[str, float]:
-    from paddleocr import PaddleOCR
     import numpy as np
+    from paddleocr import PaddleOCR
 
     ocr = PaddleOCR(use_angle_cls=True, lang="ru")
     t0 = time.time()
@@ -113,7 +114,9 @@ def run_paddleocr(image: Image.Image) -> tuple[str, float]:
     return "\n".join(lines), elapsed
 
 
-def run_our_pipeline(image: Image.Image, detector_weights=None, recognizer_weights=None, device=None) -> tuple[str, float]:
+def run_our_pipeline(
+    image: Image.Image, detector_weights=None, recognizer_weights=None, device=None
+) -> tuple[str, float]:
     from ocr.pipeline import OCRPipeline
 
     pipeline = OCRPipeline(detector_weights, recognizer_weights, device=device)
@@ -126,15 +129,16 @@ def run_our_pipeline(image: Image.Image, detector_weights=None, recognizer_weigh
 # Бенчмарк
 # ---------------------------------------------------------------------------
 
+
 def run_benchmark(
     pdf_path: str,
     page_num: int,
     models: list[str],
-    ground_truth: Optional[str],
+    ground_truth: str | None,
     dpi: int,
-    detector_weights: Optional[str],
-    recognizer_weights: Optional[str],
-    device: Optional[str],
+    detector_weights: str | None,
+    recognizer_weights: str | None,
+    device: str | None,
 ) -> list[BenchmarkResult]:
     image, page, doc = _pdf_to_pil(pdf_path, page_num, dpi)
     print(f"PDF: {pdf_path}, страница: {page_num}, размер: {image.size}")
@@ -189,7 +193,9 @@ def print_table(results: list[BenchmarkResult]):
         for r in results:
             cer_s = f"{r.cer:.4f}" if r.cer is not None else "—"
             wer_s = f"{r.wer:.4f}" if r.wer is not None else "—"
-            print(f"{r.model:<15} {r.elapsed:<12.2f} {len(r.text):<12} {len(r.text.splitlines()):<8} {cer_s:<10} {wer_s}")
+            print(
+                f"{r.model:<15} {r.elapsed:<12.2f} {len(r.text):<12} {len(r.text.splitlines()):<8} {cer_s:<10} {wer_s}"
+            )
     else:
         print(f"{'Модель':<15} {'Время (с)':<12} {'Символов':<12} {'Строк'}")
         print("-" * 50)
@@ -200,6 +206,7 @@ def print_table(results: list[BenchmarkResult]):
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="Бенчмарк OCR-моделей")

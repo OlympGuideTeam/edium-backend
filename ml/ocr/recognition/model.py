@@ -15,10 +15,7 @@ Text Recognition — обёртка над TrOCR.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from PIL import Image
-
 
 _DEFAULT_MODEL = "microsoft/trocr-base-printed"
 # После fine-tune на русском меняем на путь к своим весам:
@@ -28,7 +25,7 @@ _DEFAULT_MODEL = "microsoft/trocr-base-printed"
 class TextRecognizer:
     """TrOCR-based распознаватель текста на изображении строки/региона."""
 
-    def __init__(self, model_name_or_path: Optional[str] = None, device: Optional[str] = None):
+    def __init__(self, model_name_or_path: str | None = None, device: str | None = None):
         """
         Args:
             model_name_or_path: HuggingFace model id или путь к локальным весам.
