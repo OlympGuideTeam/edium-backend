@@ -27,13 +27,15 @@ services:
       NATS_URL: "nats://nats:4222"
       JWT_RSA_PRIVATE_KEY: ${JWT_RSA_PRIVATE_KEY}
       JWT_ACTIVE_KID: ${JWT_ACTIVE_KID:-key-1}
-      OTEL_ENDPOINT: ""
+      OTEL_ENDPOINT: "http://jaeger:4317"
     expose:
       - "80"
     depends_on:
       doorman-flyway:
         condition: service_completed_successfully
       nats:
+        condition: service_started
+      jaeger:
         condition: service_started
     deploy:
       resources:
@@ -73,11 +75,13 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       VK_GROUP_TOKEN: ${VK_GROUP_TOKEN}
       VK_GROUP_ID: ${VK_GROUP_ID}
-      OTEL_ENDPOINT: ""
+      OTEL_ENDPOINT: "http://jaeger:4317"
     depends_on:
       herald-flyway:
         condition: service_completed_successfully
       nats:
+        condition: service_started
+      jaeger:
         condition: service_started
     deploy:
       resources:
@@ -146,6 +150,27 @@ services:
     networks:
       - edium
 
+  jaeger:
+    image: jaegertracing/all-in-one:1.68.0
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+      SPAN_STORAGE_TYPE: badger
+      BADGER_EPHEMERAL: "false"
+      BADGER_DIRECTORY_VALUE: /badger/data
+      BADGER_DIRECTORY_KEY: /badger/key
+    expose:
+      - "16686"
+      - "4317"
+    volumes:
+      - jaeger_data:/badger
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    networks:
+      - edium
+
   grafana:
     image: grafana/grafana:11.4.0
     restart: unless-stopped
@@ -155,11 +180,14 @@ services:
       GRAFANA_CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
     volumes:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/provisioning/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     expose:
       - "3000"
     depends_on:
       - clickhouse
+      - jaeger
     deploy:
       resources:
         limits:
@@ -173,6 +201,7 @@ volumes:
   nats_data:
   clickhouse_data:
   grafana_data:
+  jaeger_data:
 
 networks:
   edium:
