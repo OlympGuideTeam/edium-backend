@@ -58,9 +58,12 @@ jobs:
             cp /tmp/edium-deploy/infra/compose/prod/docker-compose.yml /opt/edium/docker-compose.yml
             cp /tmp/edium-deploy/infra/compose/prod/Caddyfile /opt/edium/Caddyfile
             cp /tmp/edium-deploy/infra/compose/prod/vector.yaml /opt/edium/vector.yaml
-            mkdir -p /opt/edium/clickhouse /opt/edium/grafana/datasources
+            mkdir -p /opt/edium/clickhouse
             cp /tmp/edium-deploy/infra/compose/prod/clickhouse/init.sql /opt/edium/clickhouse/init.sql
-            cp /tmp/edium-deploy/infra/compose/prod/grafana/datasources/clickhouse.yaml /opt/edium/grafana/datasources/clickhouse.yaml
+            cp /tmp/edium-deploy/infra/compose/prod/clickhouse/migrate.sql /opt/edium/clickhouse/migrate.sql
+            mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
+            rm -rf /opt/edium/grafana/provisioning/dashboards.yaml
+            cp -r /tmp/edium-deploy/infra/compose/prod/grafana/. /opt/edium/grafana/
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
@@ -102,6 +105,13 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
+
+            # Миграции ClickHouse
+            docker compose exec -T clickhouse clickhouse-client \
+              --user vector \
+              --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+              --database logs \
+              --multiquery < /opt/edium/clickhouse/migrate.sql
 
             # Очистка
             rm -rf /tmp/edium-deploy
