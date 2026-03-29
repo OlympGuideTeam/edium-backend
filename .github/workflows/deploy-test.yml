@@ -371,6 +371,7 @@ jobs:
 
   deploy-prod:
     needs: [deploy-test]
+    if: needs.deploy-test.result == 'success'
     runs-on: ubuntu-latest
     environment: production
     steps:
