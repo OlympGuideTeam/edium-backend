@@ -1,3 +1,11 @@
+### Документация API
+
+```bash
+npx @redocly/cli build-docs api/openapi.yaml -o api/index.html
+```
+
+Открой `api/index.html` в браузере.
+
 ### Сущности
 
 - User
@@ -29,7 +37,7 @@
 - `GET` `/caesar/v1/classes/{classId}/members`
 - `DELETE`  `/caesar/v1/classes/{classId}/members/{userId}`
 
-Курсы 
+Курсы
 - `POST` `/caesar/v1/courses`
 - `GET` `/caesar/v1/classes/{classId}/courses/`
 - `GET` `/caesar/v1/courses/{courseId}`
