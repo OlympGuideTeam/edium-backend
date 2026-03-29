@@ -231,6 +231,30 @@
               { "id": "displayName", "value": "Сообщение" },
               { "id": "custom.wrap", "value": true }
             ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "trace_id" },
+            "properties": [
+              { "id": "custom.width", "value": 220 },
+              { "id": "displayName", "value": "Trace ID" },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Открыть трейс в Jaeger",
+                    "url": "",
+                    "internal": {
+                      "datasourceUid": "edium-jaeger",
+                      "datasourceName": "Jaeger",
+                      "query": {
+                        "queryType": "byid",
+                        "query": "${__value.raw}"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
           }
         ]
       },
@@ -238,7 +262,7 @@
         {
           "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
           "format": 0,
-          "rawSql": "SELECT timestamp, service, level, message FROM logs WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND level LIKE '${level}' ORDER BY timestamp DESC LIMIT 500",
+          "rawSql": "SELECT timestamp, service, level, message, trace_id FROM logs WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND level LIKE '${level}' ORDER BY timestamp DESC LIMIT 500",
           "refId": "A"
         }
       ]
