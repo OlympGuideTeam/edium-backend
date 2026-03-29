@@ -32,10 +32,15 @@ transforms:
       }
       . = {"timestamp": .timestamp, "service": .service, "stream": .stream, "level": .level, "message": .message, "trace_id": .trace_id, "span_id": .span_id}
 
+  filter:
+    type: filter
+    inputs: [clean]
+    condition: '!contains(string!(.service), "grafana") || .level == "error"'
+
 sinks:
   clickhouse:
     type: clickhouse
-    inputs: [clean]
+    inputs: [filter]
     endpoint: "http://clickhouse:8123"
     database: logs
     table: logs
