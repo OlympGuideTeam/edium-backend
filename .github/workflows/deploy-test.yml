@@ -356,6 +356,7 @@ jobs:
             docker compose exec -T clickhouse clickhouse-client \
               --user vector \
               --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+              --database logs \
               --multiquery < /opt/edium/clickhouse/migrate.sql
 
             # Очистка
@@ -454,6 +455,7 @@ jobs:
             docker compose exec -T clickhouse clickhouse-client \
               --user vector \
               --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+              --database logs \
               --multiquery < /opt/edium/clickhouse/migrate.sql
 
             # Очистка
