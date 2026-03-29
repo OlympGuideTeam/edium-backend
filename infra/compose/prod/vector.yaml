@@ -22,11 +22,15 @@ transforms:
       if err == null {
         .level = downcase(string(parsed.level) ?? "")
         .message = string(parsed.msg) ?? .raw_message
+        .trace_id = string(parsed.trace_id) ?? ""
+        .span_id = string(parsed.span_id) ?? ""
       } else {
         .level = ""
         .message = .raw_message
+        .trace_id = ""
+        .span_id = ""
       }
-      . = {"timestamp": .timestamp, "service": .service, "stream": .stream, "level": .level, "message": .message}
+      . = {"timestamp": .timestamp, "service": .service, "stream": .stream, "level": .level, "message": .message, "trace_id": .trace_id, "span_id": .span_id}
 
 sinks:
   clickhouse:

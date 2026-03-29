@@ -4,7 +4,9 @@ CREATE TABLE IF NOT EXISTS logs
     service   LowCardinality(String) CODEC(ZSTD),
     stream    LowCardinality(String) CODEC(ZSTD),
     level     LowCardinality(String) CODEC(ZSTD),
-    message   String CODEC(ZSTD)
+    message   String CODEC(ZSTD),
+    trace_id  String CODEC(ZSTD),
+    span_id   String CODEC(ZSTD)
 )
 ENGINE = MergeTree()
 PARTITION BY toDate(timestamp)
