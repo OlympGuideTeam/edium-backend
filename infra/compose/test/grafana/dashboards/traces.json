@@ -14,74 +14,18 @@
   "fiscalYearStartMonth": 0,
   "liveNow": false,
   "weekStart": "",
-  "templating": {
-    "list": [
-      {
-        "current": {},
-        "datasource": { "type": "jaeger", "uid": "edium-jaeger" },
-        "definition": "",
-        "hide": 0,
-        "includeAll": false,
-        "label": "Сервис",
-        "multi": false,
-        "name": "service",
-        "options": [],
-        "query": "",
-        "refresh": 2,
-        "regex": "",
-        "sort": 1,
-        "type": "query"
-      },
-      {
-        "current": {},
-        "datasource": { "type": "jaeger", "uid": "edium-jaeger" },
-        "definition": "",
-        "hide": 0,
-        "includeAll": true,
-        "allValue": "",
-        "label": "Операция",
-        "multi": false,
-        "name": "operation",
-        "options": [],
-        "query": "${service}",
-        "refresh": 2,
-        "regex": "",
-        "sort": 0,
-        "type": "query"
-      },
-      {
-        "current": { "selected": true, "text": "20", "value": "20" },
-        "hide": 0,
-        "includeAll": false,
-        "label": "Лимит",
-        "multi": false,
-        "name": "limit",
-        "options": [
-          { "selected": false, "text": "10", "value": "10" },
-          { "selected": true, "text": "20", "value": "20" },
-          { "selected": false, "text": "50", "value": "50" },
-          { "selected": false, "text": "100", "value": "100" }
-        ],
-        "query": "10, 20, 50, 100",
-        "type": "custom"
-      }
-    ]
-  },
+  "templating": { "list": [] },
   "panels": [
     {
       "id": 1,
       "type": "traces",
       "title": "Список трейсов",
-      "description": "Нажмите на трейс, чтобы открыть waterfall-вид в Explore",
-      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 0 },
+      "description": "Выберите сервис и операцию в настройках запроса. Нажмите на трейс для просмотра waterfall.",
+      "gridPos": { "h": 22, "w": 24, "x": 0, "y": 0 },
       "datasource": { "type": "jaeger", "uid": "edium-jaeger" },
       "options": {
         "dedupStrategy": "none",
         "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": false,
         "sortOrder": "Descending",
         "wrapLogMessage": false
       },
@@ -90,9 +34,7 @@
           "datasource": { "type": "jaeger", "uid": "edium-jaeger" },
           "queryType": "search",
           "refId": "A",
-          "service": "${service}",
-          "operation": "${operation}",
-          "limit": "${limit}"
+          "limit": 20
         }
       ]
     }
