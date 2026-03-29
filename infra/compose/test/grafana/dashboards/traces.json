@@ -1,7 +1,7 @@
 {
   "title": "Трейсы сервисов",
   "uid": "edium-traces",
-  "version": 1,
+  "version": 2,
   "schemaVersion": 39,
   "tags": ["edium", "traces"],
   "time": { "from": "now-1h", "to": "now" },
@@ -14,13 +14,30 @@
   "fiscalYearStartMonth": 0,
   "liveNow": false,
   "weekStart": "",
-  "templating": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "type": "query",
+        "label": "Сервис",
+        "datasource": { "type": "jaeger", "uid": "edium-jaeger" },
+        "query": "services",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": false,
+        "multi": false,
+        "hide": 0,
+        "options": [],
+        "current": {}
+      }
+    ]
+  },
   "panels": [
     {
       "id": 1,
       "type": "traces",
       "title": "Список трейсов",
-      "description": "Выберите сервис и операцию в настройках запроса. Нажмите на трейс для просмотра waterfall.",
+      "description": "Выберите операцию в настройках запроса. Нажмите на трейс для просмотра waterfall.",
       "gridPos": { "h": 22, "w": 24, "x": 0, "y": 0 },
       "datasource": { "type": "jaeger", "uid": "edium-jaeger" },
       "options": {
@@ -33,6 +50,7 @@
         {
           "datasource": { "type": "jaeger", "uid": "edium-jaeger" },
           "queryType": "search",
+          "service": "${service}",
           "refId": "A",
           "limit": 20
         }
