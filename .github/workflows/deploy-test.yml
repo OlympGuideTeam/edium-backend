@@ -51,7 +51,7 @@ jobs:
           working-directory: doorman
           version: v2.11.4
 
-  test-go:
+  test-doorman:
     needs: lint-doorman
     runs-on: ubuntu-latest
     services:
@@ -196,7 +196,7 @@ jobs:
   # ========================
 
   build-doorman:
-    needs: [detect-changes, test-go]
+    needs: [detect-changes, test-doorman]
     if: needs.detect-changes.outputs.doorman == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -269,10 +269,10 @@ jobs:
   # ========================
 
   deploy-test:
-    needs: [test-go, test-herald, test-python, build-doorman, build-herald, build-ml]
+    needs: [test-doorman, test-herald, test-python, build-doorman, build-herald, build-ml]
     if: |
       always() &&
-      needs.test-go.result == 'success' &&
+      needs.test-doorman.result == 'success' &&
       needs.test-herald.result == 'success' &&
       needs.test-python.result == 'success' &&
       (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') &&
@@ -306,9 +306,10 @@ jobs:
             cp /tmp/edium-deploy/infra/compose/test/docker-compose.yml /opt/edium/docker-compose.yml
             cp /tmp/edium-deploy/infra/compose/test/Caddyfile /opt/edium/Caddyfile
             cp /tmp/edium-deploy/infra/compose/test/vector.yaml /opt/edium/vector.yaml
-            mkdir -p /opt/edium/clickhouse /opt/edium/grafana/datasources
+            mkdir -p /opt/edium/clickhouse
             cp /tmp/edium-deploy/infra/compose/test/clickhouse/init.sql /opt/edium/clickhouse/init.sql
-            cp /tmp/edium-deploy/infra/compose/test/grafana/datasources/clickhouse.yaml /opt/edium/grafana/datasources/clickhouse.yaml
+            mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
+            cp -r /tmp/edium-deploy/infra/compose/test/grafana/. /opt/edium/grafana/
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
@@ -395,9 +396,10 @@ jobs:
             cp /tmp/edium-deploy/infra/compose/prod/docker-compose.yml /opt/edium/docker-compose.yml
             cp /tmp/edium-deploy/infra/compose/prod/Caddyfile /opt/edium/Caddyfile
             cp /tmp/edium-deploy/infra/compose/prod/vector.yaml /opt/edium/vector.yaml
-            mkdir -p /opt/edium/clickhouse /opt/edium/grafana/datasources
+            mkdir -p /opt/edium/clickhouse
             cp /tmp/edium-deploy/infra/compose/prod/clickhouse/init.sql /opt/edium/clickhouse/init.sql
-            cp /tmp/edium-deploy/infra/compose/prod/grafana/datasources/clickhouse.yaml /opt/edium/grafana/datasources/clickhouse.yaml
+            mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
+            cp -r /tmp/edium-deploy/infra/compose/prod/grafana/. /opt/edium/grafana/
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
