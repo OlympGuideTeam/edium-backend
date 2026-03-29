@@ -2,11 +2,12 @@ sources:
   docker:
     type: docker_logs
     exclude_containers:
-      - "vector"
-      - "clickhouse"
-      - "grafana"
-      - "cadvisor"
-      - "node-exporter"
+      - "*vector*"
+      - "*clickhouse*"
+      - "*grafana*"
+      - "*cadvisor*"
+      - "*node-exporter*"
+      - "*jaeger*"
 
 transforms:
   clean:
