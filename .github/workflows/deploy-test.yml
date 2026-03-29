@@ -308,6 +308,7 @@ jobs:
             cp /tmp/edium-deploy/infra/compose/test/vector.yaml /opt/edium/vector.yaml
             mkdir -p /opt/edium/clickhouse
             cp /tmp/edium-deploy/infra/compose/test/clickhouse/init.sql /opt/edium/clickhouse/init.sql
+            cp /tmp/edium-deploy/infra/compose/test/clickhouse/migrate.sql /opt/edium/clickhouse/migrate.sql
             mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
             cp -r /tmp/edium-deploy/infra/compose/test/grafana/. /opt/edium/grafana/
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
@@ -350,6 +351,12 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
+
+            # Миграции ClickHouse
+            docker compose exec -T clickhouse clickhouse-client \
+              --user vector \
+              --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+              --multiquery < /opt/edium/clickhouse/migrate.sql
 
             # Очистка
             rm -rf /tmp/edium-deploy
@@ -398,6 +405,7 @@ jobs:
             cp /tmp/edium-deploy/infra/compose/prod/vector.yaml /opt/edium/vector.yaml
             mkdir -p /opt/edium/clickhouse
             cp /tmp/edium-deploy/infra/compose/prod/clickhouse/init.sql /opt/edium/clickhouse/init.sql
+            cp /tmp/edium-deploy/infra/compose/prod/clickhouse/migrate.sql /opt/edium/clickhouse/migrate.sql
             mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
             cp -r /tmp/edium-deploy/infra/compose/prod/grafana/. /opt/edium/grafana/
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
@@ -441,6 +449,12 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans
             docker image prune -f
+
+            # Миграции ClickHouse
+            docker compose exec -T clickhouse clickhouse-client \
+              --user vector \
+              --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+              --multiquery < /opt/edium/clickhouse/migrate.sql
 
             # Очистка
             rm -rf /tmp/edium-deploy
