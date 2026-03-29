@@ -1,0 +1,1171 @@
+openapi: "3.0.3"
+info:
+  title: Edium Caesar
+  description: Пользователи, классы, участники классов, курсы
+  version: "1.0.0"
+
+servers:
+  - url: https://api.edium.online
+    description: Production
+  - url: https://test.edium.online
+    description: Testing
+
+security:
+  - BearerAuth: []
+
+paths:
+
+  # ─── Личный кабинет ────────────────────────────────────────────────
+
+  /caesar/v1/users/me:
+    get:
+      summary: Получить профиль текущего пользователя
+      operationId: getMe
+      tags: [Users]
+      responses:
+        "200":
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    patch:
+      summary: Обновить профиль текущего пользователя
+      operationId: updateMe
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "204":
+          description: Успешно обновлено
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Удалить аккаунт текущего пользователя
+      operationId: deleteMe
+      tags: [Users]
+      responses:
+        "204":
+          description: Аккаунт удалён
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /caesar/v1/users/me/statistic:
+    get:
+      summary: Получить статистику текущего пользователя
+      operationId: getMeStatistic
+      tags: [Users]
+      responses:
+        "200":
+          description: Статистика пользователя
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserStatistic"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Классы ────────────────────────────────────────────────────────
+
+  /caesar/v1/classes/me:
+    get:
+      summary: Получить классы текущего пользователя
+      operationId: getMyClasses
+      tags: [Classes]
+      parameters:
+        - name: role
+          in: query
+          required: false
+          description: Фильтр по роли пользователя в классе
+          schema:
+            type: string
+            enum: [teacher, student]
+      responses:
+        "200":
+          description: Список классов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /caesar/v1/classes:
+    post:
+      summary: Создать класс
+      operationId: createClass
+      tags: [Classes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClassRequest"
+      responses:
+        "200":
+          description: Класс создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateClassResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /caesar/v1/classes/{classId}:
+    get:
+      summary: Получить детали класса
+      operationId: getClass
+      tags: [Classes]
+      parameters:
+        - $ref: "#/components/parameters/ClassId"
+      responses:
+        "200":
+          description: Детали класса
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    patch:
+      summary: Обновить класс
+      operationId: updateClass
+      tags: [Classes]
+      parameters:
+        - $ref: "#/components/parameters/ClassId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateClassRequest"
+      responses:
+        "204":
+          description: Успешно обновлено
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Удалить класс
+      operationId: deleteClass
+      tags: [Classes]
+      parameters:
+        - $ref: "#/components/parameters/ClassId"
+      responses:
+        "204":
+          description: Класс удалён
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Приглашения ───────────────────────────────────────────────────
+
+  /caesar/v1/classes/{classId}/invite:
+    get:
+      summary: Получить ссылку-приглашение в класс по роли
+      operationId: getClassInviteLink
+      tags: [Invitations]
+      parameters:
+        - $ref: "#/components/parameters/ClassId"
+        - name: role
+          in: query
+          required: true
+          description: Роль приглашаемого
+          schema:
+            type: string
+            enum: [teacher, student]
+      responses:
+        "200":
+          description: Ссылка-приглашение
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteLinkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /caesar/v1/classes/{classId}/invitations:
+    get:
+      summary: Получить все активные приглашения класса
+      operationId: getClassInvitations
+      tags: [Invitations]
+      parameters:
+        - $ref: "#/components/parameters/ClassId"
+      responses:
+        "200":
+          description: Список приглашений
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvitationsListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /caesar/v1/invitations/{invitationId}/accept:
+    post:
+      summary: Принять приглашение в класс
+      operationId: acceptInvitation
+      tags: [Invitations]
+      parameters:
+        - name: invitationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Приглашение принято
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Участники класса ──────────────────────────────────────────────
+
+  /caesar/v1/classes/{classId}/members:
+    get:
+      summary: Получить список участников класса
+      operationId: getClassMembers
+      tags: [Members]
+      parameters:
+        - $ref: "#/components/parameters/ClassId"
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [teacher, student]
+      responses:
+        "200":
+          description: Список участников
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembersListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /caesar/v1/classes/{classId}/members/{userId}:
+    delete:
+      summary: Исключить участника из класса
+      operationId: removeMember
+      tags: [Members]
+      parameters:
+        - $ref: "#/components/parameters/ClassId"
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "a1b2c3d4"
+      responses:
+        "204":
+          description: Участник исключён
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Курсы ─────────────────────────────────────────────────────────
+
+  /caesar/v1/courses/me:
+    get:
+      summary: Получить курсы текущего пользователя
+      operationId: getMyCourses
+      tags: [Courses]
+      parameters:
+        - name: role
+          in: query
+          required: false
+          description: Фильтр по роли (teacher/student)
+          schema:
+            type: string
+            enum: [teacher, student]
+      responses:
+        "200":
+          description: Список курсов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /caesar/v1/courses:
+    post:
+      summary: Создать курс
+      operationId: createCourse
+      tags: [Courses]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseRequest"
+      responses:
+        "200":
+          description: Курс создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateCourseResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /caesar/v1/classes/{classId}/courses:
+    get:
+      summary: Получить курсы класса
+      operationId: getClassCourses
+      tags: [Courses]
+      parameters:
+        - $ref: "#/components/parameters/ClassId"
+      responses:
+        "200":
+          description: Список курсов класса
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /caesar/v1/courses/{courseId}:
+    get:
+      summary: Получить детали курса с модулями и квизами
+      operationId: getCourse
+      tags: [Courses]
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+      responses:
+        "200":
+          description: Детали курса
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    patch:
+      summary: Обновить курс
+      operationId: updateCourse
+      tags: [Courses]
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCourseRequest"
+      responses:
+        "204":
+          description: Успешно обновлено
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Удалить курс
+      operationId: deleteCourse
+      tags: [Courses]
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+      responses:
+        "204":
+          description: Курс удалён
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Элементы контроля ─────────────────────────────────────────────
+
+  /caesar/v1/courses/{courseId}/elements:
+    get:
+      summary: Получить элементы контроля курса
+      operationId: getCourseElements
+      tags: [Elements]
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+      responses:
+        "200":
+          description: Список элементов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementsListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Добавить элемент контроля в курс
+      operationId: createCourseElement
+      tags: [Elements]
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateElementRequest"
+      responses:
+        "200":
+          description: Элемент добавлен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateElementResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /caesar/v1/elements/{elementId}:
+    get:
+      summary: Получить элемент контроля
+      operationId: getElement
+      tags: [Elements]
+      parameters:
+        - $ref: "#/components/parameters/ElementId"
+      responses:
+        "200":
+          description: Элемент контроля
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ElementDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Удалить элемент контроля
+      operationId: deleteElement
+      tags: [Elements]
+      parameters:
+        - $ref: "#/components/parameters/ElementId"
+      responses:
+        "204":
+          description: Элемент удалён
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ─── Ведомость ─────────────────────────────────────────────────────
+
+  /caesar/v1/courses/{courseId}/sheet:
+    get:
+      summary: Получить ведомость курса
+      operationId: getCourseSheet
+      tags: [Sheet]
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+      responses:
+        "200":
+          description: Ведомость курса
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseSheet"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+# ═══════════════════════════════════════════════════════════════════════
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ClassId:
+      name: classId
+      in: path
+      required: true
+      schema:
+        type: string
+        example: "a1b2c3d4"
+    CourseId:
+      name: courseId
+      in: path
+      required: true
+      schema:
+        type: string
+        example: "b2c3d4e5"
+    ElementId:
+      name: elementId
+      in: path
+      required: true
+      schema:
+        type: string
+        example: "c3d4e5f6"
+
+  schemas:
+
+    # Users
+    UserProfile:
+      type: object
+      required: [id, name, surname]
+      properties:
+        id:
+          type: string
+          example: "a1b2c3d4"
+        name:
+          type: string
+          example: "Иван"
+        surname:
+          type: string
+          example: "Иванов"
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Иван"
+        surname:
+          type: string
+          example: "Иванов"
+
+    UserStatistic:
+      type: object
+      required:
+        - quiz_count_created
+        - class_teacher_count
+        - student_count
+        - course_student_count
+        - quiz_count_passed
+        - avg_quiz_score
+      properties:
+        quiz_count_created:
+          type: integer
+          description: Количество созданных квизов
+          example: 12
+        class_teacher_count:
+          type: integer
+          description: Количество классов, где пользователь учитель
+          example: 3
+        student_count:
+          type: integer
+          description: Суммарное количество учеников во всех классах пользователя
+          example: 45
+        course_student_count:
+          type: integer
+          description: Количество курсов, где пользователь ученик
+          example: 5
+        quiz_count_passed:
+          type: integer
+          description: Количество пройденных квизов
+          example: 20
+        avg_quiz_score:
+          type: number
+          format: float
+          description: Средняя оценка по всем квизам (0–100)
+          example: 78.5
+
+    # Classes
+    ClassSummary:
+      type: object
+      required: [id, title, owner_name, student_count, is_owner]
+      properties:
+        id:
+          type: string
+          example: "a1b2c3d4"
+        title:
+          type: string
+          example: "10А — Математика"
+        owner_name:
+          type: string
+          description: "Имя Фамилия владельца"
+          example: "Пётр Сидоров"
+        student_count:
+          type: integer
+          example: 28
+        is_owner:
+          type: boolean
+          description: Является ли текущий пользователь владельцем класса
+
+    ClassListResponse:
+      type: object
+      required: [classes]
+      properties:
+        classes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClassSummary"
+
+    CreateClassRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          example: "10А — Математика"
+
+    CreateClassResponse:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          example: "a1b2c3d4"
+
+    UpdateClassRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "10Б — Физика"
+
+    ClassDetail:
+      type: object
+      required: [id, title, owner_name, is_owner, students, courses, teachers]
+      properties:
+        id:
+          type: string
+          example: "a1b2c3d4"
+        title:
+          type: string
+          example: "10А — Математика"
+        owner_name:
+          type: string
+          example: "Пётр Сидоров"
+        is_owner:
+          type: boolean
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberShort"
+        courses:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseSummary"
+        teachers:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberShort"
+
+    MemberShort:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          example: "a1b2c3d4"
+        name:
+          type: string
+          description: "Имя Фамилия"
+          example: "Мария Кузнецова"
+
+    # Invitations
+    InviteLinkResponse:
+      type: object
+      required: [link]
+      properties:
+        link:
+          type: string
+          format: uri
+          example: "https://api.edium.online/caesar/v1/invitations/abc123xyz/accept"
+
+    InvitationsListResponse:
+      type: object
+      required: [invitations]
+      properties:
+        invitations:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvitationItem"
+
+    InvitationItem:
+      type: object
+      required: [id, role, link, expires_at]
+      properties:
+        id:
+          type: string
+          example: "abc123xyz"
+        role:
+          type: string
+          enum: [teacher, student]
+        link:
+          type: string
+          format: uri
+          example: "https://api.edium.online/caesar/v1/invitations/abc123xyz/accept"
+        expires_at:
+          type: string
+          format: date-time
+          example: "2026-04-05T12:00:00Z"
+
+    # Members
+    MembersListResponse:
+      type: object
+      required: [members]
+      properties:
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberItem"
+
+    MemberItem:
+      type: object
+      required: [id, name, role]
+      properties:
+        id:
+          type: string
+          example: "a1b2c3d4"
+        name:
+          type: string
+          example: "Мария Кузнецова"
+        role:
+          type: string
+          enum: [teacher, student, owner]
+
+    # Courses
+    CourseSummary:
+      type: object
+      required: [id, title, teacher_name, module_count, quiz_count, is_teacher]
+      properties:
+        id:
+          type: string
+          example: "b2c3d4e5"
+        title:
+          type: string
+          example: "Алгебра 10 класс"
+        teacher_name:
+          type: string
+          example: "Пётр Сидоров"
+        module_count:
+          type: integer
+          example: 4
+        quiz_count:
+          type: integer
+          example: 12
+        is_teacher:
+          type: boolean
+
+    CourseListResponse:
+      type: object
+      required: [courses]
+      properties:
+        courses:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseSummary"
+
+    CreateCourseRequest:
+      type: object
+      required: [title, class_id]
+      properties:
+        title:
+          type: string
+          example: "Алгебра 10 класс"
+        class_id:
+          type: string
+          example: "a1b2c3d4"
+
+    CreateCourseResponse:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          example: "b2c3d4e5"
+
+    UpdateCourseRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "Геометрия 10 класс"
+
+    CourseDetail:
+      type: object
+      required: [id, title, modules]
+      properties:
+        id:
+          type: string
+          example: "b2c3d4e5"
+        title:
+          type: string
+          example: "Алгебра 10 класс"
+        modules:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModuleItem"
+
+    ModuleItem:
+      type: object
+      required: [id, title, quizes]
+      properties:
+        id:
+          type: string
+          example: "c3d4e5f6"
+        title:
+          type: string
+          example: "Модуль 1: Функции"
+        quizes:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizShort"
+
+    QuizShort:
+      type: object
+      required: [id, title, quiz_type, question_count, state]
+      properties:
+        id:
+          type: string
+          example: "d4e5f6a7"
+        title:
+          type: string
+          example: "Контрольная №1"
+        quiz_type:
+          type: string
+          enum: [sync, async]
+        question_count:
+          type: integer
+          example: 10
+        state:
+          type: string
+          description: |
+            Для sync: not_started | waiting | running | completed
+            Для async: not_started | in_progress | completed
+          example: "not_started"
+        start_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Время начала квиза (только для sync)
+          example: "2026-04-01T09:00:00Z"
+        end_time:
+          type: string
+          format: date-time
+          nullable: true
+          description: Дедлайн (только для async)
+          example: "2026-04-07T23:59:00Z"
+
+    # Elements
+    CreateElementRequest:
+      type: object
+      required: [quiz_id]
+      properties:
+        quiz_id:
+          type: string
+          description: ID квиза из Riddler
+          example: "d4e5f6a7"
+        module_id:
+          type: string
+          nullable: true
+          description: ID модуля для привязки (если не указан — в корень курса)
+          example: "c3d4e5f6"
+        order:
+          type: integer
+          description: Порядковый номер в модуле/курсе
+          example: 1
+
+    CreateElementResponse:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          example: "e5f6a7b8"
+
+    ElementDetail:
+      type: object
+      required: [id, quiz_id, title, quiz_type, question_count, order]
+      properties:
+        id:
+          type: string
+          example: "e5f6a7b8"
+        quiz_id:
+          type: string
+          example: "d4e5f6a7"
+        title:
+          type: string
+          example: "Контрольная №1"
+        quiz_type:
+          type: string
+          enum: [sync, async]
+        question_count:
+          type: integer
+          example: 10
+        order:
+          type: integer
+          example: 1
+        module_id:
+          type: string
+          nullable: true
+          example: "c3d4e5f6"
+
+    ElementsListResponse:
+      type: object
+      required: [elements]
+      properties:
+        elements:
+          type: array
+          items:
+            $ref: "#/components/schemas/ElementDetail"
+
+    # Sheet
+    CourseSheet:
+      type: object
+      required: [quizes, students]
+      properties:
+        quizes:
+          type: array
+          description: Список квизов-колонок в ведомости
+          items:
+            type: object
+            required: [id, title]
+            properties:
+              id:
+                type: string
+                example: "d4e5f6a7"
+              title:
+                type: string
+                example: "Контрольная №1"
+        students:
+          type: array
+          description: Строки ведомости по каждому ученику
+          items:
+            $ref: "#/components/schemas/SheetRow"
+
+    SheetRow:
+      type: object
+      required: [student_id, student_name, scores]
+      properties:
+        student_id:
+          type: string
+          example: "a1b2c3d4"
+        student_name:
+          type: string
+          example: "Мария Кузнецова"
+        scores:
+          type: array
+          description: Оценки в том же порядке, что и quizes
+          items:
+            type: object
+            required: [quiz_id]
+            properties:
+              quiz_id:
+                type: string
+                example: "d4e5f6a7"
+              score:
+                type: number
+                format: float
+                nullable: true
+                description: null если квиз не пройден
+                example: 85.0
+
+    # Error schemas
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: "описание ошибки"
+
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Требуется авторизация
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Нет прав на выполнение операции
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Конфликт (например, пользователь уже в классе)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnprocessableEntity:
+      description: Ошибка валидации
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+tags:
+  - name: Users
+    description: Профиль и статистика пользователя
+  - name: Classes
+    description: Управление классами
+  - name: Invitations
+    description: Приглашения в класс
+  - name: Members
+    description: Участники класса
+  - name: Courses
+    description: Курсы внутри классов
+  - name: Elements
+    description: Элементы контроля (квизы в курсе)
+  - name: Sheet
+    description: Ведомость успеваемости
