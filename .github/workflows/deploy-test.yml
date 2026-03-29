@@ -310,6 +310,7 @@ jobs:
             cp /tmp/edium-deploy/infra/compose/test/clickhouse/init.sql /opt/edium/clickhouse/init.sql
             cp /tmp/edium-deploy/infra/compose/test/clickhouse/migrate.sql /opt/edium/clickhouse/migrate.sql
             mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
+            rm -rf /opt/edium/grafana/provisioning/dashboards.yaml
             cp -r /tmp/edium-deploy/infra/compose/test/grafana/. /opt/edium/grafana/
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
@@ -408,6 +409,7 @@ jobs:
             cp /tmp/edium-deploy/infra/compose/prod/clickhouse/init.sql /opt/edium/clickhouse/init.sql
             cp /tmp/edium-deploy/infra/compose/prod/clickhouse/migrate.sql /opt/edium/clickhouse/migrate.sql
             mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
+            rm -rf /opt/edium/grafana/provisioning/dashboards.yaml
             cp -r /tmp/edium-deploy/infra/compose/prod/grafana/. /opt/edium/grafana/
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
