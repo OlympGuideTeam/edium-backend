@@ -104,7 +104,7 @@ jobs:
             # Обновление и запуск
             docker compose pull
             docker compose up -d --remove-orphans
-            docker compose restart grafana
+            docker compose restart grafana vector
             docker image prune -f
 
             # Миграции ClickHouse
