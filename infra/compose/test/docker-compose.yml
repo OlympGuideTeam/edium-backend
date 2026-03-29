@@ -27,7 +27,7 @@ services:
       NATS_URL: "nats://nats:4222"
       JWT_RSA_PRIVATE_KEY: ${JWT_RSA_PRIVATE_KEY}
       JWT_ACTIVE_KID: ${JWT_ACTIVE_KID:-key-1}
-      OTEL_ENDPOINT: "http://jaeger:4317"
+      OTEL_ENDPOINT: "jaeger:4317"
     expose:
       - "80"
     depends_on:
@@ -66,7 +66,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       VK_GROUP_TOKEN: ${VK_GROUP_TOKEN}
       VK_GROUP_ID: ${VK_GROUP_ID}
-      OTEL_ENDPOINT: "http://jaeger:4317"
+      OTEL_ENDPOINT: "jaeger:4317"
     depends_on:
       herald-flyway:
         condition: service_completed_successfully
