@@ -48,7 +48,7 @@ jobs:
           working-directory: doorman
           version: v2.11.4
 
-  test-go:
+  test-doorman:
     needs: lint-doorman
     runs-on: ubuntu-latest
     services:
