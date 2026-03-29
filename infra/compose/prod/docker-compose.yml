@@ -155,15 +155,9 @@ services:
     restart: unless-stopped
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
-      SPAN_STORAGE_TYPE: badger
-      BADGER_EPHEMERAL: "false"
-      BADGER_DIRECTORY_VALUE: /badger/data
-      BADGER_DIRECTORY_KEY: /badger/key
     expose:
       - "16686"
       - "4317"
-    volumes:
-      - jaeger_data:/badger
     deploy:
       resources:
         limits:
@@ -180,7 +174,7 @@ services:
       GRAFANA_CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
     volumes:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
-      - ./grafana/provisioning/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning/dashboards:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     expose:
@@ -201,7 +195,6 @@ volumes:
   nats_data:
   clickhouse_data:
   grafana_data:
-  jaeger_data:
 
 networks:
   edium:
