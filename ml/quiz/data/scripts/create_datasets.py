@@ -6,7 +6,7 @@ import time
 
 import requests
 
-API_KEY = "sk-53e4e46d7ed74570902475d80670e3f8"
+API_KEY = ""
 URL = "https://api.deepseek.com/v1/chat/completions"
 
 CACHE_FILE = "cache.json"
