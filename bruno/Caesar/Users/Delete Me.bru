@@ -1,0 +1,15 @@
+meta {
+  name: Delete Me
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/caesar/v1/users/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

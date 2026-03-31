@@ -1,0 +1,15 @@
+meta {
+  name: Accept Invitation
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/caesar/v1/invitations/{{invitationId}}/accept
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

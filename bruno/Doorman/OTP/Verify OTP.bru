@@ -1,0 +1,31 @@
+meta {
+  name: Verify OTP
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/doorman/v1/otp/verify
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "phone": "+79776002210",
+    "otp": 123456
+  }
+}
+
+tests {
+  const body = res.getBody();
+
+  if (body.access_token) {
+    bru.setEnvVar("accessToken", body.access_token);
+    bru.setEnvVar("refreshToken", body.refresh_token);
+  }
+
+  if (body.registration_token) {
+    bru.setEnvVar("registrationToken", body.registration_token);
+  }
+}
