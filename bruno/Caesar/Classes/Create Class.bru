@@ -1,0 +1,28 @@
+meta {
+  name: Create Class
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/caesar/v1/classes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "title": "10А — Математика"
+  }
+}
+
+tests {
+  const body = res.getBody();
+  if (body.id) {
+    bru.setEnvVar("classId", body.id);
+  }
+}

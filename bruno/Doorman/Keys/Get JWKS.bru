@@ -1,0 +1,11 @@
+meta {
+  name: Get JWKS
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/doorman/.well-known/jwks.json
+  body: none
+  auth: none
+}

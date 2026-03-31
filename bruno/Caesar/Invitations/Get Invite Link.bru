@@ -1,0 +1,19 @@
+meta {
+  name: Get Invite Link
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/caesar/v1/classes/{{classId}}/invite
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+query {
+  role: student
+}

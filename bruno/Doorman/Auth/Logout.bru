@@ -1,0 +1,17 @@
+meta {
+  name: Logout
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/doorman/v1/auth/logout
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refresh_token": "{{refreshToken}}"
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Get Course Sheet
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/caesar/v1/courses/{{courseId}}/sheet
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
