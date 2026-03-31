@@ -1,0 +1,22 @@
+meta {
+  name: Update Me
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{baseUrl}}/caesar/v1/users/me
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Иван",
+    "surname": "Иванов"
+  }
+}

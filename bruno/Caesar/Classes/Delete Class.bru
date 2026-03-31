@@ -1,0 +1,15 @@
+meta {
+  name: Delete Class
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/caesar/v1/classes/{{classId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
