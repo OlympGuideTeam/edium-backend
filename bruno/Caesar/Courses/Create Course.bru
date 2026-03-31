@@ -1,0 +1,29 @@
+meta {
+  name: Create Course
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/caesar/v1/courses
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "title": "Алгебра 10 класс",
+    "class_id": "{{classId}}"
+  }
+}
+
+tests {
+  const body = res.getBody();
+  if (body.id) {
+    bru.setEnvVar("courseId", body.id);
+  }
+}

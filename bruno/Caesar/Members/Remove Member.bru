@@ -1,0 +1,15 @@
+meta {
+  name: Remove Member
+  type: http
+  seq: 2
+}
+
+delete {
+  url: {{baseUrl}}/caesar/v1/classes/{{classId}}/members/{{userId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

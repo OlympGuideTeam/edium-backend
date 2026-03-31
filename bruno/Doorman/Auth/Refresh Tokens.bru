@@ -1,0 +1,23 @@
+meta {
+  name: Refresh Tokens
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/doorman/v1/auth/refresh
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "refresh_token": "{{refreshToken}}"
+  }
+}
+
+tests {
+  const body = res.getBody();
+  bru.setEnvVar("accessToken", body.access_token);
+  bru.setEnvVar("refreshToken", body.refresh_token);
+}

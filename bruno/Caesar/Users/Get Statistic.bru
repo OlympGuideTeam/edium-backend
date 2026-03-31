@@ -1,0 +1,15 @@
+meta {
+  name: Get Statistic
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/caesar/v1/users/me/statistic
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
