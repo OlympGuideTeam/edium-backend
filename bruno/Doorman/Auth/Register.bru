@@ -1,0 +1,29 @@
+meta {
+  name: Register
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/doorman/v1/auth/register
+  body: json
+  auth: none
+}
+
+headers {
+  X-Reg-Token: {{registrationToken}}
+}
+
+body:json {
+  {
+    "phone": "+79776002210",
+    "name": "Иван",
+    "surname": "Иванов"
+  }
+}
+
+tests {
+  const body = res.getBody();
+  bru.setEnvVar("accessToken", body.access_token);
+  bru.setEnvVar("refreshToken", body.refresh_token);
+}

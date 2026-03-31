@@ -1,0 +1,15 @@
+meta {
+  name: Get Element
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/caesar/v1/elements/{{elementId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

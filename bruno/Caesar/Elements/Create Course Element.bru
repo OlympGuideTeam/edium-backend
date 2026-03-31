@@ -1,0 +1,30 @@
+meta {
+  name: Create Course Element
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/caesar/v1/courses/{{courseId}}/elements
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "quiz_id": "d4e5f6a7",
+    "module_id": null,
+    "order": 1
+  }
+}
+
+tests {
+  const body = res.getBody();
+  if (body.id) {
+    bru.setEnvVar("elementId", body.id);
+  }
+}

@@ -1,0 +1,19 @@
+meta {
+  name: Get My Classes
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/caesar/v1/classes/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+query {
+  ~role: teacher
+}
