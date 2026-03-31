@@ -1,0 +1,21 @@
+meta {
+  name: Update Class
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/caesar/v1/classes/{{classId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "title": "10Б — Физика"
+  }
+}

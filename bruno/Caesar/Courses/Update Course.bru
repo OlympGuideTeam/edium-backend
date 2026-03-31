@@ -1,0 +1,21 @@
+meta {
+  name: Update Course
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/caesar/v1/courses/{{courseId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "title": "Геометрия 10 класс"
+  }
+}

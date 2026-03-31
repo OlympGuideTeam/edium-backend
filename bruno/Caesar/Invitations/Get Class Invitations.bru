@@ -1,0 +1,15 @@
+meta {
+  name: Get Class Invitations
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/caesar/v1/classes/{{classId}}/invitations
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

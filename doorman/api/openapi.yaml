@@ -1,0 +1,400 @@
+openapi: "3.0.3"
+info:
+  title: Edium Doorman
+  description: Аутентификация и авторизация — OTP по телефону, JWT-токены, регистрация
+  version: "1.0.0"
+
+servers:
+  - url: https://api.edium.online
+    description: Production
+  - url: https://test.edium.online
+    description: Staging
+
+tags:
+  - name: OTP
+    description: Отправка и проверка одноразового кода
+  - name: Auth
+    description: Регистрация, обновление и отзыв токенов
+  - name: Keys
+    description: Публичные ключи (JWKS)
+
+paths:
+  /doorman/v1/otp/send:
+    post:
+      tags: [OTP]
+      summary: Отправить одноразовый код пользователю
+      description: Отправляет OTP через выбранный канал (Telegram или VK). Повторный запрос возможен не ранее чем через 1 минуту.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendOTPRequest'
+      responses:
+        "200":
+          description: Код отправлен
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "403":
+          description: Пользователь заблокирован или удалён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: PHONE_UNAVAILABLE
+                description: Пользователь с таким номером заблокирован или удалён
+        "429":
+          description: Код уже был отправлен — повторите через минуту
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: OTP_ALREADY_SENT
+                description: Одноразовый код уже отправлен
+
+  /doorman/v1/otp/verify:
+    post:
+      tags: [OTP]
+      summary: Проверить одноразовый код
+      description: |
+        Проверяет OTP-код. Возвращает один из двух вариантов:
+        - `auth_tokens` — если пользователь уже зарегистрирован
+        - `registration_token` — если пользователь новый, нужна регистрация
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyOTPRequest'
+      responses:
+        "200":
+          description: Код верный
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/AuthTokensResponse'
+                  - $ref: '#/components/schemas/RegistrationTokenResponse'
+              examples:
+                existingUser:
+                  summary: Пользователь существует
+                  value:
+                    access_token: eyJhbGciOiJSUzI1NiJ9...
+                    refresh_token: eyJhbGciOiJSUzI1NiJ9...
+                    expires_in: 900
+                newUser:
+                  summary: Пользователь новый
+                  value:
+                    registration_token: eyJhbGciOiJSUzI1NiJ9...
+        "400":
+          description: Неверный или истёкший код
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: OTP_NOT_FOUND_OR_EXPIRED
+                    description: Код не найден или истёк
+                invalid:
+                  value:
+                    error: OTP_INVALID
+                    description: Неверный код
+        "403":
+          description: Пользователь заблокирован или удалён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: PHONE_UNAVAILABLE
+                description: Пользователь с таким номером заблокирован или удалён
+        "429":
+          description: Превышено количество попыток
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: OTP_ATTEMPTS_EXCEEDED
+                description: Слишком много неверных попыток
+
+  /doorman/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Зарегистрировать нового пользователя
+      description: Создаёт пользователя и возвращает токены. Требует `registration_token` из `/otp/verify`.
+      parameters:
+        - name: X-Reg-Token
+          in: header
+          required: true
+          description: Токен регистрации, полученный из `/otp/verify`
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        "200":
+          description: Пользователь зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokensResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          description: Отсутствует, неверный или истёкший registration token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing:
+                  value:
+                    error: MISSING_REG_TOKEN
+                    description: Отсутствует токен регистрации
+                invalid:
+                  value:
+                    error: REGISTRATION_TOKEN_INVALID
+                    description: Неверный токен регистрации
+                expired:
+                  value:
+                    error: REGISTRATION_TOKEN_EXPIRED
+                    description: Токен регистрации истёк
+
+  /doorman/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Обновить пару токенов
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        "200":
+          description: Выдана новая пара токенов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokensResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          description: Неверный или истёкший refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid:
+                  value:
+                    error: REFRESH_TOKEN_INVALID
+                    description: Неверный refresh token
+                expired:
+                  value:
+                    error: REFRESH_TOKEN_EXPIRED
+                    description: Refresh token истёк
+
+  /doorman/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Выйти из аккаунта
+      description: Отзывает refresh token. После этого пара токенов становится недействительной.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        "204":
+          description: Успешный выход
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          description: Неверный или истёкший refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid:
+                  value:
+                    error: REFRESH_TOKEN_INVALID
+                    description: Неверный refresh token
+                expired:
+                  value:
+                    error: REFRESH_TOKEN_EXPIRED
+                    description: Refresh token истёк
+
+  /doorman/.well-known/jwks.json:
+    get:
+      tags: [Keys]
+      summary: Получить набор публичных ключей (JWKS)
+      description: Возвращает публичные RSA-ключи для верификации JWT. Ответ кешируется на 1 час.
+      responses:
+        "200":
+          description: JWKS-документ
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: public, max-age=3600
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JWKSResponse'
+
+components:
+  schemas:
+    SendOTPRequest:
+      type: object
+      required: [phone, channel]
+      properties:
+        phone:
+          type: string
+          description: Номер телефона в формате E.164, только +7
+          pattern: '^\+7\d{10}$'
+          example: "+79776002210"
+        channel:
+          type: string
+          description: Канал доставки кода
+          enum: [tg, vk]
+          example: tg
+
+    VerifyOTPRequest:
+      type: object
+      required: [phone, otp]
+      properties:
+        phone:
+          type: string
+          description: Номер телефона в формате E.164, только +7
+          pattern: '^\+7\d{10}$'
+          example: "+79776002210"
+        otp:
+          type: integer
+          description: 6-значный одноразовый код
+          minimum: 0
+          maximum: 999999
+          example: 123456
+
+    RegisterRequest:
+      type: object
+      required: [phone, name, surname]
+      properties:
+        phone:
+          type: string
+          description: Номер телефона в формате E.164, только +7
+          pattern: '^\+7\d{10}$'
+          example: "+79776002210"
+        name:
+          type: string
+          example: Иван
+        surname:
+          type: string
+          example: Иванов
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+          description: Refresh token, полученный при входе или регистрации
+
+    LogoutRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+          description: Refresh token для отзыва
+
+    AuthTokensResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token (RS256)
+        refresh_token:
+          type: string
+          description: JWT refresh token
+        expires_in:
+          type: integer
+          description: Время жизни access token в секундах
+          example: 900
+
+    RegistrationTokenResponse:
+      type: object
+      properties:
+        registration_token:
+          type: string
+          description: Временный токен для завершения регистрации (передаётся в X-Reg-Token)
+
+    JWKSResponse:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/JWK'
+
+    JWK:
+      type: object
+      required: [kty, kid, use, alg, n, e]
+      properties:
+        kty:
+          type: string
+          example: RSA
+        kid:
+          type: string
+          example: key-1
+        use:
+          type: string
+          example: sig
+        alg:
+          type: string
+          example: RS256
+        n:
+          type: string
+          description: Модуль ключа (base64url)
+        e:
+          type: string
+          description: Экспонента ключа (base64url)
+          example: AQAB
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Машиночитаемый код ошибки
+          example: OTP_ALREADY_SENT
+        description:
+          type: string
+          description: Человекочитаемое описание ошибки
+          example: Одноразовый код уже отправлен
+        details:
+          type: object
+          description: Дополнительные детали (например, поля с ошибками валидации)
+
+  responses:
+    BadRequest:
+      description: Ошибка валидации запроса
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: VALIDATION_ERROR
+            description: Некорректные параметры запроса
