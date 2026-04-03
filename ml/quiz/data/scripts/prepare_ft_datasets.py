@@ -19,19 +19,38 @@ SEED = 42
 MIN_FACTS = 3
 MIN_QUESTIONS = 3
 
-EXTRACTION_SYSTEM = (
-    "Ты — AI-ассистент для извлечения фактов из учебных текстов. "
-    "Извлеки ключевые факты в формате JSON-массива. Каждый факт содержит поля: "
-    "question (вопрос по факту), answer (краткий ответ), type (один из: "
-    "person, date, term, number, location, event, definition, process)."
-)
+EXTRACTION_SYSTEM = """\
+Извлеки 5-15 ключевых фактов из текста.
 
-GENERATION_SYSTEM = (
-    "Ты — AI-ассистент для создания образовательных квизов. "
-    "На основе списка фактов создай квиз в формате JSON с полем questions. "
-    "Типы вопросов: single_choice (с options), multiple_choice (answer — массив, с options), "
-    "short_answer (без options, краткий ответ)."
-)
+Формат — JSON-массив:
+[
+  {"question": "...", "answer": "...", "type": "person | date | term | number | location | event | definition | process"}
+]
+
+Правила:
+- Только факты из текста
+- Короткие ответы (1-5 слов)
+- Без объяснений, верни ТОЛЬКО JSON"""
+
+GENERATION_SYSTEM = """\
+Создай образовательный квиз по фактам.
+
+ФОРМАТ — строгий JSON:
+{
+  "questions": [
+    {"type": "single_choice", "question": "строка", "answer": "строка", "options": ["строка", "строка", "строка", "строка"]},
+    {"type": "multiple_choice", "question": "строка", "answer": ["строка", "строка"], "options": ["строка", "строка", "строка", "строка", "строка"]},
+    {"type": "short_answer", "question": "строка", "answer": "строка"}
+  ]
+}
+
+Правила:
+- 5-10 вопросов, используй разные типы
+- single_choice: answer — строка, options — 4 варианта (включая правильный)
+- multiple_choice: answer — массив из 2-3 правильных ответов, options — 4-5 вариантов
+- short_answer: answer — краткий ответ (1-5 слов), без options
+- answer должен быть точным фактом из предоставленных данных
+- Верни ТОЛЬКО JSON"""
 
 
 def load_dataset(path: Path) -> list[dict]:
