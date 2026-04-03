@@ -557,8 +557,8 @@ def process_file(input_path, dataset_out, lora_out, start=0):
 
 if __name__ == "__main__":
     process_file(
-        input_path="texts.jsonl",
-        dataset_out="dataset.jsonl",
-        lora_out="lora_dataset.jsonl",
+        input_path="../foxford_data/texts.jsonl",
+        dataset_out="../foxford_data/dataset.jsonl",
+        lora_out="../foxford_data/lora_dataset.jsonl",
         start=0,  # можно менять для продолжения
     )
