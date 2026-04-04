@@ -9,4 +9,6 @@ import (
 
 type userService interface {
 	GetMe(ctx context.Context, userID uuid.UUID) (*domain.User, error)
+	UpdateMe(ctx context.Context, userID uuid.UUID, name, surname *string) error
+	DeleteMe(ctx context.Context, userID uuid.UUID) error
 }
