@@ -21,8 +21,6 @@ func NewHandler(service classService) *Handler {
 	return &Handler{service: service}
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 func userIDFromCtx(c *gin.Context) (uuid.UUID, bool) {
 	id, ok := middleware.UserIDFromContext(c.Request.Context())
 	if !ok {
@@ -39,8 +37,6 @@ func parseClassID(c *gin.Context) (uuid.UUID, bool) {
 	}
 	return id, true
 }
-
-// ─── Classes ──────────────────────────────────────────────────────────────────
 
 func (h *Handler) GetMyClasses(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
@@ -179,33 +175,6 @@ func (h *Handler) DeleteClass(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteClass(c.Request.Context(), classID, userID); err != nil {
-		httpx.WriteError(c, err)
-		return
-	}
-
-	c.Status(http.StatusNoContent)
-}
-
-// ─── Members ──────────────────────────────────────────────────────────────────
-
-func (h *Handler) RemoveMember(c *gin.Context) {
-	userID, ok := userIDFromCtx(c)
-	if !ok {
-		return
-	}
-
-	classID, ok := parseClassID(c)
-	if !ok {
-		return
-	}
-
-	targetUserID, err := uuid.Parse(c.Param("userId"))
-	if err != nil {
-		httpx.WriteError(c, apperr.ErrBadID)
-		return
-	}
-
-	if err := h.service.RemoveMember(c.Request.Context(), classID, userID, targetUserID); err != nil {
 		httpx.WriteError(c, err)
 		return
 	}

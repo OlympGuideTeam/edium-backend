@@ -100,6 +100,8 @@ func (a *App) Router(serviceName string) *gin.Engine {
 	api.PATCH("/classes/:classId", a.ClassHandler.UpdateClass)
 	api.DELETE("/classes/:classId", a.ClassHandler.DeleteClass)
 	api.DELETE("/classes/:classId/members/:userId", a.ClassHandler.RemoveMember)
+	api.GET("/classes/:classId/invite", a.ClassHandler.GetInviteLink)
+	api.POST("/invitations/:invitationId/accept", a.ClassHandler.AcceptInvitation)
 
 	return r
 }
