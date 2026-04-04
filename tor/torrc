@@ -1,0 +1,14 @@
+Log notice stdout
+SOCKSPort 0.0.0.0:9050
+DataDirectory /var/lib/tor
+
+UseBridges 1
+ClientTransportPlugin snowflake exec /usr/bin/snowflake-client \
+  -ampcache https://cdn.ampproject.org/ \
+  -url https://snowflake-broker.torproject.net/ \
+  -front www.google.com \
+  -ice stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.voipgate.com:3478 \
+  -max 3 \
+  -log /dev/stderr
+
+Bridge snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72
