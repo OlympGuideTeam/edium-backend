@@ -295,31 +295,6 @@ paths:
 
   # ─── Курсы ─────────────────────────────────────────────────────────
 
-  /caesar/v1/courses/me:
-    get:
-      summary: Получить курсы текущего пользователя
-      operationId: getMyCourses
-      tags: [Courses]
-      parameters:
-        - name: role
-          in: query
-          required: false
-          description: Фильтр по роли (teacher/student)
-          schema:
-            type: string
-            enum: [teacher, student]
-      responses:
-        "200":
-          description: Список курсов
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CourseListResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
   /caesar/v1/courses:
     post:
       summary: Создать курс
