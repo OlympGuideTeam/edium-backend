@@ -1,0 +1,66 @@
+services:
+  sphinx:
+    image: cr.yandex/${ML_REGISTRY_ID}/edium-sphinx:${IMAGE_TAG:-latest}
+    restart: on-failure
+    environment:
+      GRPC_PORT: "50051"
+      MODEL_ID: ${MODEL_ID:-mistralai/Mistral-7B-Instruct-v0.3}
+      EXTRACTION_ADAPTER: ${EXTRACTION_ADAPTER:-edium/sphinx-extraction-lora}
+      GENERATION_ADAPTER: ${GENERATION_ADAPTER:-edium/sphinx-generation-lora}
+      HF_TOKEN: ${HF_TOKEN}
+      API_KEY: ${SPHINX_API_KEY}
+      MAX_NEW_TOKENS: ${MAX_NEW_TOKENS:-2048}
+      TEMPERATURE: ${TEMPERATURE:-0.3}
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          memory: 14g
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import grpc; ch = grpc.insecure_channel('localhost:50051'); grpc.channel_ready_future(ch).result(timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal
+
+  # TLS-терминация для gRPC — Caddy с h2c reverse proxy
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      sphinx:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - internal
+
+volumes:
+  hf_cache:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
