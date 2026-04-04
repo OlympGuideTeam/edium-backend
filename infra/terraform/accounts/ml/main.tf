@@ -1,5 +1,5 @@
 # ============================================================
-# Edium ML — Account 1: ML VM
+# Edium ML — отдельный YC аккаунт: GPU VM + Container Registry
 # ============================================================
 
 module "vpc" {
@@ -15,12 +15,27 @@ module "vpc" {
   ssh_allowed_cidrs = var.ssh_allowed_cidrs
 }
 
-module "vm_ml" {
+# --- Container Registry ---
+
+module "registry" {
+  source = "../../modules/container-registry"
+
+  registry_name = "edium-ml"
+  folder_id     = var.folder_id
+}
+
+# --- GPU VM (прерываемая Tesla T4) ---
+
+module "vm_gpu" {
   source = "../../modules/compute"
 
-  name               = "edium-ml"
-  cores              = 8
+  name               = "edium-sphinx"
+  platform_id        = "gpu-standard-v2"
+  cores              = 4
   memory             = 16
+  gpus               = 1
+  gpu_cloud_init     = true
+  preemptible        = true
   disk_size          = 100
   disk_type          = "network-ssd"
   subnet_id          = module.vpc.subnet_ids["edium-ml"]

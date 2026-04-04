@@ -20,6 +20,10 @@ repos:
         files: ^doorman/
         entry: bash -c 'cd doorman && golangci-lint run'
       - id: golangci-lint
+        name: golangci-lint (caesar)
+        files: ^caesar/
+        entry: bash -c 'cd caesar && golangci-lint run'
+      - id: golangci-lint
         name: golangci-lint (herald)
         files: ^herald/
         entry: bash -c 'cd herald && golangci-lint run'
