@@ -416,6 +416,88 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  # ─── Модули курса ─────────────────────────────────────────────────
+
+  /caesar/v1/courses/{courseId}/modules:
+    post:
+      summary: Создать модуль в курсе
+      operationId: createModule
+      tags: [Courses]
+      parameters:
+        - $ref: "#/components/parameters/CourseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateModuleRequest"
+      responses:
+        "200":
+          description: Модуль создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateModuleResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /caesar/v1/modules/{moduleId}:
+    patch:
+      summary: Обновить модуль
+      operationId: updateModule
+      tags: [Courses]
+      parameters:
+        - $ref: "#/components/parameters/ModuleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateModuleRequest"
+      responses:
+        "204":
+          description: Успешно обновлено
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Удалить модуль
+      operationId: deleteModule
+      tags: [Courses]
+      parameters:
+        - $ref: "#/components/parameters/ModuleId"
+      responses:
+        "204":
+          description: Модуль удалён
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # ─── Элементы контроля ─────────────────────────────────────────────
 
   /caesar/v1/courses/{courseId}/elements:
@@ -563,14 +645,24 @@ components:
       required: true
       schema:
         type: string
-        example: "b2c3d4e5"
+        format: uuid
+        example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    ModuleId:
+      name: moduleId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
     ElementId:
       name: elementId
       in: path
       required: true
       schema:
         type: string
-        example: "c3d4e5f6"
+        format: uuid
+        example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
   schemas:
 
@@ -749,11 +841,12 @@ components:
     # Courses
     CourseSummary:
       type: object
-      required: [id, title, teacher_name, module_count, quiz_count, is_teacher]
+      required: [id, title, teacher_name, module_count, element_count, is_teacher]
       properties:
         id:
           type: string
-          example: "b2c3d4e5"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         title:
           type: string
           example: "Алгебра 10 класс"
@@ -763,7 +856,7 @@ components:
         module_count:
           type: integer
           example: 4
-        quiz_count:
+        element_count:
           type: integer
           example: 12
         is_teacher:
@@ -787,7 +880,8 @@ components:
           example: "Алгебра 10 класс"
         class_id:
           type: string
-          example: "a1b2c3d4"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
     CreateCourseResponse:
       type: object
@@ -795,7 +889,8 @@ components:
       properties:
         id:
           type: string
-          example: "b2c3d4e5"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
     UpdateCourseRequest:
       type: object
@@ -806,14 +901,26 @@ components:
 
     CourseDetail:
       type: object
-      required: [id, title, modules]
+      required: [id, title, teacher_name, module_count, element_count, is_teacher, modules]
       properties:
         id:
           type: string
-          example: "b2c3d4e5"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         title:
           type: string
           example: "Алгебра 10 класс"
+        teacher_name:
+          type: string
+          example: "Пётр Сидоров"
+        module_count:
+          type: integer
+          example: 3
+        element_count:
+          type: integer
+          example: 12
+        is_teacher:
+          type: boolean
         modules:
           type: array
           items:
@@ -821,18 +928,43 @@ components:
 
     ModuleItem:
       type: object
-      required: [id, title, quizes]
+      required: [id, title, element_count]
       properties:
         id:
           type: string
-          example: "c3d4e5f6"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         title:
           type: string
           example: "Модуль 1: Функции"
-        quizes:
-          type: array
-          items:
-            $ref: "#/components/schemas/QuizShort"
+        element_count:
+          type: integer
+          example: 4
+
+    CreateModuleRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          example: "Модуль 1: Функции"
+
+    CreateModuleResponse:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+    UpdateModuleRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          example: "Модуль 2: Уравнения"
 
     QuizShort:
       type: object
