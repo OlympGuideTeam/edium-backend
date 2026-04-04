@@ -7,6 +7,7 @@ import (
 
 	"caesar/internal/config"
 	classhandler "caesar/internal/handler/class"
+	coursehandler "caesar/internal/handler/course"
 	userhandler "caesar/internal/handler/user"
 	"caesar/internal/infra/db"
 	"caesar/internal/infra/jwks"
@@ -14,6 +15,7 @@ import (
 	"caesar/internal/middleware"
 	"caesar/internal/repository"
 	classsvc "caesar/internal/service/class"
+	coursesvc "caesar/internal/service/course"
 	usersvc "caesar/internal/service/user"
 	"caesar/internal/worker"
 
@@ -22,8 +24,9 @@ import (
 )
 
 type App struct {
-	UserHandler  *userhandler.Handler
-	ClassHandler *classhandler.Handler
+	UserHandler   *userhandler.Handler
+	ClassHandler  *classhandler.Handler
+	CourseHandler *coursehandler.Handler
 
 	UserCreatedConsumer  *worker.UserCreatedConsumer
 	UserCreatedProcessor *worker.UserCreatedProcessor
@@ -62,11 +65,16 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	classService := classsvc.NewService(classStore)
 	classHandler := classhandler.NewHandler(classService)
 
+	courseStore := repository.NewPgCourseStore(pgdb)
+	courseService := coursesvc.NewService(courseStore, classStore)
+	courseHandler := coursehandler.NewHandler(courseService)
+
 	natsSubscriber := natsinf.NewSubscriber(natsConn)
 
 	return &App{
 		UserHandler:          userHandler,
 		ClassHandler:         classHandler,
+		CourseHandler:        courseHandler,
 		UserCreatedConsumer:  worker.NewUserCreatedConsumer(natsSubscriber, taskRepo),
 		UserCreatedProcessor: worker.NewUserCreatedProcessor(taskRepo, userStore),
 		UserDeletedPublisher: worker.NewUserDeletedPublisher(taskRepo, publisher),
@@ -102,6 +110,15 @@ func (a *App) Router(serviceName string) *gin.Engine {
 	api.DELETE("/classes/:classId/members/:userId", a.ClassHandler.RemoveMember)
 	api.GET("/classes/:classId/invite", a.ClassHandler.GetInviteLink)
 	api.POST("/invitations/:invitationId/accept", a.ClassHandler.AcceptInvitation)
+
+	api.POST("/courses", a.CourseHandler.CreateCourse)
+	api.GET("/courses/:courseId", a.CourseHandler.GetCourse)
+	api.PATCH("/courses/:courseId", a.CourseHandler.UpdateCourse)
+	api.DELETE("/courses/:courseId", a.CourseHandler.DeleteCourse)
+	api.GET("/classes/:classId/courses", a.CourseHandler.GetClassCourses)
+	api.POST("/courses/:courseId/modules", a.CourseHandler.CreateModule)
+	api.PATCH("/modules/:moduleId", a.CourseHandler.UpdateModule)
+	api.DELETE("/modules/:moduleId", a.CourseHandler.DeleteModule)
 
 	return r
 }

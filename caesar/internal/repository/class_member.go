@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"caesar/internal/domain"
 	"caesar/internal/infra/db"
@@ -70,4 +72,31 @@ func (s *PgClassStore) IsMember(ctx context.Context, classID, userID uuid.UUID) 
 		classID, userID,
 	).Scan(&exists)
 	return exists, err
+}
+
+// GetMemberRole возвращает роль пользователя в классе.
+// Если пользователь является владельцем класса — возвращает ClassMemberRoleOwner.
+// Второй возвращаемый параметр false означает, что пользователь не является участником.
+func (s *PgClassStore) GetMemberRole(ctx context.Context, classID, userID uuid.UUID) (domain.ClassMemberRole, bool, error) {
+	var isOwner bool
+	var role sql.NullString
+	err := s.db.QueryRowContext(ctx, `
+		SELECT c.owner_id = $2, cm.role
+		FROM class c
+		LEFT JOIN class_member cm ON cm.class_id = c.id AND cm.user_id = $2
+		WHERE c.id = $1
+	`, classID, userID).Scan(&isOwner, &role)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	if isOwner {
+		return domain.ClassMemberRoleOwner, true, nil
+	}
+	if role.Valid {
+		return domain.ClassMemberRole(role.String), true, nil
+	}
+	return "", false, nil
 }
