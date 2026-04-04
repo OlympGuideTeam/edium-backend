@@ -18,4 +18,8 @@ type classStore interface {
 	AddMember(ctx context.Context, classID, userID uuid.UUID, role domain.ClassMemberRole) error
 	GetMembersForDetail(ctx context.Context, classID uuid.UUID) ([]domain.ClassMember, error)
 	RemoveMember(ctx context.Context, classID, userID uuid.UUID) error
+	IsMember(ctx context.Context, classID, userID uuid.UUID) (bool, error)
+
+	UpsertInvitation(ctx context.Context, classID uuid.UUID, role domain.ClassMemberRole) (uuid.UUID, error)
+	GetInvitation(ctx context.Context, invitationID uuid.UUID) (*domain.ClassInvitation, error)
 }
