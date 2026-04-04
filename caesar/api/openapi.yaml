@@ -95,8 +95,8 @@ paths:
       parameters:
         - name: role
           in: query
-          required: false
-          description: Фильтр по роли пользователя в классе
+          required: true
+          description: Роль пользователя в классе
           schema:
             type: string
             enum: [teacher, student]
@@ -288,35 +288,6 @@ paths:
 
   # ─── Участники класса ──────────────────────────────────────────────
 
-  /caesar/v1/classes/{classId}/members:
-    get:
-      summary: Получить список участников класса
-      operationId: getClassMembers
-      tags: [Members]
-      parameters:
-        - $ref: "#/components/parameters/ClassId"
-        - name: role
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [teacher, student]
-      responses:
-        "200":
-          description: Список участников
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MembersListResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
   /caesar/v1/classes/{classId}/members/{userId}:
     delete:
       summary: Исключить участника из класса
@@ -329,7 +300,8 @@ paths:
           required: true
           schema:
             type: string
-            example: "a1b2c3d4"
+            format: uuid
+            example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
       responses:
         "204":
           description: Участник исключён
@@ -629,7 +601,8 @@ components:
       required: true
       schema:
         type: string
-        example: "a1b2c3d4"
+        format: uuid
+        example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
     CourseId:
       name: courseId
       in: path
@@ -654,7 +627,8 @@ components:
       properties:
         id:
           type: string
-          example: "a1b2c3d4"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         name:
           type: string
           example: "Иван"
@@ -715,7 +689,8 @@ components:
       properties:
         id:
           type: string
-          example: "a1b2c3d4"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         title:
           type: string
           example: "10А — Математика"
@@ -753,7 +728,8 @@ components:
       properties:
         id:
           type: string
-          example: "a1b2c3d4"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
     UpdateClassRequest:
       type: object
@@ -764,11 +740,12 @@ components:
 
     ClassDetail:
       type: object
-      required: [id, title, owner_name, is_owner, students, courses, teachers]
+      required: [id, title, owner_name, is_owner, teachers, students]
       properties:
         id:
           type: string
-          example: "a1b2c3d4"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         title:
           type: string
           example: "10А — Математика"
@@ -792,15 +769,18 @@ components:
 
     MemberShort:
       type: object
-      required: [id, name]
+      required: [id, name, surname]
       properties:
         id:
           type: string
-          example: "a1b2c3d4"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         name:
           type: string
-          description: "Имя Фамилия"
-          example: "Мария Кузнецова"
+          example: "Мария"
+        surname:
+          type: string
+          example: "Кузнецова"
 
     # Invitations
     InviteLinkResponse:
@@ -839,30 +819,6 @@ components:
           type: string
           format: date-time
           example: "2026-04-05T12:00:00Z"
-
-    # Members
-    MembersListResponse:
-      type: object
-      required: [members]
-      properties:
-        members:
-          type: array
-          items:
-            $ref: "#/components/schemas/MemberItem"
-
-    MemberItem:
-      type: object
-      required: [id, name, role]
-      properties:
-        id:
-          type: string
-          example: "a1b2c3d4"
-        name:
-          type: string
-          example: "Мария Кузнецова"
-        role:
-          type: string
-          enum: [teacher, student, owner]
 
     # Courses
     CourseSummary:
@@ -1161,8 +1117,6 @@ tags:
     description: Управление классами
   - name: Invitations
     description: Приглашения в класс
-  - name: Members
-    description: Участники класса
   - name: Courses
     description: Курсы внутри классов
   - name: Elements
