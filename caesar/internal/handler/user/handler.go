@@ -1,11 +1,12 @@
 package user
 
 import (
+	"net/http"
+
 	"caesar/internal/middleware"
 	"caesar/internal/pkg/apperr"
 	"caesar/internal/pkg/httpx"
 	"caesar/internal/transport/dto"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,7 +22,7 @@ func NewHandler(service userService) *Handler {
 func (h *Handler) GetMe(c *gin.Context) {
 	userID, ok := middleware.UserIDFromContext(c.Request.Context())
 	if !ok {
-		httpx.WriteError(c, apperr.New("UNAUTHORIZED", "Требуется авторизация", 401))
+		httpx.WriteError(c, apperr.ErrUnauthorized)
 		return
 	}
 
@@ -41,18 +42,18 @@ func (h *Handler) GetMe(c *gin.Context) {
 func (h *Handler) UpdateMe(c *gin.Context) {
 	userID, ok := middleware.UserIDFromContext(c.Request.Context())
 	if !ok {
-		httpx.WriteError(c, apperr.New("UNAUTHORIZED", "Требуется авторизация", 401))
+		httpx.WriteError(c, apperr.ErrUnauthorized)
 		return
 	}
 
 	var req dto.UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		httpx.WriteError(c, apperr.New("BAD_REQUEST", "Некорректный запрос", 400))
+		httpx.WriteError(c, apperr.ErrBadRequest)
 		return
 	}
 
 	if req.Name == nil && req.Surname == nil {
-		httpx.WriteError(c, apperr.New("BAD_REQUEST", "Необходимо указать хотя бы одно поле", 400))
+		httpx.WriteError(c, apperr.ErrBadRequest)
 		return
 	}
 
@@ -67,7 +68,7 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 func (h *Handler) DeleteMe(c *gin.Context) {
 	userID, ok := middleware.UserIDFromContext(c.Request.Context())
 	if !ok {
-		httpx.WriteError(c, apperr.New("UNAUTHORIZED", "Требуется авторизация", 401))
+		httpx.WriteError(c, apperr.ErrUnauthorized)
 		return
 	}
 
