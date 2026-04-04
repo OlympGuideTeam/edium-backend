@@ -17,8 +17,6 @@ func NewService(classes classStore) *Service {
 	return &Service{classes: classes}
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 func (s *Service) getClass(ctx context.Context, classID uuid.UUID) (*domain.ClassListItem, error) {
 	c, err := s.classes.GetByID(ctx, classID)
 	if err != nil {
@@ -36,8 +34,6 @@ func (s *Service) requireOwner(c *domain.ClassListItem, userID uuid.UUID) error 
 	}
 	return nil
 }
-
-// ─── Classes ──────────────────────────────────────────────────────────────────
 
 func (s *Service) GetMyClasses(ctx context.Context, userID uuid.UUID, role domain.ClassMemberRole) ([]domain.ClassListItem, error) {
 	classes, err := s.classes.ListByUserID(ctx, userID, role)
@@ -63,12 +59,10 @@ func (s *Service) GetClass(ctx context.Context, classID, userID uuid.UUID) (*dom
 	if err != nil {
 		return nil, err
 	}
-
 	members, err := s.classes.GetMembersForDetail(ctx, classID)
 	if err != nil {
 		return nil, fmt.Errorf("getMembersForDetail: %w", err)
 	}
-
 	detail := &domain.ClassDetail{
 		Class:     c.Class,
 		OwnerName: c.OwnerName,
@@ -112,25 +106,6 @@ func (s *Service) DeleteClass(ctx context.Context, classID, userID uuid.UUID) er
 	}
 	if err := s.classes.Delete(ctx, classID); err != nil {
 		return fmt.Errorf("delete: %w", err)
-	}
-	return nil
-}
-
-// ─── Members ──────────────────────────────────────────────────────────────────
-
-func (s *Service) RemoveMember(ctx context.Context, classID, userID, targetUserID uuid.UUID) error {
-	c, err := s.getClass(ctx, classID)
-	if err != nil {
-		return err
-	}
-	if err := s.requireOwner(c, userID); err != nil {
-		return err
-	}
-	if targetUserID == c.OwnerID {
-		return ErrRemoveOwner
-	}
-	if err := s.classes.RemoveMember(ctx, classID, targetUserID); err != nil {
-		return err
 	}
 	return nil
 }

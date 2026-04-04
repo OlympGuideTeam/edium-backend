@@ -240,29 +240,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /caesar/v1/classes/{classId}/invitations:
-    get:
-      summary: Получить все активные приглашения класса
-      operationId: getClassInvitations
-      tags: [Invitations]
-      parameters:
-        - $ref: "#/components/parameters/ClassId"
-      responses:
-        "200":
-          description: Список приглашений
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/InvitationsListResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
   /caesar/v1/invitations/{invitationId}/accept:
     post:
       summary: Принять приглашение в класс
@@ -274,6 +251,8 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
+            example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
       responses:
         "204":
           description: Приглашение принято
@@ -785,40 +764,12 @@ components:
     # Invitations
     InviteLinkResponse:
       type: object
-      required: [link]
+      required: [invitation_id]
       properties:
-        link:
+        invitation_id:
           type: string
-          format: uri
-          example: "https://api.edium.online/caesar/v1/invitations/abc123xyz/accept"
-
-    InvitationsListResponse:
-      type: object
-      required: [invitations]
-      properties:
-        invitations:
-          type: array
-          items:
-            $ref: "#/components/schemas/InvitationItem"
-
-    InvitationItem:
-      type: object
-      required: [id, role, link, expires_at]
-      properties:
-        id:
-          type: string
-          example: "abc123xyz"
-        role:
-          type: string
-          enum: [teacher, student]
-        link:
-          type: string
-          format: uri
-          example: "https://api.edium.online/caesar/v1/invitations/abc123xyz/accept"
-        expires_at:
-          type: string
-          format: date-time
-          example: "2026-04-05T12:00:00Z"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
     # Courses
     CourseSummary:

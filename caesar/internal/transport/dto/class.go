@@ -46,3 +46,9 @@ type ClassDetailResponse struct {
 	Teachers  []MemberShort `json:"teachers"`
 	Students  []MemberShort `json:"students"`
 }
+
+// ─── Invitation ───────────────────────────────────────────────────────────────
+
+type InviteResponse struct {
+	InvitationID string `json:"invitation_id"`
+}

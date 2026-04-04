@@ -40,3 +40,9 @@ type ClassMember struct {
 	Surname string
 	Role    ClassMemberRole
 }
+
+type ClassInvitation struct {
+	ID      uuid.UUID
+	ClassID uuid.UUID
+	Role    ClassMemberRole
+}
