@@ -111,6 +111,53 @@ services:
     networks:
       - edium
 
+  charon:
+    image: cr.yandex/${YC_REGISTRY_ID}/edium-charon:${IMAGE_TAG:-latest}
+    restart: on-failure
+    environment:
+      APP_PORT: "80"
+      POSTGRES_DSN: "postgres://${CHARON_PG_USER}:${CHARON_PG_PWD}@${PG_HOST}:6432/${CHARON_PG_DB}?sslmode=require"
+      REDIS_URL: "redis://:${CHARON_REDIS_PWD}@${REDIS_HOST}:6379/1"
+      NATS_URL: "nats://nats:4222"
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      CLICKHOUSE_DSN: "clickhouse://vector:${CLICKHOUSE_PASSWORD}@clickhouse:9000/logs"
+      OTEL_ENDPOINT: "jaeger:4317"
+    depends_on:
+      charon-flyway:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - edium
+
+  charon-flyway:
+    image: flyway/flyway:12.2.0
+    restart: "no"
+    command: ["migrate"]
+    environment:
+      FLYWAY_URL: "jdbc:postgresql://${PG_HOST}:6432/${CHARON_PG_DB}?sslmode=require"
+      FLYWAY_USER: ${CHARON_PG_USER}
+      FLYWAY_PASSWORD: ${CHARON_PG_PWD}
+      FLYWAY_LOCATIONS: "filesystem:/app/migrations"
+      FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+    volumes:
+      - ./migrations/charon:/app/migrations
+    networks:
+      - edium
+
   nats:
     image: nats:2.10
     restart: unless-stopped
