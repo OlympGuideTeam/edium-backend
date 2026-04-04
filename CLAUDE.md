@@ -1,3 +1,10 @@
+@../edium-claude/claude/shared/CLAUDE.md
+@../edium-claude/claude/shared/PRODUCT_FLOWS.md
+@../edium-claude/claude/shared/api-conventions.md
+@../edium-claude/claude/shared/security-rules.md
+@../edium-claude/claude/shared/project-context.md
+@../edium-claude/claude/backend/CLAUDE.md
+
 # CLAUDE.md — Edium Backend
 
 Образовательная платформа Edium — серверная часть. Go-микросервисы + Python ML-пайплайн.
@@ -16,8 +23,7 @@ Edium — платформа для проведения квизов, конт�
 | Сервис | Ответственность |
 |--------|----------------|
 | **Doorman** | Auth: OTP по телефону, JWT (access + refresh), регистрация |
-| **Caesar** | Пользователи, классы, участники классов |
-| **Platon** | Курсы (вложены в классы), модули курсов |
+| **Caesar** | Пользователи, классы, участники классов, курсы, модули курсов |
 | **Riddler** | Квизы, сессии прохождения, результаты, real-time через WebSocket |
 | **Yoda** | Проверочные работы, сабмиты, оценки *(v2)* |
 | **Herald** | Уведомления: OTP через Telegram-бот и VK-бот, push (Firebase) *(v2)* |
@@ -41,8 +47,7 @@ Edium — платформа для проведения квизов, конт�
 ```
 edium-backend/
 ├── doorman/        # Auth: OTP, JWT
-├── caesar/         # Пользователи, классы
-├── platon/         # Курсы
+├── caesar/         # Пользователи, классы, курсы
 ├── riddler/        # Квизы + WebSocket
 ├── yoda/           # Работы (v2)
 ├── herald/         # Уведомления
@@ -208,6 +213,16 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 ```
+
+## Деплой
+
+`docker compose up -d` **не перезапускает** контейнеры, у которых изменился только смонтированный файл конфига (volume). Для таких сервисов нужен явный `docker compose restart <service>` в deploy-скрипте.
+
+Сервисы с файловым конфигом (всегда рестартовать при деплое):
+- `grafana` — provisioning datasources/dashboards (`./grafana/`)
+- `vector` — `vector.yaml`
+
+OTLP gRPC endpoint (`OTEL_ENDPOINT`) должен быть в формате `host:port` без схемы: `jaeger:4317`, **не** `http://jaeger:4317`.
 
 ## Соглашения
 
