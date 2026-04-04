@@ -1,11 +1,11 @@
 package user
 
 import (
-	"caesar/internal/domain"
-	"caesar/internal/pkg/apperr"
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"caesar/internal/domain"
 
 	"github.com/google/uuid"
 )
@@ -26,10 +26,10 @@ func (s *Service) getActiveUser(ctx context.Context, userID uuid.UUID) (*domain.
 		return nil, fmt.Errorf("GetByID: %w", err)
 	}
 	if u == nil {
-		return nil, apperr.New("USER_NOT_FOUND", "Пользователь не найден", 404)
+		return nil, ErrNotFound
 	}
 	if u.Status != domain.UserStatusActive {
-		return nil, apperr.New("FORBIDDEN", "Пользователь заблокирован или удалён", 403)
+		return nil, ErrBlockedOrDeleted
 	}
 	return u, nil
 }
