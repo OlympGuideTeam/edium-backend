@@ -72,3 +72,15 @@ variable "preemptible" {
   type        = bool
   default     = false
 }
+
+variable "gpus" {
+  description = "Количество GPU (0 = без GPU)"
+  type        = number
+  default     = 0
+}
+
+variable "gpu_cloud_init" {
+  description = "Использовать cloud-init с NVIDIA Container Toolkit"
+  type        = bool
+  default     = false
+}

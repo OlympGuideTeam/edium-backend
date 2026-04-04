@@ -70,3 +70,11 @@ variable "domain" {
   type        = string
   default     = "edium.online"
 }
+
+# --- Sphinx (ML-аккаунт) ---
+
+variable "sphinx_vm_ip" {
+  description = "Внешний IP GPU VM из ML-аккаунта (для DNS sphinx.ml.edium.online)"
+  type        = string
+  default     = ""
+}
