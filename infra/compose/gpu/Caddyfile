@@ -1,0 +1,5 @@
+# TLS-терминация для gRPC
+# Замените sphinx.ml.edium.online на ваш домен
+{$SPHINX_DOMAIN:sphinx.ml.edium.online} {
+	reverse_proxy h2c://sphinx:50051
+}
