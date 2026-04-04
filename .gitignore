@@ -60,3 +60,6 @@ infra/terraform/accounts/*/key.json
 *.key
 
 *.txt
+
+# Скомпилированный бинарь snowflake-client для Tor-прокси (собирается через make build-snowflake)
+tor/snowflake-client
