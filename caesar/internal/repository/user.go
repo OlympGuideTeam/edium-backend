@@ -45,6 +45,15 @@ func (s *PgUserStore) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, 
 	return &u, nil
 }
 
+func (s *PgUserStore) Update(ctx context.Context, id uuid.UUID, name, surname string) error {
+	exec := db.ExecutorFromContext(ctx, s.db)
+	_, err := exec.ExecContext(ctx,
+		`UPDATE "user" SET name = $1, surname = $2 WHERE id = $3`,
+		name, surname, id,
+	)
+	return err
+}
+
 func (s *PgUserStore) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.UserStatus) error {
 	exec := db.ExecutorFromContext(ctx, s.db)
 	_, err := exec.ExecContext(ctx,
