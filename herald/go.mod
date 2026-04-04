@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/SevereCloud/vksdk/v2 v2.17.0 // indirect
+	github.com/XSAM/otelsql v0.42.0 // indirect
 	github.com/caarlos0/env/v10 v10.0.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
