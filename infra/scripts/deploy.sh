@@ -33,8 +33,23 @@ scp ${SSH_OPTS} "${REPO_ROOT}/infra/compose/${ENV}/docker-compose.yml" "deploy@$
 scp ${SSH_OPTS} "${CADDYFILE}" "deploy@${VM_HOST}:${REMOTE_DIR}/Caddyfile"
 
 # Миграции
-ssh ${SSH_OPTS} "deploy@${VM_HOST}" "mkdir -p ${REMOTE_DIR}/migrations/doorman"
-scp ${SSH_OPTS} -r "${REPO_ROOT}/doorman/migrations/"* "deploy@${VM_HOST}:${REMOTE_DIR}/migrations/doorman/"
+for svc in doorman herald charon; do
+  ssh ${SSH_OPTS} "deploy@${VM_HOST}" "mkdir -p ${REMOTE_DIR}/migrations/${svc}"
+  scp ${SSH_OPTS} -r "${REPO_ROOT}/${svc}/migrations/"* "deploy@${VM_HOST}:${REMOTE_DIR}/migrations/${svc}/"
+done
+
+# ClickHouse SQL
+ssh ${SSH_OPTS} "deploy@${VM_HOST}" "mkdir -p ${REMOTE_DIR}/clickhouse"
+scp ${SSH_OPTS} "${REPO_ROOT}/infra/compose/${ENV}/clickhouse/"*.sql "deploy@${VM_HOST}:${REMOTE_DIR}/clickhouse/"
+
+# Vector
+scp ${SSH_OPTS} "${REPO_ROOT}/infra/compose/${ENV}/vector.yaml" "deploy@${VM_HOST}:${REMOTE_DIR}/vector.yaml"
+
+# Grafana
+ssh ${SSH_OPTS} "deploy@${VM_HOST}" "mkdir -p ${REMOTE_DIR}/grafana/datasources ${REMOTE_DIR}/grafana/provisioning ${REMOTE_DIR}/grafana/dashboards"
+scp ${SSH_OPTS} -r "${REPO_ROOT}/infra/compose/${ENV}/grafana/datasources/"* "deploy@${VM_HOST}:${REMOTE_DIR}/grafana/datasources/"
+scp ${SSH_OPTS} -r "${REPO_ROOT}/infra/compose/${ENV}/grafana/provisioning/"* "deploy@${VM_HOST}:${REMOTE_DIR}/grafana/provisioning/"
+scp ${SSH_OPTS} -r "${REPO_ROOT}/infra/compose/${ENV}/grafana/dashboards/"* "deploy@${VM_HOST}:${REMOTE_DIR}/grafana/dashboards/"
 
 echo "--- Запуск обновления ---"
 

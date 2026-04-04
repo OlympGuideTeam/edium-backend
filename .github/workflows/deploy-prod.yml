@@ -15,6 +15,7 @@ on:
           - all
           - doorman
           - herald
+          - charon
 
 permissions:
   contents: read
@@ -41,7 +42,7 @@ jobs:
           host: ${{ secrets.PROD_VM_HOST }}
           username: deploy
           key: ${{ secrets.PROD_VM_SSH_KEY }}
-          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/clickhouse/,infra/compose/prod/grafana/,doorman/migrations/,herald/migrations/"
+          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/clickhouse/,infra/compose/prod/grafana/,doorman/migrations/,herald/migrations/,charon/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -64,9 +65,10 @@ jobs:
             mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
             rm -rf /opt/edium/grafana/provisioning/dashboards.yaml
             cp -r /tmp/edium-deploy/infra/compose/prod/grafana/. /opt/edium/grafana/
-            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald
+            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
+            cp -r /tmp/edium-deploy/charon/migrations/* /opt/edium/migrations/charon/
 
             cd /opt/edium
 
@@ -87,6 +89,12 @@ jobs:
             TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
             VK_GROUP_TOKEN=${{ secrets.VK_GROUP_TOKEN }}
             VK_GROUP_ID=${{ secrets.VK_GROUP_ID }}
+            CHARON_PG_USER=${{ secrets.CHARON_PG_USER }}
+            CHARON_PG_PWD=${{ secrets.CHARON_PG_PWD }}
+            CHARON_PG_DB=${{ secrets.CHARON_PG_DB }}
+            CHARON_REDIS_PWD=${{ secrets.CHARON_REDIS_PWD }}
+            DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }}
+            DEEPSEEK_BASE_URL=${{ secrets.DEEPSEEK_BASE_URL }}
             CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
             GRAFANA_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}
             GRAFANA_CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
