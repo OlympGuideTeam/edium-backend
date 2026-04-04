@@ -38,14 +38,14 @@ services:
     volumes:
       - doorman_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 20
 
   doorman-flyway:
     image: flyway/flyway:latest
-    restart: no
+    restart: "no"
     command: ["migrate"]
     environment:
       - FLYWAY_URL=jdbc:postgresql://doorman-db:5432/${DOORMAN_PG_DB}
@@ -134,14 +134,14 @@ services:
     volumes:
       - herald_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 20
 
   herald-flyway:
     image: flyway/flyway:latest
-    restart: no
+    restart: "no"
     command: ["migrate"]
     environment:
       - FLYWAY_URL=jdbc:postgresql://herald-db:5432/${HERALD_PG_DB}
@@ -156,8 +156,88 @@ services:
       herald-db:
         condition: service_healthy
 
+  charon:
+    build:
+      context: ./charon
+      dockerfile: Dockerfile
+    restart: on-failure
+    environment:
+      POSTGRES_DSN: postgres://${CHARON_PG_USER}:${CHARON_PG_PWD}@charon-db:5432/${CHARON_PG_DB}?sslmode=disable
+      REDIS_URL: redis://:${CHARON_REDIS_PWD}@charon-redis:6379/0
+      NATS_URL: nats://nats:4222
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      OTEL_ENDPOINT: jaeger:4317
+    ports:
+      - "8083:80"
+    depends_on:
+      charon-db:
+        condition: service_healthy
+      charon-redis:
+        condition: service_healthy
+      charon-flyway:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+      jaeger:
+        condition: service_started
+
+  charon-db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${CHARON_PG_USER}
+      POSTGRES_PASSWORD: ${CHARON_PG_PWD}
+      POSTGRES_DB: ${CHARON_PG_DB}
+    ports:
+      - "5435:5432"
+    volumes:
+      - charon_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  charon-flyway:
+    image: flyway/flyway:latest
+    restart: "no"
+    command: ["migrate"]
+    environment:
+      - FLYWAY_URL=jdbc:postgresql://charon-db:5432/${CHARON_PG_DB}
+      - FLYWAY_USER=${CHARON_PG_USER}
+      - FLYWAY_PASSWORD=${CHARON_PG_PWD}
+      - FLYWAY_LOCATIONS=filesystem:/app/migrations
+      - FLYWAY_VALIDATE_MIGRATION_NAMING=true
+      - FLYWAY_BASELINE_ON_MIGRATE=true
+    volumes:
+      - ./charon/migrations:/app/migrations
+    depends_on:
+      charon-db:
+        condition: service_healthy
+
+  charon-redis:
+    image: redis:8
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${CHARON_REDIS_PWD}
+    command: >
+      sh -c 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes'
+    ports:
+      - "6381:6379"
+    volumes:
+      - charon_redis_data:/data
+    healthcheck:
+      test: >
+        sh -c 'redis-cli -a "$$REDIS_PASSWORD" ping | grep -q PONG'
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
 volumes:
   nats_data:
   doorman_db_data:
   doorman_redis_data:
   herald_db_data:
+  charon_db_data:
+  charon_redis_data:

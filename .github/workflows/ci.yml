@@ -13,6 +13,7 @@ jobs:
     outputs:
       doorman: ${{ steps.filter.outputs.doorman }}
       herald: ${{ steps.filter.outputs.herald }}
+      charon: ${{ steps.filter.outputs.charon }}
       ml: ${{ steps.filter.outputs.ml }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
@@ -25,6 +26,8 @@ jobs:
               - 'doorman/**'
             herald:
               - 'herald/**'
+            charon:
+              - 'charon/**'
             ml:
               - 'ml/**'
             infra:
@@ -156,6 +159,70 @@ jobs:
           path: herald/coverage.out
 
   # ========================
+  # Go — Charon
+  # ========================
+
+  lint-charon:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.charon == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: charon
+          version: v2.11.4
+
+  test-charon:
+    needs: lint-charon
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: charon_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Run tests
+        working-directory: charon
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_DSN: "postgres://test:test@localhost:5432/charon_test?sslmode=disable"
+          REDIS_URL: "redis://localhost:6379/0"
+          DEEPSEEK_API_KEY: "fake-key-for-tests"
+          NATS_URL: ""
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-charon
+          path: charon/coverage.out
+
+  # ========================
   # Python — ML
   # ========================
 
@@ -191,5 +258,4 @@ jobs:
           pip install pytest
       - name: Запуск тестов
         run: cd ml && pytest -v
-
   # Terraform plan/apply — см. .github/workflows/terraform.yml
