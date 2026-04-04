@@ -100,6 +100,64 @@ services:
     volumes:
       - nats_data:/data
 
+  caesar:
+    build:
+      context: ./caesar
+      dockerfile: Dockerfile
+    restart: on-failure
+    environment:
+      POSTGRES_DSN: postgres://${CAESAR_PG_USER}:${CAESAR_PG_PWD}@caesar-db:5432/${CAESAR_PG_DB}?sslmode=disable
+      NATS_URL: nats://nats:4222
+      DOORMAN_JWKS_URL: http://doorman/doorman/.well-known/jwks.json
+      OTEL_ENDPOINT: jaeger:4317
+    ports:
+      - "8082:80"
+    depends_on:
+      caesar-db:
+        condition: service_healthy
+      caesar-flyway:
+        condition: service_completed_successfully
+      doorman:
+        condition: service_started
+      nats:
+        condition: service_started
+      jaeger:
+        condition: service_started
+
+  caesar-db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${CAESAR_PG_USER}
+      POSTGRES_PASSWORD: ${CAESAR_PG_PWD}
+      POSTGRES_DB: ${CAESAR_PG_DB}
+    ports:
+      - "5435:5432"
+    volumes:
+      - caesar_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  caesar-flyway:
+    image: flyway/flyway:latest
+    restart: "no"
+    command: ["migrate"]
+    environment:
+      - FLYWAY_URL=jdbc:postgresql://caesar-db:5432/${CAESAR_PG_DB}
+      - FLYWAY_USER=${CAESAR_PG_USER}
+      - FLYWAY_PASSWORD=${CAESAR_PG_PWD}
+      - FLYWAY_LOCATIONS=filesystem:/app/migrations
+      - FLYWAY_VALIDATE_MIGRATION_NAMING=true
+      - FLYWAY_BASELINE_ON_MIGRATE=true
+    volumes:
+      - ./caesar/migrations:/app/migrations
+    depends_on:
+      caesar-db:
+        condition: service_healthy
+
   herald:
     build:
       context: ./herald
@@ -241,3 +299,5 @@ volumes:
   herald_db_data:
   charon_db_data:
   charon_redis_data:
+  caesar_db_data:
+  herald_db_data:

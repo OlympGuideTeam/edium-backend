@@ -1,5 +1,5 @@
 data "yandex_compute_image" "ubuntu" {
-  family = "ubuntu-2204-lts"
+  family = var.gpus > 0 ? "ubuntu-2204-lts-gpu" : "ubuntu-2204-lts"
 }
 
 resource "yandex_compute_instance" "this" {
@@ -11,6 +11,7 @@ resource "yandex_compute_instance" "this" {
     cores         = var.cores
     memory        = var.memory
     core_fraction = var.core_fraction
+    gpus          = var.gpus > 0 ? var.gpus : null
   }
 
   boot_disk {
@@ -28,10 +29,15 @@ resource "yandex_compute_instance" "this" {
   }
 
   metadata = {
-    user-data = templatefile("${path.module}/cloud-init.yaml", {
-      ssh_public_key = var.ssh_public_key
-      username       = var.username
-    })
+    user-data = templatefile(
+      var.gpu_cloud_init
+      ? "${path.module}/cloud-init-gpu.yaml"
+      : "${path.module}/cloud-init.yaml",
+      {
+        ssh_public_key = var.ssh_public_key
+        username       = var.username
+      }
+    )
   }
 
   scheduling_policy {
