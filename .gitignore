@@ -58,3 +58,5 @@ infra/terraform/accounts/*/key.json
 # Private keys
 *.pem
 *.key
+
+*.txt

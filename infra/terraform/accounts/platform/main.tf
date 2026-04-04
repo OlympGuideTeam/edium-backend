@@ -99,11 +99,8 @@ module "redis" {
 
 # --- DNS ---
 
-module "dns" {
-  source = "../../modules/dns"
-
-  domain = var.domain
-  records = {
+locals {
+  base_dns_records = {
     "api" = {
       type = "A"
       ttl  = 300
@@ -125,4 +122,19 @@ module "dns" {
       data = [module.vm_test.external_ip]
     }
   }
+
+  sphinx_dns_record = var.sphinx_vm_ip != "" ? {
+    "sphinx.ml" = {
+      type = "A"
+      ttl  = 300
+      data = [var.sphinx_vm_ip]
+    }
+  } : {}
+}
+
+module "dns" {
+  source = "../../modules/dns"
+
+  domain  = var.domain
+  records = merge(local.base_dns_records, local.sphinx_dns_record)
 }
