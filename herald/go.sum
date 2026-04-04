@@ -1,5 +1,7 @@
 github.com/SevereCloud/vksdk/v2 v2.17.0 h1:Wll63JSuBTdE0L7+V/PMn9PyhLrWSWIjX76XpWbXTFw=
 github.com/SevereCloud/vksdk/v2 v2.17.0/go.mod h1:y3q3XAdqnQ2Wf0B+Wi7qNdqJc5ZZsz4ve+DoSQsrChk=
+github.com/XSAM/otelsql v0.42.0 h1:Li0xF4eJUxG2e0x3D4rvRlys1f27yJKvjTh7ljkUP5o=
+github.com/XSAM/otelsql v0.42.0/go.mod h1:4mOrEv+cS1KmKzrvTktvJnstr5GtKSAK+QHvFR9OcpI=
 github.com/caarlos0/env/v10 v10.0.0 h1:yIHUBZGsyqCnpTkbjk8asUlx6RFhhEs+h7TOBdgdzXA=
 github.com/caarlos0/env/v10 v10.0.0/go.mod h1:ZfulV76NvVPw3tm591U4SwL3Xx9ldzBP9aGxzeN7G18=
 github.com/cenkalti/backoff/v5 v5.0.3 h1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1xcsSM=
