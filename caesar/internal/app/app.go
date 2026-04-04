@@ -23,6 +23,7 @@ type App struct {
 
 	UserCreatedConsumer  *worker.UserCreatedConsumer
 	UserCreatedProcessor *worker.UserCreatedProcessor
+	UserDeletedPublisher *worker.UserDeletedPublisher
 
 	jwksClient *jwks.Client
 }
@@ -46,8 +47,10 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	userStore := repository.NewPgUserStore(pgdb)
 	taskRepo := repository.NewPgTaskRepository(pgdb)
+	txManager := db.NewTxManager(pgdb)
+	publisher := natsinf.NewPublisher(natsConn)
 
-	userService := usersvc.NewService(userStore)
+	userService := usersvc.NewService(userStore, taskRepo, txManager)
 	userHandler := userhandler.NewHandler(userService)
 
 	natsSubscriber := natsinf.NewSubscriber(natsConn)
@@ -56,6 +59,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		UserHandler:          userHandler,
 		UserCreatedConsumer:  worker.NewUserCreatedConsumer(natsSubscriber, taskRepo),
 		UserCreatedProcessor: worker.NewUserCreatedProcessor(taskRepo, userStore),
+		UserDeletedPublisher: worker.NewUserDeletedPublisher(taskRepo, publisher),
 		jwksClient:           jwksClient,
 	}, nil
 }
@@ -64,6 +68,7 @@ func (a *App) Workers() map[string]func(context.Context) error {
 	return map[string]func(context.Context) error{
 		"UserCreatedConsumer":  a.UserCreatedConsumer.Run,
 		"UserCreatedProcessor": a.UserCreatedProcessor.Run,
+		"UserDeletedPublisher": a.UserDeletedPublisher.Run,
 	}
 }
 
@@ -76,6 +81,8 @@ func (a *App) Router(serviceName string) *gin.Engine {
 	api := r.Group("/caesar/v1")
 	api.Use(auth)
 	api.GET("/users/me", a.UserHandler.GetMe)
+	api.PATCH("/users/me", a.UserHandler.UpdateMe)
+	api.DELETE("/users/me", a.UserHandler.DeleteMe)
 
 	return r
 }

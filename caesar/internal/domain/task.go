@@ -19,6 +19,7 @@ type TaskType string
 
 var (
 	UserCreated TaskType = "user_created"
+	UserDeleted TaskType = "user_deleted"
 )
 
 type Task struct {
