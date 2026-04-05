@@ -4,9 +4,9 @@ peft>=0.10.0
 bitsandbytes>=0.43.0
 accelerate>=0.28.0
 scipy
-grpcio>=1.62.0
-grpcio-tools>=1.62.0
-grpcio-health-checking>=1.62.0
 pydantic>=2.0
 pydantic-settings>=2.0
 huggingface-hub>=0.22.0
+# NATS + DB для transactional outbox/inbox
+nats-py>=2.7.0
+asyncpg>=0.29.0

@@ -1,0 +1,82 @@
+name: edium-sphinx
+
+# docker-compose для GPU VM (отдельный YC аккаунт)
+#
+# Переменные окружения (.env):
+#   NATS_URL          — nats://sphinx:<NATS_PASSWORD_SPHINX>@<PLATFORM_VM_IP>:4223
+#   NATS_TLS_CA_PATH  — /run/secrets/nats-ca.crt
+#   SPHINX_PG_PWD     — пароль БД
+#   HF_TOKEN          — HuggingFace token
+#
+# Перед запуском:
+#   1. Скопировать ca.crt (из платформенной VM) на эту машину
+#   2. Указать путь в NATS_TLS_CA_PATH
+#   3. Запустить: docker compose up -d --build
+
+services:
+  sphinx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure
+    environment:
+      NATS_URL: ${NATS_URL}
+      NATS_TLS_CA_PATH: ${NATS_TLS_CA_PATH:-}
+      POSTGRES_DSN: postgres://sphinx:${SPHINX_PG_PWD}@sphinx-db:5432/sphinx?sslmode=disable
+      MODEL_ID: ${MODEL_ID:-mistralai/Mistral-7B-Instruct-v0.3}
+      EXTRACTION_ADAPTER: ${EXTRACTION_ADAPTER:-edium/sphinx-extraction-lora}
+      GENERATION_ADAPTER: ${GENERATION_ADAPTER:-edium/sphinx-generation-lora}
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      # Монтируем CA-сертификат NATS (TLS через stunnel)
+      - ${NATS_TLS_CA_PATH:-/dev/null}:${NATS_TLS_CA_PATH:-/dev/null}:ro
+      # Кэш HuggingFace моделей (не перескачивать при перезапуске)
+      - hf_cache:/root/.cache/huggingface
+    depends_on:
+      sphinx-db:
+        condition: service_healthy
+      sphinx-flyway:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  sphinx-db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sphinx
+      POSTGRES_PASSWORD: ${SPHINX_PG_PWD}
+      POSTGRES_DB: sphinx
+    volumes:
+      - sphinx_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sphinx -d sphinx"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  sphinx-flyway:
+    image: flyway/flyway:12.2.0
+    restart: "no"
+    command: ["migrate"]
+    environment:
+      FLYWAY_URL: jdbc:postgresql://sphinx-db:5432/sphinx
+      FLYWAY_USER: sphinx
+      FLYWAY_PASSWORD: ${SPHINX_PG_PWD}
+      FLYWAY_LOCATIONS: filesystem:/app/migrations
+      FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+    volumes:
+      - ./migrations:/app/migrations
+    depends_on:
+      sphinx-db:
+        condition: service_healthy
+
+volumes:
+  sphinx_db_data:
+  hf_cache:
