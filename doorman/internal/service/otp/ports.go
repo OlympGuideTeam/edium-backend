@@ -17,6 +17,7 @@ type OTPStore interface {
 	Get(ctx context.Context, phone string) (*OtpData, error)
 	Delete(ctx context.Context, phone string) error
 	IncrAttempts(ctx context.Context, phone string) error
+	IncrSendCount(ctx context.Context, phone string) (int64, error)
 }
 
 type RegTokenStore interface {
