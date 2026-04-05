@@ -40,9 +40,10 @@ type OTelConfig struct {
 }
 
 type DeepSeekConfig struct {
-	BaseURL string        `env:"DEEPSEEK_BASE_URL" envDefault:"https://api.deepseek.com"`
-	APIKey  string        `env:"DEEPSEEK_API_KEY,required"`
-	Timeout time.Duration `env:"DEEPSEEK_TIMEOUT" envDefault:"60s"`
+	BaseURL      string        `env:"DEEPSEEK_BASE_URL" envDefault:"https://api.deepseek.com"`
+	APIKey       string        `env:"DEEPSEEK_API_KEY,required"`
+	Timeout      time.Duration `env:"DEEPSEEK_TIMEOUT" envDefault:"60s"`
+	GradingModel string        `env:"DEEPSEEK_GRADING_MODEL" envDefault:"deepseek-chat"`
 }
 
 type ClickHouseConfig struct {

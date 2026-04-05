@@ -20,6 +20,9 @@ type TaskType string
 var (
 	CompletionRequested TaskType = "completion_requested"
 	CompletionCompleted TaskType = "completion_completed"
+
+	QuizGradeRequested TaskType = "quiz_grade_requested"
+	QuizGradeCompleted TaskType = "quiz_grade_completed"
 )
 
 type Task struct {
