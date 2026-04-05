@@ -75,6 +75,10 @@ module "postgres" {
     "doorman_prod" = { owner = "doorman_prod" }
     "herald_test"  = { owner = "herald_test" }
     "herald_prod"  = { owner = "herald_prod" }
+    "charon_test"  = { owner = "charon_test" }
+    "charon_prod"  = { owner = "charon_prod" }
+    "caesar_test"  = { owner = "caesar_test" }
+    "caesar_prod"  = { owner = "caesar_prod" }
   }
 
   users = {
@@ -82,6 +86,10 @@ module "postgres" {
     "doorman_prod" = { password = var.doorman_pg_password_prod }
     "herald_test"  = { password = var.herald_pg_password_test }
     "herald_prod"  = { password = var.herald_pg_password_prod }
+    "charon_test"  = { password = var.charon_pg_password_test }
+    "charon_prod"  = { password = var.charon_pg_password_prod }
+    "caesar_test"  = { password = var.caesar_pg_password_test }
+    "caesar_prod"  = { password = var.caesar_pg_password_prod }
   }
 }
 

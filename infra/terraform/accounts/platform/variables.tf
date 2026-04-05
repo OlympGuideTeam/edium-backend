@@ -59,6 +59,34 @@ variable "herald_pg_password_prod" {
   sensitive   = true
 }
 
+# --- Charon ---
+
+variable "charon_pg_password_test" {
+  description = "Пароль PostgreSQL для Charon (test)"
+  type        = string
+  sensitive   = true
+}
+
+variable "charon_pg_password_prod" {
+  description = "Пароль PostgreSQL для Charon (prod)"
+  type        = string
+  sensitive   = true
+}
+
+# --- Caesar ---
+
+variable "caesar_pg_password_test" {
+  description = "Пароль PostgreSQL для Caesar (test)"
+  type        = string
+  sensitive   = true
+}
+
+variable "caesar_pg_password_prod" {
+  description = "Пароль PostgreSQL для Caesar (prod)"
+  type        = string
+  sensitive   = true
+}
+
 variable "redis_password" {
   description = "Пароль Redis"
   type        = string

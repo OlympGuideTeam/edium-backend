@@ -42,7 +42,7 @@ jobs:
           host: ${{ secrets.PROD_VM_HOST }}
           username: deploy
           key: ${{ secrets.PROD_VM_SSH_KEY }}
-          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/clickhouse/,infra/compose/prod/grafana/,doorman/migrations/,herald/migrations/,charon/migrations/"
+          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/clickhouse/,infra/compose/prod/grafana/,infra/compose/prod/nats/nats-server.conf,doorman/migrations/,herald/migrations/,charon/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -69,6 +69,8 @@ jobs:
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
             cp -r /tmp/edium-deploy/charon/migrations/* /opt/edium/migrations/charon/
+            mkdir -p /opt/edium/nats
+            cp /tmp/edium-deploy/infra/compose/prod/nats/nats-server.conf /opt/edium/nats/nats-server.conf
 
             cd /opt/edium
 
@@ -89,6 +91,8 @@ jobs:
             TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
             VK_GROUP_TOKEN=${{ secrets.VK_GROUP_TOKEN }}
             VK_GROUP_ID=${{ secrets.VK_GROUP_ID }}
+            SMS_API_KEY=${{ secrets.SMS_API_KEY }}
+            SMS_ALLOWED_PHONES=${{ secrets.SMS_ALLOWED_PHONES }}
             CHARON_PG_USER=${{ secrets.CHARON_PG_USER }}
             CHARON_PG_PWD=${{ secrets.CHARON_PG_PWD }}
             CHARON_PG_DB=${{ secrets.CHARON_PG_DB }}
@@ -98,6 +102,12 @@ jobs:
             CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
             GRAFANA_PASSWORD=${{ secrets.GRAFANA_PASSWORD }}
             GRAFANA_CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
+            NATS_PASSWORD_DOORMAN=${{ secrets.NATS_PASSWORD_DOORMAN }}
+            NATS_PASSWORD_HERALD=${{ secrets.NATS_PASSWORD_HERALD }}
+            NATS_PASSWORD_CAESAR=${{ secrets.NATS_PASSWORD_CAESAR }}
+            NATS_PASSWORD_CHARON=${{ secrets.NATS_PASSWORD_CHARON }}
+            NATS_PASSWORD_RIDDLER=${{ secrets.NATS_PASSWORD_RIDDLER }}
+            NATS_PASSWORD_SPHINX=${{ secrets.NATS_PASSWORD_SPHINX }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 

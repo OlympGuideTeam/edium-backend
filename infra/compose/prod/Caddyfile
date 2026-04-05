@@ -5,3 +5,7 @@ api.edium.online {
 grafana.edium.online {
     reverse_proxy grafana:3000
 }
+
+herald.edium.online {
+    reverse_proxy herald:80
+}
