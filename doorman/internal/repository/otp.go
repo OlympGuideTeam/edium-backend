@@ -71,6 +71,18 @@ func (s *RedisOTPStore) IncrAttempts(ctx context.Context, phone string) error {
 	return s.client.HIncrBy(ctx, key, "attempts", 1).Err()
 }
 
+func (s *RedisOTPStore) IncrSendCount(ctx context.Context, phone string) (int64, error) {
+	key := fmt.Sprintf("otp_count:%s", phone)
+	count, err := s.client.Incr(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	if count == 1 {
+		s.client.Expire(ctx, key, 24*time.Hour)
+	}
+	return count, nil
+}
+
 func (s *RedisOTPStore) getKey(phone string) string {
 	return fmt.Sprintf("otp:%s", phone)
 }
