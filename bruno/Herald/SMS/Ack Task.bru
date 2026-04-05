@@ -1,0 +1,22 @@
+meta {
+  name: Ack Task
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{heraldUrl}}/herald/v1/sms/tasks/{{smsTaskId}}/ack
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{smsApiKey}}
+}
+
+body:json {
+  {
+    "success": true,
+    "error": null
+  }
+}

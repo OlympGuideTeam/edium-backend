@@ -1,0 +1,15 @@
+meta {
+  name: Get Pending Tasks
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{heraldUrl}}/herald/v1/sms/tasks
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{smsApiKey}}
+}
