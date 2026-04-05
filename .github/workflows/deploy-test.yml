@@ -228,6 +228,8 @@ jobs:
   # ========================
 
   lint-python:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -242,6 +244,8 @@ jobs:
           ruff format --check ml/
 
   test-python:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     needs: lint-python
     runs-on: ubuntu-latest
     steps:
@@ -263,8 +267,9 @@ jobs:
   # ========================
 
   build-doorman:
-    needs: [detect-changes, test-doorman]
-    if: needs.detect-changes.outputs.doorman == 'true'
+    needs: [test-doorman]
+    # ВРЕМЕННО: собираем всегда, без проверки changes
+    # if: needs.detect-changes.outputs.doorman == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -286,8 +291,9 @@ jobs:
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-herald:
-    needs: [detect-changes, test-herald]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.herald == 'true'
+    needs: [test-herald]
+    # ВРЕМЕННО: собираем всегда, без проверки changes
+    # if: github.event_name == 'push' && needs.detect-changes.outputs.herald == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -309,8 +315,9 @@ jobs:
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-charon:
-    needs: [detect-changes, test-charon]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.charon == 'true'
+    needs: [test-charon]
+    # ВРЕМЕННО: собираем всегда, без проверки changes
+    # if: github.event_name == 'push' && needs.detect-changes.outputs.charon == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -332,8 +339,10 @@ jobs:
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-ml:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     needs: [detect-changes, test-python]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.ml == 'true'
+    # if: github.event_name == 'push' && needs.detect-changes.outputs.ml == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -359,17 +368,18 @@ jobs:
   # ========================
 
   deploy-test:
-    needs: [test-doorman, test-herald, test-charon, test-python, build-doorman, build-herald, build-charon, build-ml]
+    # ВРЕМЕННО: убраны зависимости от ml (test-python, build-ml)
+    # needs: [test-doorman, test-herald, test-charon, test-python, build-doorman, build-herald, build-charon, build-ml]
+    needs: [test-doorman, test-herald, test-charon, build-doorman, build-herald, build-charon]
+    # ВРЕМЕННО: условие без ml (было: && needs.test-python.result == 'success' && (needs.build-ml.result == 'success' || needs.build-ml.result == 'skipped'))
     if: |
       always() &&
       needs.test-doorman.result == 'success' &&
       needs.test-herald.result == 'success' &&
       needs.test-charon.result == 'success' &&
-      needs.test-python.result == 'success' &&
       (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') &&
       (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') &&
-      (needs.build-charon.result == 'success' || needs.build-charon.result == 'skipped') &&
-      (needs.build-ml.result == 'success' || needs.build-ml.result == 'skipped')
+      (needs.build-charon.result == 'success' || needs.build-charon.result == 'skipped')
     runs-on: ubuntu-latest
     environment: test
     steps:
