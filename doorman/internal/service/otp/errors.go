@@ -16,6 +16,11 @@ var (
 		"Одноразовый код уже отправлен",
 		429,
 	)
+	ErrDailyLimitExceeded = apperr.New(
+		"OTP_DAILY_LIMIT_EXCEEDED",
+		"Превышен дневной лимит отправки кодов",
+		429,
+	)
 
 	// Verify
 	ErrNotFoundOrExpired = apperr.New(
