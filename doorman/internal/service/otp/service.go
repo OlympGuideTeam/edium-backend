@@ -20,6 +20,7 @@ const (
 	regTokenTTL    = 15 * time.Minute
 	maxOTPAttempts = 3
 	regTokenLength = 32
+	maxDailySends  = 5
 )
 
 type Service struct {
@@ -59,6 +60,15 @@ func (s *Service) SendOTP(ctx context.Context, phone string, channel domain.Chan
 
 	if exists {
 		return ErrAlreadySent
+	}
+
+	count, err := s.otpStore.IncrSendCount(ctx, phone)
+	if err != nil {
+		return err
+	}
+
+	if count > maxDailySends {
+		return ErrDailyLimitExceeded
 	}
 
 	identity, err := s.identityStore.GetByPhone(ctx, phone)
