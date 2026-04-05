@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DSN: postgres://${DOORMAN_PG_USER}:${DOORMAN_PG_PWD}@doorman-db:5432/${DOORMAN_PG_DB}?sslmode=disable
       REDIS_URL: redis://:${DOORMAN_REDIS_PWD}@doorman-redis:6379/0
-      NATS_URL: nats://nats:4222
+      NATS_URL: nats://doorman:${NATS_PASSWORD_DOORMAN}@nats:4222
       JWT_RSA_PRIVATE_KEY: ${JWT_RSA_PRIVATE_KEY}
       OTEL_ENDPOINT: jaeger:4317
     ports:
@@ -90,15 +90,19 @@ services:
   nats:
     image: nats:2.10
     restart: unless-stopped
-    command:
-      - "--js"
-      - "--sd=/data"
-      - "--name=nats"
+    command: ["-c", "/etc/nats/nats-server.conf"]
     ports:
       - "4222:4222"
-      - "8222:8222"
+    environment:
+      NATS_PASSWORD_DOORMAN: ${NATS_PASSWORD_DOORMAN}
+      NATS_PASSWORD_HERALD: ${NATS_PASSWORD_HERALD}
+      NATS_PASSWORD_CAESAR: ${NATS_PASSWORD_CAESAR}
+      NATS_PASSWORD_CHARON: ${NATS_PASSWORD_CHARON}
+      NATS_PASSWORD_RIDDLER: ${NATS_PASSWORD_RIDDLER}
+      NATS_PASSWORD_SPHINX: ${NATS_PASSWORD_SPHINX}
     volumes:
       - nats_data:/data
+      - ./infra/nats/nats-server.conf:/etc/nats/nats-server.conf:ro
 
   caesar:
     build:
@@ -107,7 +111,7 @@ services:
     restart: on-failure
     environment:
       POSTGRES_DSN: postgres://${CAESAR_PG_USER}:${CAESAR_PG_PWD}@caesar-db:5432/${CAESAR_PG_DB}?sslmode=disable
-      NATS_URL: nats://nats:4222
+      NATS_URL: nats://caesar:${NATS_PASSWORD_CAESAR}@nats:4222
       DOORMAN_JWKS_URL: http://doorman/doorman/.well-known/jwks.json
       OTEL_ENDPOINT: jaeger:4317
     ports:
@@ -165,11 +169,15 @@ services:
     restart: on-failure
     environment:
       POSTGRES_DSN: postgres://${HERALD_PG_USER}:${HERALD_PG_PWD}@herald-db:5432/${HERALD_PG_DB}?sslmode=disable
-      NATS_URL: nats://nats:4222
+      NATS_URL: nats://herald:${NATS_PASSWORD_HERALD}@nats:4222
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       VK_GROUP_TOKEN: ${VK_GROUP_TOKEN}
       VK_GROUP_ID: ${VK_GROUP_ID}
+      SMS_API_KEY: ${SMS_API_KEY}
+      SMS_ALLOWED_PHONES: ${SMS_ALLOWED_PHONES}
       OTEL_ENDPOINT: jaeger:4317
+    ports:
+      - "8084:80"
     depends_on:
       jaeger:
         condition: service_started
@@ -222,7 +230,7 @@ services:
     environment:
       POSTGRES_DSN: postgres://${CHARON_PG_USER}:${CHARON_PG_PWD}@charon-db:5432/${CHARON_PG_DB}?sslmode=disable
       REDIS_URL: redis://:${CHARON_REDIS_PWD}@charon-redis:6379/0
-      NATS_URL: nats://nats:4222
+      NATS_URL: nats://charon:${NATS_PASSWORD_CHARON}@nats:4222
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       OTEL_ENDPOINT: jaeger:4317
