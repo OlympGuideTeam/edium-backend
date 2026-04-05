@@ -3,7 +3,7 @@ import logging
 import re
 
 import torch
-from peft import PeftModel
+# from peft import PeftModel  # TODO: раскомментировать после обучения LoRA-адаптеров
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 from app.config import settings
@@ -59,15 +59,16 @@ class QuizPipeline:
     def __init__(self):
         self._model = None
         self._tokenizer = None
-        self._extraction_adapter = None
-        self._generation_adapter = None
+        # TODO: раскомментировать после обучения адаптеров
+        # self._extraction_adapter = None
+        # self._generation_adapter = None
 
     @property
     def is_loaded(self) -> bool:
         return self._model is not None
 
     def load(self):
-        """Загрузка base модели и адаптеров. Вызывается при старте сервиса."""
+        """Загрузка base модели. Вызывается при старте сервиса."""
         logger.info("Loading base model: %s", settings.model_id)
 
         bnb_config = BitsAndBytesConfig(
@@ -91,17 +92,16 @@ class QuizPipeline:
             token=token,
         )
 
-        # Предзагрузка адаптеров для проверки
-        logger.info("Loading extraction adapter: %s", settings.extraction_adapter)
-        self._extraction_adapter = settings.extraction_adapter
-        PeftModel.from_pretrained(self._model, self._extraction_adapter, token=token)
-        # Разгружаем — адаптер загрузится заново при вызове
-        self._model = self._model.base_model if hasattr(self._model, "base_model") else self._model
-
-        logger.info("Loading generation adapter: %s", settings.generation_adapter)
-        self._generation_adapter = settings.generation_adapter
-        PeftModel.from_pretrained(self._model, self._generation_adapter, token=token)
-        self._model = self._model.base_model if hasattr(self._model, "base_model") else self._model
+        # TODO: раскомментировать после обучения адаптеров
+        # token = settings.hf_token or None
+        # logger.info("Loading extraction adapter: %s", settings.extraction_adapter)
+        # self._extraction_adapter = settings.extraction_adapter
+        # PeftModel.from_pretrained(self._model, self._extraction_adapter, token=token)
+        # self._model = self._model.base_model if hasattr(self._model, "base_model") else self._model
+        # logger.info("Loading generation adapter: %s", settings.generation_adapter)
+        # self._generation_adapter = settings.generation_adapter
+        # PeftModel.from_pretrained(self._model, self._generation_adapter, token=token)
+        # self._model = self._model.base_model if hasattr(self._model, "base_model") else self._model
 
         logger.info("Pipeline ready. VRAM used: %.1f GB", torch.cuda.memory_allocated() / 1024**3)
 
@@ -127,44 +127,37 @@ class QuizPipeline:
         )
         return response.strip()
 
-    def _with_adapter(self, adapter_path: str):
-        """Применение LoRA-адаптера к base модели."""
-        token = settings.hf_token or None
-        model = PeftModel.from_pretrained(self._model, adapter_path, token=token)
-        model.eval()
-        return model
+    # TODO: раскомментировать после обучения адаптеров
+    # def _with_adapter(self, adapter_path: str):
+    #     token = settings.hf_token or None
+    #     model = PeftModel.from_pretrained(self._model, adapter_path, token=token)
+    #     model.eval()
+    #     return model
 
-    def _unwrap_adapter(self):
-        """Возврат к base модели после использования адаптера."""
-        if hasattr(self._model, "base_model"):
-            self._model = self._model.base_model
+    # def _unwrap_adapter(self):
+    #     if hasattr(self._model, "base_model"):
+    #         self._model = self._model.base_model
 
     def extract_facts(self, text: str) -> list[dict]:
         """Извлечение фактов из текста."""
-        self._model = self._with_adapter(self._extraction_adapter)
-        try:
-            messages = [
-                {"role": "system", "content": EXTRACTION_SYSTEM},
-                {"role": "user", "content": text},
-            ]
-            response = self._generate(messages)
-            return _parse_json(response)
-        finally:
-            self._unwrap_adapter()
+        # TODO: заменить на self._with_adapter(self._extraction_adapter) после обучения
+        messages = [
+            {"role": "system", "content": EXTRACTION_SYSTEM},
+            {"role": "user", "content": text},
+        ]
+        response = self._generate(messages)
+        return _parse_json(response)
 
     def generate_quiz(self, facts: list[dict]) -> dict:
         """Генерация квиза из фактов."""
-        self._model = self._with_adapter(self._generation_adapter)
-        try:
-            facts_str = json.dumps(facts, ensure_ascii=False)
-            messages = [
-                {"role": "system", "content": GENERATION_SYSTEM},
-                {"role": "user", "content": f"Факты:\n{facts_str}"},
-            ]
-            response = self._generate(messages)
-            return _parse_json(response)
-        finally:
-            self._unwrap_adapter()
+        # TODO: заменить на self._with_adapter(self._generation_adapter) после обучения
+        facts_str = json.dumps(facts, ensure_ascii=False)
+        messages = [
+            {"role": "system", "content": GENERATION_SYSTEM},
+            {"role": "user", "content": f"Факты:\n{facts_str}"},
+        ]
+        response = self._generate(messages)
+        return _parse_json(response)
 
     def run(self, text: str) -> dict:
         """Полный пайплайн: text → facts → quiz."""
