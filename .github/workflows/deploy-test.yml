@@ -267,9 +267,8 @@ jobs:
   # ========================
 
   build-doorman:
-    needs: [test-doorman]
-    # ВРЕМЕННО: собираем всегда, без проверки changes
-    # if: needs.detect-changes.outputs.doorman == 'true'
+    needs: [detect-changes, test-doorman]
+    if: needs.detect-changes.outputs.doorman == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -291,9 +290,8 @@ jobs:
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-herald:
-    needs: [test-herald]
-    # ВРЕМЕННО: собираем всегда, без проверки changes
-    # if: github.event_name == 'push' && needs.detect-changes.outputs.herald == 'true'
+    needs: [detect-changes, test-herald]
+    if: github.event_name == 'push' && needs.detect-changes.outputs.herald == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -315,9 +313,8 @@ jobs:
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-charon:
-    needs: [test-charon]
-    # ВРЕМЕННО: собираем всегда, без проверки changes
-    # if: github.event_name == 'push' && needs.detect-changes.outputs.charon == 'true'
+    needs: [detect-changes, test-charon]
+    if: github.event_name == 'push' && needs.detect-changes.outputs.charon == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
