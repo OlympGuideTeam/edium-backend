@@ -24,6 +24,11 @@ type MessageSender interface {
 	Send(ctx context.Context, chatID int64, text string) error
 }
 
+// SMSSender записывает SMS-задачу в outbox для Android-шлюза.
+type SMSSender interface {
+	SendSMS(ctx context.Context, phone string, text string) error
+}
+
 type otpSentTaskRepo interface {
 	ClaimPending(ctx context.Context, taskType domain.TaskType, limit int) ([]domain.Task, error)
 	MarkDone(ctx context.Context, id uuid.UUID) error
@@ -39,10 +44,11 @@ type OTPSentProcessor struct {
 	tasks      otpSentTaskRepo
 	pendingOTP pendingOTPLookup
 	senders    map[domain.Channel]MessageSender
+	smsSender  SMSSender // nil если SMS не настроен
 }
 
-func NewOTPSentProcessor(tasks otpSentTaskRepo, pendingOTP pendingOTPLookup, senders map[domain.Channel]MessageSender) *OTPSentProcessor {
-	return &OTPSentProcessor{tasks: tasks, pendingOTP: pendingOTP, senders: senders}
+func NewOTPSentProcessor(tasks otpSentTaskRepo, pendingOTP pendingOTPLookup, senders map[domain.Channel]MessageSender, smsSender SMSSender) *OTPSentProcessor {
+	return &OTPSentProcessor{tasks: tasks, pendingOTP: pendingOTP, senders: senders, smsSender: smsSender}
 }
 
 func (w *OTPSentProcessor) Run(ctx context.Context) error {
@@ -94,6 +100,23 @@ func (w *OTPSentProcessor) processTask(ctx context.Context, t domain.Task) error
 	defer span.End()
 
 	slog.InfoContext(ctx, "otp-sent-processor: обработка", "task_id", t.ID, "channel", payload.Channel)
+
+	// SMS-канал: отправляем через Android-шлюз без pending_otp.
+	if payload.Channel == domain.ChannelSMS {
+		if w.smsSender == nil {
+			return fmt.Errorf("SMS-отправитель не настроен (SMS_API_KEY не задан)")
+		}
+		var text string
+		if payload.ErrorCode != "" {
+			text = otpErrorMessage(payload.ErrorCode)
+		} else {
+			text = fmt.Sprintf("Ваш код Edium: %06d", payload.OTP)
+		}
+		if err := w.smsSender.SendSMS(ctx, payload.Phone, text); err != nil {
+			return fmt.Errorf("send sms (phone=%s): %w", payload.Phone, err)
+		}
+		return w.tasks.MarkDone(ctx, t.ID)
+	}
 
 	pending, err := w.pendingOTP.GetPendingOTP(ctx, payload.Phone, payload.Channel)
 	if err != nil {
