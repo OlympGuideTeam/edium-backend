@@ -24,7 +24,7 @@ services:
       APP_PORT: "80"
       POSTGRES_DSN: "postgres://${DOORMAN_PG_USER}:${DOORMAN_PG_PWD}@${PG_HOST}:6432/${DOORMAN_PG_DB}?sslmode=require"
       REDIS_URL: "redis://:${DOORMAN_REDIS_PWD}@${REDIS_HOST}:6379/0"
-      NATS_URL: "nats://nats:4222"
+      NATS_URL: "nats://doorman:${NATS_PASSWORD_DOORMAN}@nats:4222"
       JWT_RSA_PRIVATE_KEY: ${JWT_RSA_PRIVATE_KEY}
       JWT_ACTIVE_KID: ${JWT_ACTIVE_KID:-key-1}
       OTEL_ENDPOINT: "jaeger:4317"
@@ -71,10 +71,12 @@ services:
     restart: on-failure
     environment:
       POSTGRES_DSN: "postgres://${HERALD_PG_USER}:${HERALD_PG_PWD}@${PG_HOST}:6432/${HERALD_PG_DB}?sslmode=require"
-      NATS_URL: "nats://nats:4222"
+      NATS_URL: "nats://herald:${NATS_PASSWORD_HERALD}@nats:4222"
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       VK_GROUP_TOKEN: ${VK_GROUP_TOKEN}
       VK_GROUP_ID: ${VK_GROUP_ID}
+      SMS_API_KEY: ${SMS_API_KEY}
+      SMS_ALLOWED_PHONES: ${SMS_ALLOWED_PHONES}
       OTEL_ENDPOINT: "jaeger:4317"
     depends_on:
       herald-flyway:
@@ -118,7 +120,7 @@ services:
       APP_PORT: "80"
       POSTGRES_DSN: "postgres://${CHARON_PG_USER}:${CHARON_PG_PWD}@${PG_HOST}:6432/${CHARON_PG_DB}?sslmode=require"
       REDIS_URL: "redis://:${CHARON_REDIS_PWD}@${REDIS_HOST}:6379/1"
-      NATS_URL: "nats://nats:4222"
+      NATS_URL: "nats://charon:${NATS_PASSWORD_CHARON}@nats:4222"
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       CLICKHOUSE_DSN: "clickhouse://vector:${CLICKHOUSE_PASSWORD}@clickhouse:9000/logs"
@@ -161,9 +163,38 @@ services:
   nats:
     image: nats:2.10
     restart: unless-stopped
-    command: ["--js", "--sd=/data", "--name=nats"]
+    command: ["-c", "/etc/nats/nats-server.conf"]
+    environment:
+      NATS_PASSWORD_DOORMAN: ${NATS_PASSWORD_DOORMAN}
+      NATS_PASSWORD_HERALD: ${NATS_PASSWORD_HERALD}
+      NATS_PASSWORD_CAESAR: ${NATS_PASSWORD_CAESAR}
+      NATS_PASSWORD_CHARON: ${NATS_PASSWORD_CHARON}
+      NATS_PASSWORD_RIDDLER: ${NATS_PASSWORD_RIDDLER}
+      NATS_PASSWORD_SPHINX: ${NATS_PASSWORD_SPHINX}
     volumes:
       - nats_data:/data
+      - ./nats/nats-server.conf:/etc/nats/nats-server.conf:ro
+    networks:
+      - edium
+
+  # stunnel — TLS-прокси для внешних подключений Sphinx (другой YC аккаунт)
+  # Sphinx подключается: nats://sphinx:pass@<VM_PUBLIC_IP>:4223
+  # Генерация сертификата: ./nats/gen-cert.sh
+  nats-stunnel:
+    image: dweomer/stunnel:latest
+    restart: unless-stopped
+    ports:
+      - "4223:4223"
+    volumes:
+      - ./nats/stunnel.conf:/etc/stunnel/stunnel.conf:ro
+      - ./nats/tls.crt:/etc/stunnel/tls.crt:ro
+      - ./nats/tls.key:/etc/stunnel/tls.key:ro
+    depends_on:
+      - nats
+    deploy:
+      resources:
+        limits:
+          memory: 32M
     networks:
       - edium
 
