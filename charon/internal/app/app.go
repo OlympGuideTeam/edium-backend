@@ -10,6 +10,7 @@ import (
 	"charon/internal/infra/redis"
 	"charon/internal/repository"
 	completionsvc "charon/internal/service/completion"
+	gradingsvc "charon/internal/service/grading"
 	"charon/internal/service/ratelimit"
 	"charon/internal/worker"
 	"context"
@@ -26,6 +27,10 @@ type App struct {
 	CompletionConsumer  *worker.CompletionConsumer
 	CompletionProcessor *worker.CompletionProcessor
 	CompletionPublisher *worker.CompletionPublisher
+
+	GradingConsumer  *worker.GradingConsumer
+	GradingProcessor *worker.GradingProcessor
+	GradingPublisher *worker.GradingPublisher
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -61,6 +66,7 @@ func New(cfg *config.Config) (*App, error) {
 	limiter := ratelimit.NewLimiter(rdb, rateLimits)
 
 	completionService := completionsvc.NewService(dsClient, usageWriter, limiter, taskRepo)
+	gradingService := gradingsvc.NewService(dsClient, usageWriter, limiter, taskRepo, cfg.DeepSeek.GradingModel)
 
 	natsPublisher := natsinf.NewPublisher(natsConn)
 	natsSubscriber := natsinf.NewSubscriber(natsConn)
@@ -71,6 +77,10 @@ func New(cfg *config.Config) (*App, error) {
 		CompletionConsumer:  worker.NewCompletionConsumer(natsSubscriber, taskRepo),
 		CompletionProcessor: worker.NewCompletionProcessor(taskRepo, completionService),
 		CompletionPublisher: worker.NewCompletionPublisher(taskRepo, natsPublisher),
+
+		GradingConsumer:  worker.NewGradingConsumer(natsSubscriber, taskRepo),
+		GradingProcessor: worker.NewGradingProcessor(taskRepo, gradingService),
+		GradingPublisher: worker.NewGradingPublisher(taskRepo, natsPublisher),
 	}
 	return a, nil
 }
@@ -80,6 +90,9 @@ func (a *App) Workers() map[string]func(context.Context) error {
 		"CompletionConsumer":  a.CompletionConsumer.Run,
 		"CompletionProcessor": a.CompletionProcessor.Run,
 		"CompletionPublisher": a.CompletionPublisher.Run,
+		"GradingConsumer":     a.GradingConsumer.Run,
+		"GradingProcessor":    a.GradingProcessor.Run,
+		"GradingPublisher":    a.GradingPublisher.Run,
 	}
 }
 
