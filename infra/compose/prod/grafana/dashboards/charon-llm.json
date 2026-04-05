@@ -1,0 +1,400 @@
+{
+  "title": "Charon — LLM метрики",
+  "uid": "edium-charon-llm",
+  "version": 1,
+  "schemaVersion": 39,
+  "tags": ["edium", "charon", "llm"],
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "1m",
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [],
+  "annotations": { "list": [] },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "weekStart": "",
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": true, "text": "All", "value": "%" },
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "definition": "SELECT DISTINCT service FROM llm_usage ORDER BY service",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "%",
+        "label": "Сервис",
+        "multi": false,
+        "name": "service",
+        "options": [],
+        "query": "SELECT DISTINCT service FROM llm_usage ORDER BY service",
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": { "selected": true, "text": "All", "value": "%" },
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "definition": "SELECT DISTINCT model FROM llm_usage ORDER BY model",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "%",
+        "label": "Модель",
+        "multi": false,
+        "name": "model",
+        "options": [],
+        "query": "SELECT DISTINCT model FROM llm_usage ORDER BY model",
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Запросов за период",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+          "format": 0,
+          "rawSql": "SELECT count() AS requests FROM llm_usage WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND model LIKE '${model}'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Токенов за период",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "locale",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "purple", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+          "format": 0,
+          "rawSql": "SELECT sum(total_tokens) AS tokens FROM llm_usage WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND model LIKE '${model}'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Стоимость за период (USD)",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+          "format": 0,
+          "rawSql": "SELECT round((sum(prompt_tokens) * 0.27 + sum(completion_tokens) * 1.10) / 1000000, 6) AS cost_usd FROM llm_usage WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND model LIKE '${model}'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Ошибок",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+          "format": 0,
+          "rawSql": "SELECT count() AS errors FROM llm_usage WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND model LIKE '${model}' AND status = 'error'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Количество запросов",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+          "format": 1,
+          "rawSql": "SELECT toStartOfMinute(timestamp) AS time, count() AS requests, service FROM llm_usage WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND model LIKE '${model}' GROUP BY time, service ORDER BY time ASC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Количество токенов",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["sum"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+          "format": 1,
+          "rawSql": "SELECT toStartOfMinute(timestamp) AS time, sum(prompt_tokens) AS prompt_tokens, sum(completion_tokens) AS completion_tokens FROM llm_usage WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND model LIKE '${model}' GROUP BY time ORDER BY time ASC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Стоимость запросов (USD)",
+      "description": "DeepSeek Chat: $0.27/M input tokens, $1.10/M output tokens",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["sum"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "currencyUSD",
+          "decimals": 6
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+          "format": 1,
+          "rawSql": "SELECT toStartOfMinute(timestamp) AS time, round((sum(prompt_tokens) * 0.27 + sum(completion_tokens) * 1.10) / 1000000, 8) AS cost_usd FROM llm_usage WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND model LIKE '${model}' GROUP BY time ORDER BY time ASC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Среднее время ответа (мс)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+          "format": 1,
+          "rawSql": "SELECT toStartOfMinute(timestamp) AS time, avg(duration_ms) AS avg_duration, service FROM llm_usage WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND model LIKE '${model}' GROUP BY time, service ORDER BY time ASC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Последние запросы",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "sortBy": [],
+        "footer": { "show": false, "reducer": ["sum"], "countRows": false, "fields": "" },
+        "showHeader": true,
+        "frameIndex": 0,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left", "displayMode": "auto", "filterable": true } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "timestamp" },
+            "properties": [
+              { "id": "custom.width", "value": 190 },
+              { "id": "displayName", "value": "Время" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "service" },
+            "properties": [
+              { "id": "custom.width", "value": 100 },
+              { "id": "displayName", "value": "Сервис" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "model" },
+            "properties": [
+              { "id": "custom.width", "value": 150 },
+              { "id": "displayName", "value": "Модель" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "prompt_tokens" },
+            "properties": [
+              { "id": "custom.width", "value": 110 },
+              { "id": "displayName", "value": "Input токены" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "completion_tokens" },
+            "properties": [
+              { "id": "custom.width", "value": 120 },
+              { "id": "displayName", "value": "Output токены" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "total_tokens" },
+            "properties": [
+              { "id": "custom.width", "value": 100 },
+              { "id": "displayName", "value": "Всего токенов" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "duration_ms" },
+            "properties": [
+              { "id": "custom.width", "value": 100 },
+              { "id": "displayName", "value": "Время (мс)" },
+              { "id": "unit", "value": "ms" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "cost_usd" },
+            "properties": [
+              { "id": "custom.width", "value": 100 },
+              { "id": "displayName", "value": "Стоимость ($)" },
+              { "id": "unit", "value": "currencyUSD" },
+              { "id": "decimals", "value": 6 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "status" },
+            "properties": [
+              { "id": "custom.width", "value": 80 },
+              { "id": "displayName", "value": "Статус" },
+              { "id": "custom.displayMode", "value": "color-background" },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "ok": { "color": "green", "index": 0 } } },
+                  { "type": "value", "options": { "error": { "color": "red", "index": 1 } } }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+          "format": 0,
+          "rawSql": "SELECT timestamp, service, model, prompt_tokens, completion_tokens, total_tokens, duration_ms, round((prompt_tokens * 0.27 + completion_tokens * 1.10) / 1000000, 8) AS cost_usd, status FROM llm_usage WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND model LIKE '${model}' ORDER BY timestamp DESC LIMIT 200",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
