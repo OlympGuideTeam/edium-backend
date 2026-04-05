@@ -15,6 +15,14 @@ doorman_pg_password_prod = "CHANGE_ME"
 herald_pg_password_test = "CHANGE_ME"
 herald_pg_password_prod = "CHANGE_ME"
 
+# Charon
+charon_pg_password_test = "CHANGE_ME"
+charon_pg_password_prod = "CHANGE_ME"
+
+# Caesar
+caesar_pg_password_test = "CHANGE_ME"
+caesar_pg_password_prod = "CHANGE_ME"
+
 # Redis
 redis_password = "CHANGE_ME"
 
