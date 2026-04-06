@@ -146,7 +146,7 @@ services:
       NATS_PASSWORD_SPHINX: ${NATS_PASSWORD_SPHINX}
     volumes:
       - nats_data:/data
-      - ../prod/nats/nats-server.conf:/etc/nats/nats-server.conf:ro
+      - ./nats/nats-server.conf:/etc/nats/nats-server.conf:ro
     networks:
       - edium
 
