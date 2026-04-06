@@ -69,7 +69,7 @@ func (h *Handler) handleContact(ctx context.Context, chatID int64, contact *tgbo
 		phone = "+" + phone
 	}
 
-	slog.InfoContext(ctx, "tg-bot: контакт получен", "chat_id", chatID)
+	slog.InfoContext(ctx, "tg-bot: контакт получен", "chat_id", chatID, "phone", phone)
 
 	if err := h.service.RequestOTP(ctx, chatID, phone, domain.ChannelTG); err != nil {
 		slog.ErrorContext(ctx, "tg-bot: ошибка RequestOTP", "chat_id", chatID, "err", err)
