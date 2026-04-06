@@ -16,6 +16,7 @@ on:
           - doorman
           - herald
           - charon
+          - caesar
 
 permissions:
   contents: read
@@ -42,7 +43,7 @@ jobs:
           host: ${{ secrets.PROD_VM_HOST }}
           username: deploy
           key: ${{ secrets.PROD_VM_SSH_KEY }}
-          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/clickhouse/,infra/compose/prod/grafana/,infra/compose/prod/nats/nats-server.conf,doorman/migrations/,herald/migrations/,charon/migrations/"
+          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/clickhouse/,infra/compose/prod/grafana/,infra/compose/prod/nats/nats-server.conf,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -65,10 +66,11 @@ jobs:
             mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
             rm -rf /opt/edium/grafana/provisioning/dashboards.yaml
             cp -r /tmp/edium-deploy/infra/compose/prod/grafana/. /opt/edium/grafana/
-            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon
+            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
             cp -r /tmp/edium-deploy/charon/migrations/* /opt/edium/migrations/charon/
+            cp -r /tmp/edium-deploy/caesar/migrations/* /opt/edium/migrations/caesar/
             mkdir -p /opt/edium/nats
             cp /tmp/edium-deploy/infra/compose/prod/nats/nats-server.conf /opt/edium/nats/nats-server.conf
 
@@ -93,6 +95,9 @@ jobs:
             VK_GROUP_ID=${{ secrets.VK_GROUP_ID }}
             SMS_API_KEY=${{ secrets.SMS_API_KEY }}
             SMS_ALLOWED_PHONES=${{ secrets.SMS_ALLOWED_PHONES }}
+            CAESAR_PG_USER=${{ secrets.CAESAR_PG_USER }}
+            CAESAR_PG_PWD=${{ secrets.CAESAR_PG_PWD }}
+            CAESAR_PG_DB=${{ secrets.CAESAR_PG_DB }}
             CHARON_PG_USER=${{ secrets.CHARON_PG_USER }}
             CHARON_PG_PWD=${{ secrets.CHARON_PG_PWD }}
             CHARON_PG_DB=${{ secrets.CHARON_PG_DB }}
