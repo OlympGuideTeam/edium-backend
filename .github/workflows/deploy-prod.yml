@@ -121,13 +121,19 @@ jobs:
             printf '%s' '${{ secrets.JWT_RSA_PRIVATE_KEY }}' | awk 'NR>1{printf "\\n"}{printf "%s",$0}' >> .env
             echo >> .env
 
+            # Раскрываем переменные в nats-server.conf (envsubst заменяет $VAR → реальный пароль, кавычки остаются)
+            export $(grep -E '^NATS_PASSWORD_' .env | xargs)
+            envsubst '$NATS_PASSWORD_DOORMAN $NATS_PASSWORD_HERALD $NATS_PASSWORD_CAESAR $NATS_PASSWORD_CHARON $NATS_PASSWORD_RIDDLER $NATS_PASSWORD_SPHINX' \
+              < /opt/edium/nats/nats-server.conf > /tmp/nats-expanded.conf
+            mv /tmp/nats-expanded.conf /opt/edium/nats/nats-server.conf
+
             # Авторизация в CR
             echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
 
             # Обновление и запуск
             docker compose pull
             docker compose up -d --remove-orphans
-            docker compose restart grafana vector
+            docker compose restart nats grafana vector
             docker image prune -f
 
             # Миграции ClickHouse
