@@ -355,8 +355,8 @@ jobs:
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-caesar:
-    needs: [detect-changes, lint-caesar]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.caesar == 'true'
+    needs: [lint-caesar]
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -523,7 +523,12 @@ jobs:
               sleep 2
             done
 
-            # Миграции ClickHouse
+            # Init + миграции ClickHouse (init идемпотентен — CREATE TABLE IF NOT EXISTS)
+            docker compose exec -T clickhouse clickhouse-client \
+              --user vector \
+              --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+              --multiquery < /opt/edium/clickhouse/init.sql
+
             docker compose exec -T clickhouse clickhouse-client \
               --user vector \
               --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
@@ -650,7 +655,12 @@ jobs:
               sleep 2
             done
 
-            # Миграции ClickHouse
+            # Init + миграции ClickHouse (init идемпотентен — CREATE TABLE IF NOT EXISTS)
+            docker compose exec -T clickhouse clickhouse-client \
+              --user vector \
+              --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+              --multiquery < /opt/edium/clickhouse/init.sql
+
             docker compose exec -T clickhouse clickhouse-client \
               --user vector \
               --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
