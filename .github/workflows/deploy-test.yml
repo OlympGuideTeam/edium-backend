@@ -22,6 +22,7 @@ jobs:
       doorman: ${{ steps.filter.outputs.doorman }}
       herald: ${{ steps.filter.outputs.herald }}
       charon: ${{ steps.filter.outputs.charon }}
+      caesar: ${{ steps.filter.outputs.caesar }}
       ml: ${{ steps.filter.outputs.ml }}
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +36,8 @@ jobs:
               - 'herald/**'
             charon:
               - 'charon/**'
+            caesar:
+              - 'caesar/**'
             ml:
               - 'ml/**'
 
@@ -224,6 +227,22 @@ jobs:
           path: charon/coverage.out
 
   # ========================
+  # Go — Caesar
+  # ========================
+
+  lint-caesar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: caesar
+          version: v2.11.4
+
+  # ========================
   # Python — ML
   # ========================
 
@@ -335,6 +354,29 @@ jobs:
 
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
+  build-caesar:
+    needs: [detect-changes, lint-caesar]
+    if: github.event_name == 'push' && needs.detect-changes.outputs.caesar == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-caesar
+          TAG=main-${GITHUB_SHA::7}
+
+          docker build -t ${IMAGE}:${TAG} caesar/
+          docker push ${IMAGE}:${TAG}
+
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
+
   build-ml:
     # ВРЕМЕННО ОТКЛЮЧЕНО
     if: false
@@ -367,16 +409,18 @@ jobs:
   deploy-test:
     # ВРЕМЕННО: убраны зависимости от ml (test-python, build-ml)
     # needs: [test-doorman, test-herald, test-charon, test-python, build-doorman, build-herald, build-charon, build-ml]
-    needs: [test-doorman, test-herald, test-charon, build-doorman, build-herald, build-charon]
+    needs: [test-doorman, test-herald, test-charon, lint-caesar, build-doorman, build-herald, build-charon, build-caesar]
     # ВРЕМЕННО: условие без ml (было: && needs.test-python.result == 'success' && (needs.build-ml.result == 'success' || needs.build-ml.result == 'skipped'))
     if: |
       always() &&
       needs.test-doorman.result == 'success' &&
       needs.test-herald.result == 'success' &&
       needs.test-charon.result == 'success' &&
+      needs.lint-caesar.result == 'success' &&
       (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') &&
       (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') &&
-      (needs.build-charon.result == 'success' || needs.build-charon.result == 'skipped')
+      (needs.build-charon.result == 'success' || needs.build-charon.result == 'skipped') &&
+      (needs.build-caesar.result == 'success' || needs.build-caesar.result == 'skipped')
     runs-on: ubuntu-latest
     environment: test
     steps:
@@ -388,7 +432,7 @@ jobs:
           host: ${{ secrets.TEST_VM_HOST }}
           username: deploy
           key: ${{ secrets.TEST_VM_SSH_KEY }}
-          source: "infra/compose/test/docker-compose.yml,infra/compose/test/Caddyfile,infra/compose/test/vector.yaml,infra/compose/test/clickhouse/,infra/compose/test/grafana/,infra/compose/prod/nats/nats-server.conf,doorman/migrations/,herald/migrations/,charon/migrations/"
+          source: "infra/compose/test/docker-compose.yml,infra/compose/test/Caddyfile,infra/compose/test/vector.yaml,infra/compose/test/clickhouse/,infra/compose/test/grafana/,infra/compose/prod/nats/nats-server.conf,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -411,10 +455,11 @@ jobs:
             mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
             rm -rf /opt/edium/grafana/provisioning/dashboards.yaml
             cp -r /tmp/edium-deploy/infra/compose/test/grafana/. /opt/edium/grafana/
-            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon
+            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
             cp -r /tmp/edium-deploy/charon/migrations/* /opt/edium/migrations/charon/
+            cp -r /tmp/edium-deploy/caesar/migrations/* /opt/edium/migrations/caesar/
             mkdir -p /opt/edium/nats
             cp /tmp/edium-deploy/infra/compose/prod/nats/nats-server.conf /opt/edium/nats/nats-server.conf
 
@@ -469,6 +514,14 @@ jobs:
             docker compose up -d --remove-orphans
             docker compose restart grafana vector
             docker image prune -f
+
+            # Ждём готовности ClickHouse (до 60 сек)
+            for i in $(seq 1 30); do
+              docker compose exec -T clickhouse clickhouse-client \
+                --user vector --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+                --query "SELECT 1" > /dev/null 2>&1 && break
+              sleep 2
+            done
 
             # Миграции ClickHouse
             docker compose exec -T clickhouse clickhouse-client \
@@ -588,6 +641,14 @@ jobs:
             docker compose up -d --remove-orphans
             docker compose restart grafana vector
             docker image prune -f
+
+            # Ждём готовности ClickHouse (до 60 сек)
+            for i in $(seq 1 30); do
+              docker compose exec -T clickhouse clickhouse-client \
+                --user vector --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+                --query "SELECT 1" > /dev/null 2>&1 && break
+              sleep 2
+            done
 
             # Миграции ClickHouse
             docker compose exec -T clickhouse clickhouse-client \
