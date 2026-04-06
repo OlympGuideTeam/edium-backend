@@ -390,7 +390,7 @@ jobs:
 
   build-caesar:
     needs: [detect-changes, test-caesar]
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && needs.detect-changes.outputs.caesar == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
