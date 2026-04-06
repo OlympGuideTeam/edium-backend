@@ -39,6 +39,7 @@ resource "yandex_mdb_postgresql_user" "users" {
   cluster_id = yandex_mdb_postgresql_cluster.this.id
   name       = each.key
   password   = each.value.password
+  conn_limit = 30
 }
 
 # Потом БД с owner
