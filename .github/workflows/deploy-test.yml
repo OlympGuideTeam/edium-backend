@@ -555,7 +555,7 @@ jobs:
             # Обновление и запуск
             docker compose pull
             docker compose up -d --remove-orphans
-            docker compose restart nats grafana vector
+            docker compose restart nats grafana vector caddy
             docker image prune -f
 
             # Ждём готовности ClickHouse (до 60 сек)

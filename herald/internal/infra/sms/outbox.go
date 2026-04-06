@@ -2,7 +2,7 @@ package sms
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 )
 
 // SMSTaskRepository — запись задачи в outbox-таблицу.
@@ -28,8 +28,13 @@ func NewSender(repo SMSTaskRepository, allowedPhones []string) *Sender {
 func (s *Sender) SendSMS(ctx context.Context, phone, text string) error {
 	if len(s.allowedPhones) > 0 {
 		if _, ok := s.allowedPhones[phone]; !ok {
-			return fmt.Errorf("телефон не в белом списке SMS: %s", phone)
+			slog.WarnContext(ctx, "sms: телефон не в белом списке, пропускаем", "phone", phone)
+			return nil
 		}
 	}
-	return s.repo.Create(ctx, phone, text)
+	if err := s.repo.Create(ctx, phone, text); err != nil {
+		return err
+	}
+	slog.InfoContext(ctx, "sms: задача создана", "phone", phone, "text", text)
+	return nil
 }
