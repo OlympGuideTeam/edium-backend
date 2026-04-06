@@ -84,3 +84,9 @@ variable "gpu_cloud_init" {
   type        = bool
   default     = false
 }
+
+variable "nat_ip_address" {
+  description = "Статический внешний IP (пусто — динамический)"
+  type        = string
+  default     = ""
+}
