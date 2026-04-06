@@ -140,7 +140,7 @@ services:
       APP_PORT: "80"
       POSTGRES_DSN: "postgres://${CAESAR_PG_USER}:${CAESAR_PG_PWD}@${PG_HOST}:6432/${CAESAR_PG_DB}?sslmode=require"
       NATS_URL: "nats://caesar:${NATS_PASSWORD_CAESAR}@nats:4222"
-      DOORMAN_JWKS_URL: "http://doorman/api/v1/.well-known/jwks.json"
+      DOORMAN_JWKS_URL: "http://doorman/doorman/v1/.well-known/jwks.json"
       OTEL_ENDPOINT: "jaeger:4317"
     depends_on:
       caesar-flyway:
