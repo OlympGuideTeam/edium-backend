@@ -30,6 +30,24 @@ module "registry" {
   folder_id     = var.folder_id
 }
 
+# --- Static IPs ---
+
+resource "yandex_vpc_address" "test" {
+  name = "edium-test-ip"
+
+  external_ipv4_address {
+    zone_id = "ru-central1-a"
+  }
+}
+
+resource "yandex_vpc_address" "prod" {
+  name = "edium-prod-ip"
+
+  external_ipv4_address {
+    zone_id = "ru-central1-a"
+  }
+}
+
 # --- Test VM ---
 
 module "vm_test" {
@@ -43,6 +61,7 @@ module "vm_test" {
   subnet_id          = module.vpc.subnet_ids["edium-test"]
   security_group_ids = [module.vpc.web_security_group_id]
   ssh_public_key     = var.ssh_public_key
+  nat_ip_address     = yandex_vpc_address.test.external_ipv4_address[0].address
 }
 
 # --- Prod VM ---
@@ -58,6 +77,7 @@ module "vm_prod" {
   subnet_id          = module.vpc.subnet_ids["edium-prod"]
   security_group_ids = [module.vpc.web_security_group_id]
   ssh_public_key     = var.ssh_public_key
+  nat_ip_address     = yandex_vpc_address.prod.external_ipv4_address[0].address
 }
 
 # --- Managed PostgreSQL ---
