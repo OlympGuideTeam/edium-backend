@@ -108,7 +108,7 @@ func (a *App) Router(serviceName string) *gin.Engine {
 	r := gin.Default()
 	r.Use(otelgin.Middleware(serviceName))
 
-	api := r.Group("/api/v1")
+	api := r.Group("/doorman/v1")
 	api.POST("/otp/send", a.OtpHandler.Send)
 	api.POST("/otp/verify", a.OtpHandler.Verify)
 	api.POST("/auth/register", a.RegistrationHandler.Register)

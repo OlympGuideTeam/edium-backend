@@ -1,11 +1,18 @@
 test.edium.online {
-    reverse_proxy doorman:80
+    handle /doorman/v1/* {
+        reverse_proxy doorman:80
+    }
+    handle /caesar/v1/* {
+        reverse_proxy caesar:80
+    }
+    handle /herald/v1/* {
+        reverse_proxy herald:80
+    }
+    handle {
+        respond "Not Found" 404
+    }
 }
 
 grafana-test.edium.online {
     reverse_proxy grafana:3000
-}
-
-herald-test.edium.online {
-    reverse_proxy herald:80
 }

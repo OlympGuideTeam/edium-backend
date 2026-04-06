@@ -1,26 +1,13 @@
 api.edium.online {
-	# Doorman — аутентификация
-	handle /api/v1/otp/* {
+	handle /doorman/v1/* {
 		reverse_proxy doorman:80
 	}
-	handle /api/v1/auth/* {
-		reverse_proxy doorman:80
+	handle /caesar/v1/* {
+		reverse_proxy caesar:80
 	}
-	handle /.well-known/* {
-		reverse_proxy doorman:80
+	handle /herald/v1/* {
+		reverse_proxy herald:80
 	}
-
-	# Будущие сервисы:
-	# handle /api/v1/users/* {
-	# 	reverse_proxy caesar:80
-	# }
-	# handle /api/v1/classes/* {
-	# 	reverse_proxy caesar:80
-	# }
-	# handle /api/v1/quizzes/* {
-	# 	reverse_proxy riddler:80
-	# }
-
 	handle {
 		respond "Not Found" 404
 	}
