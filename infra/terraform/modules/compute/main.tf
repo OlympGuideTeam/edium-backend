@@ -1,5 +1,5 @@
 data "yandex_compute_image" "ubuntu" {
-  family = var.gpus > 0 ? "ubuntu-2204-lts-gpu" : "ubuntu-2204-lts"
+  family = var.gpus > 0 ? "ubuntu-2404-lts-gpu" : "ubuntu-2204-lts"
 }
 
 resource "yandex_compute_instance" "this" {
