@@ -30,13 +30,13 @@ module "vm_gpu" {
   source = "../../modules/compute"
 
   name               = "edium-sphinx"
-  platform_id        = "gpu-standard-v2"
+  platform_id        = "standard-v3-t4"
   cores              = 4
   memory             = 16
   gpus               = 1
   gpu_cloud_init     = true
   preemptible        = true
-  disk_size          = 100
+  disk_size          = 60
   disk_type          = "network-ssd"
   subnet_id          = module.vpc.subnet_ids["edium-ml"]
   security_group_ids = [module.vpc.web_security_group_id]
