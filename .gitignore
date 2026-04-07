@@ -54,6 +54,8 @@ override.tf.json
 
 # Terraform credentials
 infra/terraform/accounts/*/key.json
+infra/terraform/accounts/*/ml-s3-keys.json
+infra/terraform/accounts/*/ml-sa-key.json
 
 # Private keys
 *.pem
