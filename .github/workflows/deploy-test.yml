@@ -3,6 +3,13 @@ name: Deploy Test
 on:
   push:
     branches: [main]
+    paths:
+      - "doorman/**"
+      - "herald/**"
+      - "charon/**"
+      - "caesar/**"
+      - "infra/compose/test/**"
+      - "infra/compose/prod/nats/**"
   workflow_dispatch:
 
 permissions:
