@@ -17,6 +17,60 @@ packages:
   - gnupg
   - ufw
 
+write_files:
+  # Скрипт запуска sphinx: docker login → pull → compose up
+  # Запускается при каждом старте VM через sphinx.service.
+  # Если .env или yc-key.json не найдены (первый старт до деплоя) — выходит без ошибки.
+  - path: /usr/local/bin/sphinx-start.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+
+      ENV_FILE=/opt/edium/.env
+      KEY_FILE=/opt/edium/yc-key.json
+      COMPOSE_FILE=/opt/edium/docker-compose.yaml
+
+      if [ ! -f "$ENV_FILE" ] || [ ! -f "$KEY_FILE" ] || [ ! -f "$COMPOSE_FILE" ]; then
+        echo "sphinx-start: конфиг ещё не задеплоен, пропуск"
+        exit 0
+      fi
+
+      set -a
+      # shellcheck source=/dev/null
+      source "$ENV_FILE"
+      set +a
+
+      echo "sphinx-start: вход в Container Registry..."
+      docker login --username json_key --password-stdin cr.yandex < "$KEY_FILE"
+
+      echo "sphinx-start: обновление образа..."
+      docker compose -f "$COMPOSE_FILE" pull
+
+      echo "sphinx-start: запуск контейнеров..."
+      docker compose -f "$COMPOSE_FILE" up -d
+
+      echo "sphinx-start: готово"
+
+  # systemd-юнит: запускает sphinx-start.sh при каждом старте VM
+  - path: /etc/systemd/system/sphinx.service
+    content: |
+      [Unit]
+      Description=Sphinx Quiz Generation Service
+      After=docker.service network-online.target
+      Requires=docker.service
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/usr/local/bin/sphinx-start.sh
+      StandardOutput=journal
+      StandardError=journal
+
+      [Install]
+      WantedBy=multi-user.target
+
 runcmd:
   # NVIDIA Container Toolkit
   - curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
@@ -34,6 +88,7 @@ runcmd:
   - nvidia-ctk runtime configure --runtime=docker
   - systemctl enable docker
   - systemctl restart docker
+  - systemctl enable sphinx.service
 
   # Рабочая директория
   - mkdir -p /opt/edium

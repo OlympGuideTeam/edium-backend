@@ -26,5 +26,9 @@ caesar_pg_password_prod = "CHANGE_ME"
 # Redis
 redis_password = "CHANGE_ME"
 
+# Sphinx (ML-аккаунт)
+sphinx_pg_password = "CHANGE_ME"
+sphinx_vm_ip       = ""  # внешний IP GPU VM, после создания через accounts/ml
+
 # Domain
 domain = "edium.online"
