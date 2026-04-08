@@ -1,4 +1,5 @@
 data "yandex_compute_image" "ubuntu" {
+  count  = var.image_id == "" ? 1 : 0
   family = var.gpus > 0 ? "ubuntu-2204-lts-gpu" : "ubuntu-2204-lts"
 }
 
@@ -16,7 +17,7 @@ resource "yandex_compute_instance" "this" {
 
   boot_disk {
     initialize_params {
-      image_id = data.yandex_compute_image.ubuntu.id
+      image_id = var.image_id != "" ? var.image_id : data.yandex_compute_image.ubuntu[0].id
       size     = var.disk_size
       type     = var.disk_type
     }

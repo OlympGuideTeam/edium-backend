@@ -117,7 +117,7 @@ jobs:
         run: rm -f key.json terraform.tfvars tfplan
 
   # ========================
-  # ML account
+  # ML account (отдельный YC-аккаунт)
   # ========================
 
   terraform-ml:
@@ -148,22 +148,22 @@ jobs:
           }
           EOF
 
-          echo '${{ secrets.YC_SA_KEY_JSON }}' > key.json
+          echo '${{ secrets.YC_SA_KEY_JSON_ML }}' > key.json
 
       - name: Подготовка переменных
         run: echo '${{ secrets.TF_VARS_ML }}' > terraform.tfvars
 
       - name: Terraform init
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.TF_S3_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_S3_SECRET_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.TF_S3_ACCESS_KEY_ML }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_S3_SECRET_KEY_ML }}
         run: terraform init
 
       - name: Terraform plan
         id: plan
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.TF_S3_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_S3_SECRET_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.TF_S3_ACCESS_KEY_ML }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_S3_SECRET_KEY_ML }}
         run: terraform plan -no-color -out=tfplan
         continue-on-error: true
 

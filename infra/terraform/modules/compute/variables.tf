@@ -90,3 +90,9 @@ variable "nat_ip_address" {
   type        = string
   default     = ""
 }
+
+variable "image_id" {
+  description = "ID образа диска (пусто — автовыбор по family)"
+  type        = string
+  default     = ""
+}
