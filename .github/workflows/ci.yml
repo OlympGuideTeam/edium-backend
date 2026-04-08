@@ -16,6 +16,7 @@ jobs:
       charon: ${{ steps.filter.outputs.charon }}
       ml: ${{ steps.filter.outputs.ml }}
       infra: ${{ steps.filter.outputs.infra }}
+      sphinx: ${{ steps.filter.outputs.sphinx }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -32,6 +33,8 @@ jobs:
               - 'ml/**'
             infra:
               - 'infra/**'
+            sphinx:
+              - 'sphinx/**'
 
   # ========================
   # Go — Doorman
@@ -258,4 +261,45 @@ jobs:
           pip install pytest
       - name: Запуск тестов
         run: cd ml && pytest -v
+
+  # ========================
+  # Python — Sphinx
+  # ========================
+
+  lint-sphinx:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Установка ruff
+        run: pip install ruff==0.15.8
+      - name: Проверка стиля
+        run: |
+          ruff check sphinx/
+          ruff format --check sphinx/
+
+  test-sphinx:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
+    needs: lint-sphinx
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: sphinx/requirements.txt
+      - name: Установка зависимостей
+        run: |
+          pip install -r sphinx/requirements.txt
+          pip install pytest
+      - name: Запуск тестов
+        run: cd sphinx && pytest -v
+
 # Terraform plan/apply — см. .github/workflows/terraform.yml
