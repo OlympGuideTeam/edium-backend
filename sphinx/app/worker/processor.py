@@ -1,6 +1,11 @@
 """
 GenerationProcessor — опрашивает generation_task, запускает pipeline,
 сохраняет результат в generation_result (outbox).
+
+При старте и каждые RECOVERY_INTERVAL секунд сбрасывает задачи, застрявшие
+в статусе 'processing' дольше processing_timeout_minutes (сценарий: VM была
+прервана во время выполнения pipeline). Если attempts >= max_task_attempts —
+задача помечается как 'failed'.
 """
 
 import asyncio
@@ -15,6 +20,8 @@ from app.pipeline import pipeline
 
 logger = logging.getLogger(__name__)
 
+RECOVERY_INTERVAL = 300  # секунды между проверками зависших задач
+
 
 class GenerationProcessor:
     def __init__(self, pool: asyncpg.Pool):
@@ -22,12 +29,61 @@ class GenerationProcessor:
 
     async def run(self) -> None:
         logger.info("GenerationProcessor started (poll_interval=%.1fs)", settings.worker_poll_interval)
+
+        await self._recover_stuck_tasks()
+        last_recovery = asyncio.get_event_loop().time()
+
         while True:
             try:
                 await self._process_one()
             except Exception as e:
                 logger.error("GenerationProcessor: unexpected error: %s", e)
             await asyncio.sleep(settings.worker_poll_interval)
+
+            now = asyncio.get_event_loop().time()
+            if now - last_recovery >= RECOVERY_INTERVAL:
+                await self._recover_stuck_tasks()
+                last_recovery = now
+
+    async def _recover_stuck_tasks(self) -> None:
+        """
+        Сбрасывает задачи, застрявшие в 'processing' из-за прерывания VM.
+        Если задача уже исчерпала попытки — помечает как 'failed'.
+        """
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                UPDATE generation_task
+                SET
+                    status     = CASE
+                                   WHEN attempts >= $2 THEN 'failed'
+                                   ELSE 'pending'
+                                 END,
+                    started_at = NULL,
+                    error      = CASE
+                                   WHEN attempts >= $2 THEN 'превышено max_task_attempts'
+                                   ELSE error
+                                 END
+                WHERE
+                    status = 'processing'
+                    AND started_at < NOW() - ($1 || ' minutes')::interval
+                RETURNING job_id, attempts
+                """,
+                settings.processing_timeout_minutes,
+                settings.max_task_attempts,
+            )
+
+        for row in rows:
+            if row["attempts"] >= settings.max_task_attempts:
+                logger.warning(
+                    "GenerationProcessor: task job_id=%s marked failed after %d attempts",
+                    row["job_id"], row["attempts"],
+                )
+            else:
+                logger.info(
+                    "GenerationProcessor: recovered stuck task job_id=%s (attempts=%d, will retry)",
+                    row["job_id"], row["attempts"],
+                )
 
     async def _process_one(self) -> None:
         async with self._pool.acquire() as conn:
@@ -45,14 +101,18 @@ class GenerationProcessor:
                 if row is None:
                     return
 
-                task_id  = row["id"]
-                job_id   = row["job_id"]
-                quiz_id  = row["quiz_id"]
-                text     = row["text"]
+                task_id   = row["id"]
+                job_id    = row["job_id"]
+                quiz_id   = row["quiz_id"]
+                text      = row["text"]
                 trace_ctx = row["trace_ctx"] or ""
 
                 await conn.execute(
-                    "UPDATE generation_task SET status='processing', started_at=$1 WHERE id=$2",
+                    """
+                    UPDATE generation_task
+                    SET status = 'processing', started_at = $1, attempts = attempts + 1
+                    WHERE id = $2
+                    """,
                     datetime.now(timezone.utc), task_id,
                 )
 
@@ -67,8 +127,8 @@ class GenerationProcessor:
                 await conn.execute(
                     """
                     UPDATE generation_task
-                    SET status='failed', finished_at=$1, error=$2
-                    WHERE id=$3
+                    SET status = 'failed', finished_at = $1, error = $2
+                    WHERE id = $3
                     """,
                     datetime.now(timezone.utc), str(e), task_id,
                 )
@@ -103,7 +163,7 @@ class GenerationProcessor:
                     job_id, quiz_id, payload, trace_ctx,
                 )
                 await conn.execute(
-                    "UPDATE generation_task SET status='done', finished_at=$1 WHERE id=$2",
+                    "UPDATE generation_task SET status = 'done', finished_at = $1 WHERE id = $2",
                     now, task_id,
                 )
 
