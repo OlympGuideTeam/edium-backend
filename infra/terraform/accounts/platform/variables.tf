@@ -102,7 +102,13 @@ variable "domain" {
 # --- Sphinx (ML-аккаунт) ---
 
 variable "sphinx_vm_ip" {
-  description = "Внешний IP GPU VM из ML-аккаунта (для DNS sphinx.ml.edium.online)"
+  description = "Внешний IP GPU VM из ML-аккаунта (для DNS и доступа к PG)"
   type        = string
   default     = ""
+}
+
+variable "sphinx_pg_password" {
+  description = "Пароль PostgreSQL для Sphinx"
+  type        = string
+  sensitive   = true
 }

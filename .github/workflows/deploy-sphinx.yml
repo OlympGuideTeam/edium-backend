@@ -1,0 +1,176 @@
+name: Deploy Sphinx
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sphinx/**"
+      - "infra/compose/sphinx/**"
+
+permissions:
+  contents: read
+
+env:
+  ML_REGISTRY: cr.yandex/${{ secrets.YC_ML_REGISTRY_ID }}
+
+jobs:
+  # ========================
+  # Lint (Python / ruff)
+  # ========================
+
+  lint-sphinx:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Установка ruff
+        run: pip install ruff==0.15.8
+      - name: Проверка стиля
+        run: |
+          ruff check sphinx/
+          ruff format --check sphinx/
+
+  # ========================
+  # Build и push образа в ML Container Registry
+  # ========================
+
+  build-sphinx:
+    needs: lint-sphinx
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Авторизация в ML Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON_ML }}' | docker login --username json_key --password-stdin cr.yandex
+
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.ML_REGISTRY }}/edium-sphinx
+          TAG=main-${GITHUB_SHA::7}
+
+          docker build -t ${IMAGE}:${TAG} sphinx/
+          docker push ${IMAGE}:${TAG}
+
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  # ========================
+  # Deploy на GPU VM
+  # ========================
+
+  deploy-sphinx:
+    needs: build-sphinx
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Устанавливаем YC CLI для управления VM
+      - name: Установка YC CLI
+        run: |
+          curl -fsSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash -s -- -i /opt/yc -n
+          echo "/opt/yc/bin" >> $GITHUB_PATH
+
+      - name: Аутентификация в YC (ML аккаунт)
+        run: |
+          echo '${{ secrets.YC_SA_KEY_JSON_ML }}' > /tmp/yc-key.json
+          yc config set service-account-key /tmp/yc-key.json
+          yc config set cloud-id ${{ secrets.YC_ML_CLOUD_ID }}
+          yc config set folder-id ${{ secrets.YC_ML_FOLDER_ID }}
+
+      # Убеждаемся, что VM запущена (прерываемая VM могла быть остановлена YC)
+      - name: Проверка и запуск VM
+        run: |
+          VM_STATUS=$(yc compute instance get \
+            --id ${{ secrets.SPHINX_VM_ID }} \
+            --format json | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
+
+          echo "Статус VM: $VM_STATUS"
+
+          if [ "$VM_STATUS" = "STOPPED" ] || [ "$VM_STATUS" = "CRASHED" ]; then
+            echo "VM остановлена, запускаем..."
+            yc compute instance start --id ${{ secrets.SPHINX_VM_ID }}
+
+            for i in $(seq 1 24); do
+              sleep 10
+              VM_STATUS=$(yc compute instance get \
+                --id ${{ secrets.SPHINX_VM_ID }} \
+                --format json | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
+              echo "Ожидание RUNNING (попытка $i): $VM_STATUS"
+              [ "$VM_STATUS" = "RUNNING" ] && break
+            done
+
+            if [ "$VM_STATUS" != "RUNNING" ]; then
+              echo "VM не запустилась за 4 минуты"
+              exit 1
+            fi
+          fi
+
+          # Небольшая пауза, чтобы SSH-демон успел подняться
+          sleep 15
+
+      - name: Очистка временных файлов
+        if: always()
+        run: rm -f /tmp/yc-key.json
+
+      # Копируем docker-compose + миграции на VM
+      - name: Копирование файлов на VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SPHINX_VM_HOST }}
+          username: deploy
+          key: ${{ secrets.SPHINX_VM_SSH_KEY }}
+          source: "infra/compose/sphinx/docker-compose.yaml,sphinx/migrations/"
+          target: /tmp/sphinx-deploy/
+          strip_components: 0
+
+      - name: Deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SPHINX_VM_HOST }}
+          username: deploy
+          key: ${{ secrets.SPHINX_VM_SSH_KEY }}
+          script: |
+            set -e
+
+            # Подготовка файлов
+            mkdir -p /opt/edium/migrations
+            cp /tmp/sphinx-deploy/infra/compose/sphinx/docker-compose.yaml /opt/edium/docker-compose.yaml
+            cp -r /tmp/sphinx-deploy/sphinx/migrations/* /opt/edium/migrations/
+
+            cd /opt/edium
+
+            # Запись .env из секретов GitHub
+            cat > .env <<'ENVEOF'
+            ML_REGISTRY_ID=${{ secrets.YC_ML_REGISTRY_ID }}
+            IMAGE_TAG=main-${{ github.sha != '' && github.sha || 'latest' }}
+            NATS_URL=${{ secrets.SPHINX_NATS_URL }}
+            NATS_TLS_CA_PATH=${{ secrets.SPHINX_NATS_TLS_CA_PATH }}
+            SPHINX_PG_PWD=${{ secrets.SPHINX_PG_PWD }}
+            HF_TOKEN=${{ secrets.HF_TOKEN }}
+            MODEL_ID=${{ secrets.SPHINX_MODEL_ID }}
+            ENVEOF
+            sed -i 's/^[[:space:]]*//' .env
+
+            # Авторизация в ML Container Registry
+            echo '${{ secrets.YC_SA_KEY_JSON_ML }}' | docker login --username json_key --password-stdin cr.yandex
+
+            # Обновление образа и перезапуск
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+
+            # Очистка
+            rm -rf /tmp/sphinx-deploy
+
+            echo "Sphinx deploy завершён: main-${GITHUB_SHA::7}"
+
+      - name: Итог
+        run: |
+          echo "## Sphinx Deploy" >> $GITHUB_STEP_SUMMARY
+          echo "- **Коммит:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Образ:** \`${{ env.ML_REGISTRY }}/edium-sphinx:main-${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Статус:** Успешно" >> $GITHUB_STEP_SUMMARY
