@@ -3,9 +3,10 @@ name: Deploy Sphinx
 on:
   push:
     branches: [main]
-    paths:
-      - "sphinx/**"
-      - "infra/compose/sphinx/**"
+    # ВРЕМЕННО: без фильтра путей, запускается на любой пуш в main
+    # paths:
+    #   - "sphinx/**"
+    #   - "infra/compose/sphinx/**"
 
 permissions:
   contents: read
