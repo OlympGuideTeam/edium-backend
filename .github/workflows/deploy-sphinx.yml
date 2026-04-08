@@ -7,6 +7,7 @@ on:
     # paths:
     #   - "sphinx/**"
     #   - "infra/compose/sphinx/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,6 +16,24 @@ env:
   ML_REGISTRY: cr.yandex/${{ secrets.YC_ML_REGISTRY_ID }}
 
 jobs:
+  # ========================
+  # Определение изменений
+  # ========================
+
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      sphinx: ${{ steps.filter.outputs.sphinx }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            sphinx:
+              - 'sphinx/**'
+              - 'infra/compose/sphinx/**'
+
   # ========================
   # Lint (Python / ruff)
   # ========================
@@ -63,6 +82,8 @@ jobs:
   # ========================
 
   build-sphinx:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.sphinx == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,7 +109,8 @@ jobs:
   # ========================
 
   deploy-sphinx:
-    needs: build-sphinx
+    needs: [build-sphinx]
+    if: always() && (needs.build-sphinx.result == 'success' || needs.build-sphinx.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
