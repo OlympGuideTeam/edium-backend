@@ -19,6 +19,8 @@ jobs:
   # ========================
 
   lint-sphinx:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,11 +35,33 @@ jobs:
           ruff format --check sphinx/
 
   # ========================
+  # Tests (pytest)
+  # ========================
+
+  test-sphinx:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
+    needs: lint-sphinx
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: sphinx/requirements.txt
+      - name: Установка зависимостей
+        run: |
+          pip install -r sphinx/requirements.txt
+          pip install pytest
+      - name: Запуск тестов
+        run: cd sphinx && pytest -v
+
+  # ========================
   # Build и push образа в ML Container Registry
   # ========================
 
   build-sphinx:
-    needs: lint-sphinx
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

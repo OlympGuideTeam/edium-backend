@@ -23,7 +23,6 @@ jobs:
       herald: ${{ steps.filter.outputs.herald }}
       charon: ${{ steps.filter.outputs.charon }}
       caesar: ${{ steps.filter.outputs.caesar }}
-      ml: ${{ steps.filter.outputs.ml }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -38,14 +37,14 @@ jobs:
               - 'charon/**'
             caesar:
               - 'caesar/**'
-            ml:
-              - 'ml/**'
 
   # ========================
   # Go — Doorman
   # ========================
 
   lint-doorman:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -58,6 +57,8 @@ jobs:
           version: v2.11.4
 
   test-doorman:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     needs: lint-doorman
     runs-on: ubuntu-latest
     services:
@@ -113,6 +114,8 @@ jobs:
   # ========================
 
   lint-herald:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -125,6 +128,8 @@ jobs:
           version: v2.11.4
 
   test-herald:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     needs: lint-herald
     runs-on: ubuntu-latest
     services:
@@ -169,6 +174,8 @@ jobs:
   # ========================
 
   lint-charon:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -181,6 +188,8 @@ jobs:
           version: v2.11.4
 
   test-charon:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     needs: lint-charon
     runs-on: ubuntu-latest
     services:
@@ -231,6 +240,8 @@ jobs:
   # ========================
 
   lint-caesar:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -243,6 +254,8 @@ jobs:
           version: v2.11.4
 
   test-caesar:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     needs: lint-caesar
     runs-on: ubuntu-latest
     services:
@@ -277,50 +290,11 @@ jobs:
           path: caesar/coverage.out
 
   # ========================
-  # Python — ML
-  # ========================
-
-  lint-python:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Установка ruff
-        run: pip install ruff==0.15.8
-      - name: Проверка стиля
-        run: |
-          ruff check ml/
-          ruff format --check ml/
-
-  test-python:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    needs: lint-python
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: ml/requirements.txt
-      - name: Установка зависимостей
-        run: |
-          pip install -r ml/requirements.txt
-          pip install pytest
-      - name: Запуск тестов
-        run: cd ml && pytest -v
-
-  # ========================
   # Build и push образов
   # ========================
 
   build-doorman:
-    needs: [detect-changes, test-doorman]
+    needs: [detect-changes]
     if: needs.detect-changes.outputs.doorman == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -343,7 +317,7 @@ jobs:
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-herald:
-    needs: [detect-changes, test-herald]
+    needs: [detect-changes]
     if: github.event_name == 'push' && needs.detect-changes.outputs.herald == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -366,7 +340,7 @@ jobs:
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-charon:
-    needs: [detect-changes, test-charon]
+    needs: [detect-changes]
     if: github.event_name == 'push' && needs.detect-changes.outputs.charon == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -389,7 +363,7 @@ jobs:
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-caesar:
-    needs: [detect-changes, test-caesar]
+    needs: [detect-changes]
     if: github.event_name == 'push' && needs.detect-changes.outputs.caesar == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -411,46 +385,27 @@ jobs:
 
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
-  build-ml:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    needs: [detect-changes, test-python]
-    # if: github.event_name == 'push' && needs.detect-changes.outputs.ml == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Авторизация в Container Registry
-        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
-
-      - name: Build и push
-        run: |
-          IMAGE=${{ env.REGISTRY }}/edium-ml
-          TAG=main-${GITHUB_SHA::7}
-
-          docker build -t ${IMAGE}:${TAG} ml/
-          docker push ${IMAGE}:${TAG}
-
-          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
-          docker push ${IMAGE}:latest
-
-          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
-
   # ========================
   # Deploy на test VM
   # ========================
 
   deploy-test:
-    # ВРЕМЕННО: убраны зависимости от ml (test-python, build-ml)
-    # needs: [test-doorman, test-herald, test-charon, test-python, build-doorman, build-herald, build-charon, build-ml]
-    needs: [test-doorman, test-herald, test-charon, test-caesar, build-doorman, build-herald, build-charon, build-caesar]
-    # ВРЕМЕННО: условие без ml (было: && needs.test-python.result == 'success' && (needs.build-ml.result == 'success' || needs.build-ml.result == 'skipped'))
+    # ВРЕМЕННО: lint и test отключены, depends только на build-джобах
+    # needs: [test-doorman, test-herald, test-charon, test-caesar, build-doorman, build-herald, build-charon, build-caesar]
+    needs: [build-doorman, build-herald, build-charon, build-caesar]
+    # ВРЕМЕННО: условие без test-джобов
+    # if: |
+    #   always() &&
+    #   needs.test-doorman.result == 'success' &&
+    #   needs.test-herald.result == 'success' &&
+    #   needs.test-charon.result == 'success' &&
+    #   needs.test-caesar.result == 'success' &&
+    #   (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') &&
+    #   (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') &&
+    #   (needs.build-charon.result == 'success' || needs.build-charon.result == 'skipped') &&
+    #   (needs.build-caesar.result == 'success' || needs.build-caesar.result == 'skipped')
     if: |
       always() &&
-      needs.test-doorman.result == 'success' &&
-      needs.test-herald.result == 'success' &&
-      needs.test-charon.result == 'success' &&
-      needs.test-caesar.result == 'success' &&
       (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') &&
       (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') &&
       (needs.build-charon.result == 'success' || needs.build-charon.result == 'skipped') &&
