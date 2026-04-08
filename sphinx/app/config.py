@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # Интервал опроса воркеров (секунды)
     worker_poll_interval: float = 2.0
 
+    # Восстановление зависших задач: таймаут обработки и максимум попыток
+    processing_timeout_minutes: int = 30
+    max_task_attempts: int = 3
+
     model_config = {"env_file": ".env", "case_sensitive": False}
 
 
