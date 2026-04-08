@@ -6,6 +6,10 @@ terraform {
       source  = "yandex-cloud/yandex"
       version = "~> 0.130"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.4"
+    }
   }
 
   backend "s3" {
@@ -17,7 +21,6 @@ terraform {
     skip_region_validation      = true
     skip_credentials_validation = true
     skip_metadata_api_check     = true
-    skip_requesting_account_id  = true
   }
 }
 
