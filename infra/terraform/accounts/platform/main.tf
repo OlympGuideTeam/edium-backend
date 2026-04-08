@@ -99,6 +99,7 @@ module "postgres" {
     "charon_prod"  = { owner = "charon_prod" }
     "caesar_test"  = { owner = "caesar_test" }
     "caesar_prod"  = { owner = "caesar_prod" }
+    "sphinx"       = { owner = "sphinx" }
   }
 
   users = {
@@ -110,6 +111,7 @@ module "postgres" {
     "charon_prod"  = { password = var.charon_pg_password_prod }
     "caesar_test"  = { password = var.caesar_pg_password_test }
     "caesar_prod"  = { password = var.caesar_pg_password_prod }
+    "sphinx"       = { password = var.sphinx_pg_password }
   }
 }
 
@@ -123,6 +125,20 @@ module "redis" {
   subnet_id          = module.vpc.subnet_ids["edium-prod"]
   password           = var.redis_password
   security_group_ids = [module.vpc.db_security_group_id]
+}
+
+# --- Доступ к PG из ML-аккаунта (Sphinx GPU VM) ---
+# Создаётся только если sphinx_vm_ip задан
+
+resource "yandex_vpc_security_group_rule" "sphinx_pg" {
+  count = var.sphinx_vm_ip != "" ? 1 : 0
+
+  security_group_binding = module.vpc.db_security_group_id
+  direction              = "ingress"
+  description            = "PostgreSQL from Sphinx ML VM"
+  protocol               = "TCP"
+  port                   = 6432
+  v4_cidr_blocks         = ["${var.sphinx_vm_ip}/32"]
 }
 
 # --- DNS ---

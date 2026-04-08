@@ -1,0 +1,79 @@
+name: edium-sphinx
+
+# Production docker-compose для GPU VM (YC ML аккаунт).
+# Использует образ из Container Registry — собирается в CI, не на VM.
+#
+# Переменные окружения (/opt/edium/.env на VM):
+#   ML_REGISTRY_ID    — ID Container Registry ML аккаунта
+#   IMAGE_TAG         — тег образа (default: latest)
+#   NATS_URL          — nats://sphinx:<pwd>@<platform-vm-ip>:4223
+#   NATS_TLS_CA_PATH  — путь к CA-сертификату stunnel (пустой если без TLS)
+#   SPHINX_PG_PWD     — пароль PostgreSQL
+#   HF_TOKEN          — HuggingFace token
+#   MODEL_ID          — ID модели (опционально)
+
+services:
+  sphinx:
+    image: cr.yandex/${ML_REGISTRY_ID}/edium-sphinx:${IMAGE_TAG:-latest}
+    restart: on-failure
+    environment:
+      NATS_URL: ${NATS_URL}
+      NATS_TLS_CA_PATH: ${NATS_TLS_CA_PATH:-}
+      POSTGRES_DSN: postgres://sphinx:${SPHINX_PG_PWD}@sphinx-db:5432/sphinx?sslmode=disable
+      MODEL_ID: ${MODEL_ID:-mistralai/Mistral-7B-Instruct-v0.3}
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    depends_on:
+      sphinx-db:
+        condition: service_healthy
+      sphinx-flyway:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  sphinx-db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sphinx
+      POSTGRES_PASSWORD: ${SPHINX_PG_PWD}
+      POSTGRES_DB: sphinx
+    volumes:
+      - sphinx_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sphinx -d sphinx"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  sphinx-flyway:
+    image: flyway/flyway:12.2.0
+    restart: "no"
+    command: ["migrate"]
+    environment:
+      FLYWAY_URL: jdbc:postgresql://sphinx-db:5432/sphinx
+      FLYWAY_USER: sphinx
+      FLYWAY_PASSWORD: ${SPHINX_PG_PWD}
+      FLYWAY_LOCATIONS: filesystem:/app/migrations
+      FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+    volumes:
+      - ./migrations:/app/migrations:ro
+    depends_on:
+      sphinx-db:
+        condition: service_healthy
+
+volumes:
+  sphinx_db_data:
+  hf_cache:
