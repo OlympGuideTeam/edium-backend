@@ -3,10 +3,9 @@ name: Deploy Sphinx
 on:
   push:
     branches: [main]
-    # ВРЕМЕННО: без фильтра путей, запускается на любой пуш в main
-    # paths:
-    #   - "sphinx/**"
-    #   - "infra/compose/sphinx/**"
+    paths:
+      - "sphinx/**"
+      - "infra/compose/sphinx/**"
   workflow_dispatch:
 
 permissions:
@@ -193,7 +192,7 @@ jobs:
             # Запись .env из секретов GitHub
             cat > .env <<'ENVEOF'
             ML_REGISTRY_ID=${{ secrets.YC_ML_REGISTRY_ID }}
-            IMAGE_TAG=main-${{ github.sha != '' && github.sha || 'latest' }}
+            IMAGE_TAG=latest
             NATS_URL=${{ secrets.SPHINX_NATS_URL }}
             NATS_TLS_CA_PATH=${{ secrets.SPHINX_NATS_TLS_CA_PATH }}
             SPHINX_PG_PWD=${{ secrets.SPHINX_PG_PWD }}
