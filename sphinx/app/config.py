@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     # generation_adapter: str = "edium/sphinx-generation-lora"
     hf_token: str = ""
 
+    # Путь для кэша квантизованной модели (пусто — не кэшировать)
+    quantized_model_cache_dir: str = "/root/.cache/huggingface/quantized"
+
     # Inference
     max_new_tokens: int = 2048
     temperature: float = 0.3
