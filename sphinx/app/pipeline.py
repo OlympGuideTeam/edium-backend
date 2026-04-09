@@ -2,6 +2,8 @@ import json
 import logging
 import re
 
+import os
+
 import torch
 # from peft import PeftModel  # TODO: раскомментировать после обучения LoRA-адаптеров
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
@@ -68,29 +70,42 @@ class QuizPipeline:
         return self._model is not None
 
     def load(self):
-        """Загрузка base модели. Вызывается при старте сервиса."""
-        logger.info("Loading base model: %s", settings.model_id)
-
-        bnb_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.bfloat16,
-            bnb_4bit_use_double_quant=True,
-        )
-
+        """Загрузка модели. При наличии кэша квантизованной модели — грузит из него (~30 сек),
+        иначе квантизует из HuggingFace и сохраняет кэш (~10 мин первый раз)."""
         token = settings.hf_token or None
+        cache_dir = settings.quantized_model_cache_dir
 
         self._tokenizer = AutoTokenizer.from_pretrained(settings.model_id, token=token)
         self._tokenizer.pad_token = self._tokenizer.eos_token
         self._tokenizer.padding_side = "right"
 
-        self._model = AutoModelForCausalLM.from_pretrained(
-            settings.model_id,
-            quantization_config=bnb_config,
-            device_map="auto",
-            torch_dtype=torch.bfloat16,
-            token=token,
-        )
+        if cache_dir and os.path.isdir(cache_dir):
+            logger.info("Loading quantized model from cache: %s", cache_dir)
+            self._model = AutoModelForCausalLM.from_pretrained(
+                cache_dir,
+                device_map="auto",
+                torch_dtype=torch.bfloat16,
+            )
+        else:
+            logger.info("Quantizing base model: %s (first run, will save to cache)", settings.model_id)
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_use_double_quant=True,
+            )
+            self._model = AutoModelForCausalLM.from_pretrained(
+                settings.model_id,
+                quantization_config=bnb_config,
+                device_map="auto",
+                torch_dtype=torch.bfloat16,
+                token=token,
+            )
+            if cache_dir:
+                logger.info("Saving quantized model to cache: %s", cache_dir)
+                self._model.save_pretrained(cache_dir)
+                self._tokenizer.save_pretrained(cache_dir)
+                logger.info("Quantized model cached")
 
         # TODO: раскомментировать после обучения адаптеров
         # token = settings.hf_token or None
