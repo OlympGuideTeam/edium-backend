@@ -18,14 +18,14 @@ WITH claimed AS (
     SELECT id
     FROM task
     WHERE task_type = $1
-      AND status    = $2
+      AND status    = $2::task_status
       AND available_at <= NOW()
     ORDER BY available_at
     FOR UPDATE SKIP LOCKED
     LIMIT $3
 )
 UPDATE task
-SET status     = $4,
+SET status     = $4::task_status,
     attempts   = attempts + 1,
     updated_at = NOW()
 FROM claimed
@@ -35,12 +35,12 @@ RETURNING task.id, task.task_type, task.payload, task.status,
 
 const markDoneQuery = `
 UPDATE task
-SET status = $1, updated_at = NOW()
+SET status = $1::task_status, updated_at = NOW()
 WHERE id = $2`
 
 const markFailedQuery = `
 UPDATE task
-SET status       = CASE WHEN attempts >= max_attempts THEN $1 ELSE $2 END,
+SET status       = CASE WHEN attempts >= max_attempts THEN $1::task_status ELSE $2::task_status END,
     last_error   = $3,
     available_at = NOW() + $4,
     updated_at   = NOW()
