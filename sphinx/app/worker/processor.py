@@ -30,6 +30,7 @@ class GenerationProcessor:
     async def run(self) -> None:
         logger.info("GenerationProcessor started (poll_interval=%.1fs)", settings.worker_poll_interval)
 
+        await self._recover_orphaned_tasks()
         await self._recover_stuck_tasks()
         last_recovery = asyncio.get_event_loop().time()
 
@@ -44,6 +45,24 @@ class GenerationProcessor:
             if now - last_recovery >= RECOVERY_INTERVAL:
                 await self._recover_stuck_tasks()
                 last_recovery = now
+
+    async def _recover_orphaned_tasks(self) -> None:
+        """При старте сбрасывает ВСЕ задачи в статусе 'processing' — они остались от
+        предыдущего процесса и точно не обрабатываются."""
+        async with self._pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                UPDATE generation_task
+                SET status = 'pending', started_at = NULL
+                WHERE status = 'processing'
+                RETURNING job_id, attempts
+                """
+            )
+        for row in rows:
+            logger.info(
+                "GenerationProcessor: reset orphaned task job_id=%s (attempts=%d) to pending on startup",
+                row["job_id"], row["attempts"],
+            )
 
     async def _recover_stuck_tasks(self) -> None:
         """
