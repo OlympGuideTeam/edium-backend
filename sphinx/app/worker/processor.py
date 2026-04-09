@@ -66,7 +66,7 @@ class GenerationProcessor:
                                  END
                 WHERE
                     status = 'processing'
-                    AND started_at < NOW() - ($1 || ' minutes')::interval
+                    AND started_at < NOW() - ($1::text || ' minutes')::interval
                 RETURNING job_id, attempts
                 """,
                 settings.processing_timeout_minutes,
