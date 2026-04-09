@@ -40,11 +40,12 @@ async def main() -> None:
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
 
-    workers = asyncio.create_task(asyncio.gather(
+    workers = asyncio.gather(
         consumer.run(),
         processor.run(),
         publisher.run(),
-    ))
+    )
+    workers = asyncio.ensure_future(workers)
 
     await stop_event.wait()
     workers.cancel()
