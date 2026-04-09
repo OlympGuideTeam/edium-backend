@@ -182,6 +182,8 @@ services:
     volumes:
       - nats_data:/data
       - ./nats/nats-server.conf:/etc/nats/nats-server.conf:ro
+    ports:
+      - "4222:4222"
     networks:
       - edium
 
