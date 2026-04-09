@@ -30,8 +30,11 @@ class GenerationProcessor:
     async def run(self) -> None:
         logger.info("GenerationProcessor started (poll_interval=%.1fs)", settings.worker_poll_interval)
 
-        await self._recover_orphaned_tasks()
-        await self._recover_stuck_tasks()
+        try:
+            await self._recover_orphaned_tasks()
+            await self._recover_stuck_tasks()
+        except Exception as e:
+            logger.error("GenerationProcessor: startup recovery failed: %s", e)
         last_recovery = asyncio.get_event_loop().time()
 
         while True:
@@ -85,7 +88,7 @@ class GenerationProcessor:
                                  END
                 WHERE
                     status = 'processing'
-                    AND started_at < NOW() - ($1::text || ' minutes')::interval
+                    AND started_at < NOW() - ($1 * INTERVAL '1 minute')
                 RETURNING job_id, attempts
                 """,
                 settings.processing_timeout_minutes,
