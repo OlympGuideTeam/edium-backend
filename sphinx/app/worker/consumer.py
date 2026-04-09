@@ -77,7 +77,7 @@ class GenerationConsumer:
 
         async with self._pool.acquire() as conn:
             try:
-                await conn.execute(
+                result = await conn.execute(
                     """
                     INSERT INTO generation_task (job_id, quiz_id, text, trace_ctx)
                     VALUES ($1, $2, $3, $4)
@@ -86,7 +86,10 @@ class GenerationConsumer:
                     job_id, quiz_id, text, trace_ctx,
                 )
                 await msg.ack()
-                logger.info("GenerationConsumer: saved task job_id=%s quiz_id=%s", job_id, quiz_id)
+                if result == "INSERT 0 1":
+                    logger.info("GenerationConsumer: saved task job_id=%s quiz_id=%s", job_id, quiz_id)
+                else:
+                    logger.info("GenerationConsumer: task already exists job_id=%s, skipping", job_id)
             except Exception as e:
                 logger.error("GenerationConsumer: db error, will redeliver job_id=%s: %s", job_id, e)
                 await msg.nak()
