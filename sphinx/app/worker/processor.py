@@ -165,8 +165,8 @@ class GenerationProcessor:
     ) -> None:
         payload = json.dumps(
             {
-                "job_id":    job_id,
-                "quiz_id":   quiz_id,
+                "job_id":    str(job_id),
+                "quiz_id":   str(quiz_id),
                 "questions": result.get("quiz", {}).get("questions", []),
                 "trace_ctx": trace_ctx,
             },
