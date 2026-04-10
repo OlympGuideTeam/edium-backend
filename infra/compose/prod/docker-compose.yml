@@ -11,6 +11,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+      - /opt/edium/landing:/srv/landing:ro
     depends_on:
       - doorman
       - grafana
