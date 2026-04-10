@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       doorman: ${{ steps.filter.outputs.doorman }}
+      caesar: ${{ steps.filter.outputs.caesar }}
       herald: ${{ steps.filter.outputs.herald }}
       charon: ${{ steps.filter.outputs.charon }}
       ml: ${{ steps.filter.outputs.ml }}
@@ -25,6 +26,8 @@ jobs:
           filters: |
             doorman:
               - 'doorman/**'
+            caesar:
+              - 'caesar/**'
             herald:
               - 'herald/**'
             charon:
@@ -104,6 +107,59 @@ jobs:
         with:
           name: coverage-doorman
           path: doorman/coverage.out
+
+  # ========================
+  # Go — Caesar
+  # ========================
+
+  lint-caesar:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.caesar == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: caesar
+          version: v2.11.4
+
+  test-caesar:
+    needs: lint-caesar
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: caesar_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Запуск тестов
+        working-directory: caesar
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_DSN: "postgres://test:test@localhost:5432/caesar_test?sslmode=disable"
+          NATS_URL: ""
+      - name: Загрузка покрытия
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-caesar
+          path: caesar/coverage.out
 
   # ========================
   # Go — Herald
