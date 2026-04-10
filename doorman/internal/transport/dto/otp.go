@@ -7,6 +7,10 @@ type SendOTPRequest struct {
 	Channel domain.Channel `json:"channel" binding:"required,oneof=tg vk sms"`
 }
 
+type SendOTPResponse struct {
+	RetryAfter int `json:"retry_after"`
+}
+
 type VerifyOTPRequest struct {
 	Phone string `json:"phone" binding:"required,e164,startswith=+7"`
 	OTP   uint64 `json:"otp" binding:"required,lt=1000000"`

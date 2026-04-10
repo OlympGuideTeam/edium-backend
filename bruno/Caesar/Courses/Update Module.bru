@@ -1,0 +1,21 @@
+meta {
+  name: Update Module
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{caesarUrl}}/caesar/v1/modules/{{moduleId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "title": "Модуль 2: Уравнения"
+  }
+}

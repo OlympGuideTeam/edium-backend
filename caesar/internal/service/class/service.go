@@ -5,16 +5,18 @@ import (
 	"fmt"
 
 	"caesar/internal/domain"
+	"caesar/internal/pkg/apperr"
 
 	"github.com/google/uuid"
 )
 
 type Service struct {
 	classes classStore
+	courses courseAccessor
 }
 
-func NewService(classes classStore) *Service {
-	return &Service{classes: classes}
+func NewService(classes classStore, courses courseAccessor) *Service {
+	return &Service{classes: classes, courses: courses}
 }
 
 func (s *Service) getClass(ctx context.Context, classID uuid.UUID) (*domain.ClassListItem, error) {
@@ -23,14 +25,14 @@ func (s *Service) getClass(ctx context.Context, classID uuid.UUID) (*domain.Clas
 		return nil, fmt.Errorf("getByID: %w", err)
 	}
 	if c == nil {
-		return nil, ErrNotFound
+		return nil, apperr.ErrClassNotFound
 	}
 	return c, nil
 }
 
 func (s *Service) requireOwner(c *domain.ClassListItem, userID uuid.UUID) error {
 	if c.OwnerID != userID {
-		return ErrForbidden
+		return apperr.ErrClassForbidden
 	}
 	return nil
 }
@@ -45,7 +47,7 @@ func (s *Service) GetMyClasses(ctx context.Context, userID uuid.UUID, role domai
 
 func (s *Service) CreateClass(ctx context.Context, ownerID uuid.UUID, title string) (uuid.UUID, error) {
 	if title == "" {
-		return uuid.Nil, ErrEmptyTitle
+		return uuid.Nil, apperr.ErrClassEmptyTitle
 	}
 	id, err := s.classes.Create(ctx, ownerID, title)
 	if err != nil {
@@ -63,25 +65,40 @@ func (s *Service) GetClass(ctx context.Context, classID, userID uuid.UUID) (*dom
 	if err != nil {
 		return nil, fmt.Errorf("getMembersForDetail: %w", err)
 	}
+	isOwner := c.OwnerID == userID
 	detail := &domain.ClassDetail{
 		Class:     c.Class,
 		OwnerName: c.OwnerName,
-		IsOwner:   c.OwnerID == userID,
+		IsOwner:   isOwner,
 	}
+	isTeacher := isOwner
 	for _, m := range members {
 		switch m.Role {
 		case domain.ClassMemberRoleTeacher:
 			detail.Teachers = append(detail.Teachers, m)
+			if m.UserID == userID {
+				isTeacher = true
+			}
 		case domain.ClassMemberRoleStudent:
 			detail.Students = append(detail.Students, m)
 		}
 	}
+
+	courses, err := s.courses.ListByClassID(ctx, classID)
+	if err != nil {
+		return nil, fmt.Errorf("listCourses: %w", err)
+	}
+	for i := range courses {
+		courses[i].IsTeacher = isTeacher
+	}
+	detail.Courses = courses
+
 	return detail, nil
 }
 
 func (s *Service) UpdateClass(ctx context.Context, classID, userID uuid.UUID, title string) error {
 	if title == "" {
-		return ErrEmptyTitle
+		return apperr.ErrClassEmptyTitle
 	}
 	c, err := s.getClass(ctx, classID)
 	if err != nil {

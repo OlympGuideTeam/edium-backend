@@ -62,3 +62,31 @@ func (s *PgUserStore) UpdateStatus(ctx context.Context, id uuid.UUID, status dom
 	)
 	return err
 }
+
+func (s *PgUserStore) GetStatistic(ctx context.Context, id uuid.UUID) (*domain.UserStatistic, error) {
+	var st domain.UserStatistic
+	err := s.db.QueryRowContext(ctx, `
+		SELECT
+		    (SELECT COUNT(*) FROM class_member WHERE user_id = $1 AND role = 'teacher'),
+		    (SELECT COUNT(*) FROM class_member
+		     WHERE class_id IN (SELECT class_id FROM class_member WHERE user_id = $1 AND role = 'teacher')
+		       AND role = 'student'),
+		    (SELECT COUNT(*) FROM course WHERE owner_id = $1),
+		    (SELECT COUNT(DISTINCT c.id) FROM course c
+		     JOIN class_member cm ON cm.class_id = c.class_id
+		     WHERE cm.user_id = $1 AND cm.role = 'student'),
+		    (SELECT COUNT(*) FROM course_user_item_progress WHERE user_id = $1 AND score IS NOT NULL),
+		    (SELECT COALESCE(AVG(score), 0) FROM course_user_item_progress WHERE user_id = $1 AND score IS NOT NULL)
+	`, id).Scan(
+		&st.ClassTeacherCount,
+		&st.StudentCount,
+		&st.CourseTeacherCount,
+		&st.CourseStudentCount,
+		&st.QuizCountPassed,
+		&st.AvgQuizScore,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &st, nil
+}

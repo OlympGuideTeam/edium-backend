@@ -1,11 +1,11 @@
 meta {
-  name: Create Course Element
+  name: Create Course Item
   type: http
-  seq: 2
+  seq: 1
 }
 
 post {
-  url: {{caesarUrl}}/caesar/v1/courses/{{courseId}}/elements
+  url: {{caesarUrl}}/caesar/v1/modules/{{moduleId}}/items
   body: json
   auth: bearer
 }
@@ -16,15 +16,15 @@ auth:bearer {
 
 body:json {
   {
-    "quiz_id": "d4e5f6a7",
-    "module_id": null,
-    "order": 1
+    "ref_id": "{{quizId}}",
+    "type": "quiz",
+    "order_index": 0
   }
 }
 
 tests {
   const body = res.getBody();
   if (body.id) {
-    bru.setEnvVar("elementId", body.id);
+    bru.setEnvVar("itemId", body.id);
   }
 }

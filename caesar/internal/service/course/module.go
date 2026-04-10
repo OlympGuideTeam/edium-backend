@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"strings"
 
+	"caesar/internal/pkg/apperr"
+
 	"github.com/google/uuid"
 )
 
 func (s *Service) CreateModule(ctx context.Context, courseID, userID uuid.UUID, title string) (uuid.UUID, error) {
 	if strings.TrimSpace(title) == "" {
-		return uuid.Nil, ErrEmptyTitle
+		return uuid.Nil, apperr.ErrCourseEmptyTitle
 	}
 
 	c, err := s.getCourse(ctx, courseID)
@@ -30,7 +32,7 @@ func (s *Service) CreateModule(ctx context.Context, courseID, userID uuid.UUID, 
 
 func (s *Service) UpdateModule(ctx context.Context, moduleID, userID uuid.UUID, title string) error {
 	if strings.TrimSpace(title) == "" {
-		return ErrEmptyTitle
+		return apperr.ErrCourseEmptyTitle
 	}
 
 	m, err := s.courses.GetModuleByID(ctx, moduleID)
@@ -38,7 +40,7 @@ func (s *Service) UpdateModule(ctx context.Context, moduleID, userID uuid.UUID, 
 		return fmt.Errorf("getModuleByID: %w", err)
 	}
 	if m == nil {
-		return ErrModuleNotFound
+		return apperr.ErrModuleNotFound
 	}
 
 	c, err := s.getCourse(ctx, m.CourseID)
@@ -61,7 +63,7 @@ func (s *Service) DeleteModule(ctx context.Context, moduleID, userID uuid.UUID) 
 		return fmt.Errorf("getModuleByID: %w", err)
 	}
 	if m == nil {
-		return ErrModuleNotFound
+		return apperr.ErrModuleNotFound
 	}
 
 	c, err := s.getCourse(ctx, m.CourseID)
