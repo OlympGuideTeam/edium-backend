@@ -1,0 +1,28 @@
+meta {
+  name: Create Module
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{caesarUrl}}/caesar/v1/courses/{{courseId}}/modules
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "title": "Модуль 1: Функции"
+  }
+}
+
+tests {
+  const body = res.getBody();
+  if (body.id) {
+    bru.setEnvVar("moduleId", body.id);
+  }
+}

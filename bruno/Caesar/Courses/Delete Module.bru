@@ -1,0 +1,15 @@
+meta {
+  name: Delete Module
+  type: http
+  seq: 9
+}
+
+delete {
+  url: {{caesarUrl}}/caesar/v1/modules/{{moduleId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
