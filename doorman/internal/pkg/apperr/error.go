@@ -1,5 +1,7 @@
 package apperr
 
+import "net/http"
+
 type Error struct {
 	Code        string
 	Description string
@@ -28,7 +30,7 @@ func BadRequest(err error) *Error {
 	return New(
 		"VALIDATION_ERROR",
 		"Ошибка валидации",
-		400,
+		http.StatusBadRequest,
 	).WithDetails(map[string]any{
 		"error": err,
 	})

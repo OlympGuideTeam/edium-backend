@@ -3,6 +3,7 @@ package jwtsvc
 import (
 	"context"
 	tokenhandler "doorman/internal/handler/token"
+	"doorman/internal/pkg/apperr"
 	"doorman/internal/transport/dto"
 	"encoding/base64"
 	"math/big"
@@ -75,7 +76,7 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 	}
 
 	if userID != claims.Subject {
-		return ErrRefreshTokenInvalid
+		return apperr.ErrRefreshTokenInvalid
 	}
 
 	return nil
@@ -93,7 +94,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*tokenhandl
 	}
 
 	if userID != claims.Subject {
-		return nil, ErrRefreshTokenInvalid
+		return nil, apperr.ErrRefreshTokenInvalid
 	}
 
 	accessToken, refreshToken, expiresIn, err := s.IssueTokens(ctx, userID)

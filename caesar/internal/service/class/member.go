@@ -3,6 +3,8 @@ package class
 import (
 	"context"
 
+	"caesar/internal/pkg/apperr"
+
 	"github.com/google/uuid"
 )
 
@@ -15,7 +17,7 @@ func (s *Service) RemoveMember(ctx context.Context, classID, userID, targetUserI
 		return err
 	}
 	if targetUserID == c.OwnerID {
-		return ErrRemoveOwner
+		return apperr.ErrClassRemoveOwner
 	}
 	return s.classes.RemoveMember(ctx, classID, targetUserID)
 }
