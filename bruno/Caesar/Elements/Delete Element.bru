@@ -1,11 +1,11 @@
 meta {
-  name: Delete Element
+  name: Delete Course Item
   type: http
-  seq: 4
+  seq: 2
 }
 
 delete {
-  url: {{caesarUrl}}/caesar/v1/elements/{{elementId}}
+  url: {{caesarUrl}}/caesar/v1/items/{{itemId}}
   body: none
   auth: bearer
 }

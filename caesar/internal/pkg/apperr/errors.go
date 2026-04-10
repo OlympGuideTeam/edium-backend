@@ -29,9 +29,10 @@ var (
 	ErrMemberNotFound     = New("MEMBER_NOT_FOUND", "Участник не найден в классе", http.StatusNotFound)
 
 	// Курсы
-	ErrCourseNotFound   = New("COURSE_NOT_FOUND", "Курс не найден", http.StatusNotFound)
-	ErrModuleNotFound   = New("MODULE_NOT_FOUND", "Модуль не найден", http.StatusNotFound)
-	ErrCourseForbidden  = New("FORBIDDEN", "Нет прав для выполнения этого действия", http.StatusForbidden)
-	ErrCourseEmptyTitle = New("VALIDATION_ERROR", "Название не может быть пустым", http.StatusUnprocessableEntity)
-	ErrCourseNotMember  = New("FORBIDDEN", "Вы не являетесь участником этого класса", http.StatusForbidden)
+	ErrCourseNotFound     = New("COURSE_NOT_FOUND", "Курс не найден", http.StatusNotFound)
+	ErrModuleNotFound     = New("MODULE_NOT_FOUND", "Модуль не найден", http.StatusNotFound)
+	ErrCourseItemNotFound = New("COURSE_ITEM_NOT_FOUND", "Элемент курса не найден", http.StatusNotFound)
+	ErrCourseForbidden    = New("FORBIDDEN", "Нет прав для выполнения этого действия", http.StatusForbidden)
+	ErrCourseEmptyTitle   = New("VALIDATION_ERROR", "Название не может быть пустым", http.StatusUnprocessableEntity)
+	ErrCourseNotMember    = New("FORBIDDEN", "Вы не являетесь участником этого класса", http.StatusForbidden)
 )

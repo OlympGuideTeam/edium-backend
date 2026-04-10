@@ -64,6 +64,25 @@ func (s *Service) GetCourse(ctx context.Context, courseID, userID uuid.UUID) (*d
 	if err != nil {
 		return nil, fmt.Errorf("listModules: %w", err)
 	}
+
+	moduleIDs := make([]uuid.UUID, len(modules))
+	for i, m := range modules {
+		moduleIDs[i] = m.ID
+	}
+
+	allItems, err := s.courses.ListItemsByModuleIDs(ctx, moduleIDs, userID)
+	if err != nil {
+		return nil, fmt.Errorf("listItems: %w", err)
+	}
+
+	itemsByModule := make(map[uuid.UUID][]domain.CourseModuleItem, len(modules))
+	for _, item := range allItems {
+		itemsByModule[item.ModuleID] = append(itemsByModule[item.ModuleID], item)
+	}
+	for i := range modules {
+		modules[i].Items = itemsByModule[modules[i].ID]
+	}
+
 	detail.Modules = modules
 	detail.IsTeacher = role != domain.ClassMemberRoleStudent
 

@@ -12,10 +12,11 @@ import (
 
 type Service struct {
 	classes classStore
+	courses courseAccessor
 }
 
-func NewService(classes classStore) *Service {
-	return &Service{classes: classes}
+func NewService(classes classStore, courses courseAccessor) *Service {
+	return &Service{classes: classes, courses: courses}
 }
 
 func (s *Service) getClass(ctx context.Context, classID uuid.UUID) (*domain.ClassListItem, error) {
@@ -64,19 +65,34 @@ func (s *Service) GetClass(ctx context.Context, classID, userID uuid.UUID) (*dom
 	if err != nil {
 		return nil, fmt.Errorf("getMembersForDetail: %w", err)
 	}
+	isOwner := c.OwnerID == userID
 	detail := &domain.ClassDetail{
 		Class:     c.Class,
 		OwnerName: c.OwnerName,
-		IsOwner:   c.OwnerID == userID,
+		IsOwner:   isOwner,
 	}
+	isTeacher := isOwner
 	for _, m := range members {
 		switch m.Role {
 		case domain.ClassMemberRoleTeacher:
 			detail.Teachers = append(detail.Teachers, m)
+			if m.UserID == userID {
+				isTeacher = true
+			}
 		case domain.ClassMemberRoleStudent:
 			detail.Students = append(detail.Students, m)
 		}
 	}
+
+	courses, err := s.courses.ListByClassID(ctx, classID)
+	if err != nil {
+		return nil, fmt.Errorf("listCourses: %w", err)
+	}
+	for i := range courses {
+		courses[i].IsTeacher = isTeacher
+	}
+	detail.Courses = courses
+
 	return detail, nil
 }
 
