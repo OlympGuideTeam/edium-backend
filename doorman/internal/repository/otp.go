@@ -20,8 +20,12 @@ func NewRedisOTPStore(client *redis.Client) *RedisOTPStore {
 func (s *RedisOTPStore) Exists(ctx context.Context, phone string) (bool, error) {
 	key := s.getKey(phone)
 	count, err := s.client.Exists(ctx, key).Result()
-
 	return count > 0, err
+}
+
+func (s *RedisOTPStore) TTL(ctx context.Context, phone string) (time.Duration, error) {
+	key := s.getKey(phone)
+	return s.client.TTL(ctx, key).Result()
 }
 
 func (s *RedisOTPStore) Save(ctx context.Context, phone string, hashOtp string, ttl time.Duration) error {

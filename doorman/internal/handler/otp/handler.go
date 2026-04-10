@@ -1,11 +1,13 @@
 package otphandler
 
 import (
+	"errors"
+	"net/http"
+
 	tokenhandler "doorman/internal/handler/token"
 	"doorman/internal/pkg/apperr"
 	"doorman/internal/pkg/httpx"
 	"doorman/internal/transport/dto"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,13 +29,24 @@ func (h *Handler) Send(c *gin.Context) {
 		return
 	}
 
-	err := h.service.SendOTP(c.Request.Context(), req.Phone, req.Channel)
+	retryAfter, err := h.service.SendOTP(c.Request.Context(), req.Phone, req.Channel)
 	if err != nil {
+		var appErr *apperr.Error
+		if errors.As(err, &appErr) && retryAfter > 0 {
+			c.JSON(appErr.HTTPStatus, httpx.ErrorResponse{
+				Error:       appErr.Code,
+				Description: appErr.Description,
+				Details:     map[string]any{"retry_after": int(retryAfter.Seconds())},
+			})
+			return
+		}
 		httpx.WriteError(c, err)
 		return
 	}
 
-	c.Status(http.StatusOK)
+	c.JSON(http.StatusOK, dto.SendOTPResponse{
+		RetryAfter: int(retryAfter.Seconds()),
+	})
 }
 
 func (h *Handler) Verify(c *gin.Context) {

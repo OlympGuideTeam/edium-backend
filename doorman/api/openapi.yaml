@@ -23,7 +23,7 @@ paths:
     post:
       tags: [OTP]
       summary: Отправить одноразовый код пользователю
-      description: Отправляет OTP через выбранный канал (Telegram или VK). Повторный запрос возможен не ранее чем через 1 минуту.
+      description: Отправляет OTP через выбранный канал (Telegram или SMS). Повторный запрос возможен не ранее чем через 3 минуты.
       requestBody:
         required: true
         content:
@@ -33,6 +33,12 @@ paths:
       responses:
         "200":
           description: Код отправлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendOTPResponse'
+              example:
+                retry_after: 180
         "400":
           $ref: '#/components/responses/BadRequest'
         "403":
@@ -45,14 +51,25 @@ paths:
                 error: PHONE_UNAVAILABLE
                 description: Пользователь с таким номером заблокирован или удалён
         "429":
-          description: Код уже был отправлен — повторите через минуту
+          description: Код уже был отправлен — повторите позже
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                allOf:
+                  - $ref: '#/components/schemas/ErrorResponse'
+                  - type: object
+                    properties:
+                      details:
+                        type: object
+                        properties:
+                          retry_after:
+                            type: integer
+                            description: Через сколько секунд можно повторить запрос
               example:
                 error: OTP_ALREADY_SENT
                 description: Одноразовый код уже отправлен
+                details:
+                  retry_after: 142
 
   /doorman/v1/otp/verify:
     post:
@@ -268,8 +285,16 @@ components:
         channel:
           type: string
           description: Канал доставки кода
-          enum: [tg, vk, sms]
+          enum: [tg, sms]
           example: tg
+
+    SendOTPResponse:
+      type: object
+      properties:
+        retry_after:
+          type: integer
+          description: Через сколько секунд можно запросить следующий код
+          example: 180
 
     VerifyOTPRequest:
       type: object

@@ -3,6 +3,7 @@ package otphandler
 import (
 	"context"
 	"doorman/internal/domain"
+	"time"
 )
 
 type VerifyResult interface {
@@ -16,6 +17,6 @@ type RegistrationToken struct {
 func (RegistrationToken) IsVerifyResult() {}
 
 type IOTPService interface {
-	SendOTP(ctx context.Context, phone string, channel domain.Channel) error
+	SendOTP(ctx context.Context, phone string, channel domain.Channel) (time.Duration, error)
 	VerifyOTP(ctx context.Context, phone string, otp uint64) (VerifyResult, error)
 }

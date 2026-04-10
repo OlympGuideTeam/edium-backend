@@ -52,47 +52,49 @@ func NewService(
 	}
 }
 
-func (s *Service) SendOTP(ctx context.Context, phone string, channel domain.Channel) error {
+func (s *Service) SendOTP(ctx context.Context, phone string, channel domain.Channel) (time.Duration, error) {
 	exists, err := s.otpStore.Exists(ctx, phone)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	if exists {
-		return ErrAlreadySent
+		ttl, err := s.otpStore.TTL(ctx, phone)
+		if err != nil {
+			return 0, err
+		}
+		return ttl, ErrAlreadySent
 	}
 
 	if channel == domain.ChannelSMS {
 		count, err := s.otpStore.IncrSendCount(ctx, phone)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		if count > maxDailySMSSends {
-			return ErrDailyLimitExceeded
+			return 0, ErrDailyLimitExceeded
 		}
 	}
 
 	identity, err := s.identityStore.GetByPhone(ctx, phone)
-
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	if identity != nil &&
 		(identity.Status == domain.IdentityStatusBlocked || identity.Status == domain.IdentityStatusDeleted) {
-		return ErrPhoneUnavailable
+		return 0, ErrPhoneUnavailable
 	}
 
 	otp, err := generateOTP()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	hashOTP := s.hashOTP(otp)
 
-	err = s.otpStore.Save(ctx, phone, hashOTP, otpTTL)
-	if err != nil {
-		return err
+	if err := s.otpStore.Save(ctx, phone, hashOTP, otpTTL); err != nil {
+		return 0, err
 	}
 
 	payload, err := json.Marshal(struct {
@@ -105,10 +107,14 @@ func (s *Service) SendOTP(ctx context.Context, phone string, channel domain.Chan
 		Channel: channel,
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return s.taskScheduler.Schedule(ctx, domain.OTPSent, payload)
+	if err := s.taskScheduler.Schedule(ctx, domain.OTPSent, payload); err != nil {
+		return 0, err
+	}
+
+	return otpTTL, nil
 }
 
 func (s *Service) VerifyOTP(ctx context.Context, phone string, otp uint64) (otphandler.VerifyResult, error) {
