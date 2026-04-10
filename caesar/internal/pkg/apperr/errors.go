@@ -2,7 +2,6 @@ package apperr
 
 var (
 	ErrUnauthorized   = New("UNAUTHORIZED", "Требуется авторизация", 401)
-	ErrInvalidToken   = New("UNAUTHORIZED", "Неверный или истёкший токен", 401)
 	ErrBadRequest     = New("BAD_REQUEST", "Некорректный запрос", 400)
 	ErrBadID          = New("BAD_REQUEST", "Некорректный идентификатор", 400)
 	ErrInvalidRole    = New("BAD_REQUEST", "Параметр role обязателен: teacher или student", 400)

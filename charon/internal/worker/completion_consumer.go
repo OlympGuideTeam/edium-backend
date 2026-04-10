@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+
+	"go.opentelemetry.io/otel"
 )
 
 type taskScheduler interface {
@@ -28,6 +30,9 @@ func (c *CompletionConsumer) Run(ctx context.Context) error {
 }
 
 func (c *CompletionConsumer) handle(ctx context.Context, data []byte) error {
+	ctx, span := otel.Tracer("charon").Start(ctx, "worker.completion_consumer")
+	defer span.End()
+
 	var msg domain.CompletionRequest
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return fmt.Errorf("decode message: %w", err)

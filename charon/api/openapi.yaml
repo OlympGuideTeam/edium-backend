@@ -24,7 +24,7 @@ paths:
                     example: ok
 
 x-nats-events:
-  charon.completion.requested:
+  edium.completion.requested:
     description: Запрос на LLM-completion от сервисов (Riddler, Yoda)
     queue: charon-completion-consumers
     payload:
