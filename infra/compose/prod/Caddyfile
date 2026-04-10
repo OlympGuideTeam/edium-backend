@@ -1,3 +1,9 @@
+edium.online, www.edium.online {
+	root * /srv/landing
+	file_server
+	encode gzip
+}
+
 api.edium.online {
     handle /doorman/v1/* {
         reverse_proxy doorman:80
