@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	tgbot "herald/internal/bot/telegram"
-	vkbot "herald/internal/bot/vk"
 	"herald/internal/config"
 	"herald/internal/domain"
 	smshandler "herald/internal/handler/sms"
@@ -15,7 +14,6 @@ import (
 	natsinf "herald/internal/infra/nats"
 	smsinf "herald/internal/infra/sms"
 	tginfra "herald/internal/infra/telegram"
-	vkinfra "herald/internal/infra/vk"
 	"herald/internal/repository"
 	otpsvc "herald/internal/service/otp"
 	"herald/internal/worker"
@@ -23,7 +21,6 @@ import (
 
 type App struct {
 	TGHandler           *tgbot.Handler
-	VKHandler           *vkbot.Handler
 	OTPRequestPublisher *worker.OTPRequestPublisher
 	OTPSentConsumer     *worker.OTPSentConsumer
 	OTPSentProcessor    *worker.OTPSentProcessor
@@ -47,11 +44,6 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	vkAPI, longPoll, err := vkinfra.New(cfg.VK)
-	if err != nil {
-		return nil, fmt.Errorf("vk bot init: %w", err)
-	}
-
 	txManager := db.NewTxManager(pgdb)
 	taskRepo := repository.NewPgTaskRepository(pgdb)
 	pendingOTPRepo := repository.NewPgPendingOTPRepository(pgdb)
@@ -64,7 +56,6 @@ func New(cfg *config.Config) (*App, error) {
 
 	senders := map[domain.Channel]worker.MessageSender{
 		domain.ChannelTG: tginfra.NewSender(tgBot),
-		domain.ChannelVK: vkinfra.NewSender(vkAPI),
 	}
 
 	// SMS-отправитель: активен только если задан API-ключ.
@@ -78,7 +69,6 @@ func New(cfg *config.Config) (*App, error) {
 
 	return &App{
 		TGHandler:           tgbot.NewHandler(tgBot, otpService),
-		VKHandler:           vkbot.NewHandler(longPoll, vkAPI, otpService),
 		OTPRequestPublisher: worker.NewOTPRequestPublisher(taskRepo, natsPublisher),
 		OTPSentConsumer:     worker.NewOTPSentConsumer(natsSubscriber, taskRepo),
 		OTPSentProcessor:    worker.NewOTPSentProcessor(taskRepo, otpService, senders, smsSender),
@@ -92,7 +82,6 @@ func (a *App) Run(ctx context.Context, cfg *config.Config) error {
 		"OTPRequestPublisher": a.OTPRequestPublisher.Run,
 		"OTPSentConsumer":     a.OTPSentConsumer.Run,
 		"OTPSentProcessor":    a.OTPSentProcessor.Run,
-		"VKHandler":           a.VKHandler.Run,
 		"TGHandler":           a.TGHandler.Run,
 	}
 	for name, run := range workers {

@@ -177,8 +177,6 @@ services:
       POSTGRES_DSN: postgres://${HERALD_PG_USER}:${HERALD_PG_PWD}@herald-db:5432/${HERALD_PG_DB}?sslmode=disable
       NATS_URL: nats://herald:${NATS_PASSWORD_HERALD}@nats:4222
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      VK_GROUP_TOKEN: ${VK_GROUP_TOKEN}
-      VK_GROUP_ID: ${VK_GROUP_ID}
       SMS_API_KEY: ${SMS_API_KEY}
       SMS_ALLOWED_PHONES: ${SMS_ALLOWED_PHONES}
       OTEL_ENDPOINT: jaeger:4317
