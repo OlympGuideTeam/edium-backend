@@ -17,3 +17,12 @@ type User struct {
 	Phone   string
 	Status  UserStatus
 }
+
+type UserStatistic struct {
+	ClassTeacherCount  int
+	StudentCount       int
+	CourseTeacherCount int
+	CourseStudentCount int
+	QuizCountPassed    int
+	AvgQuizScore       float64
+}

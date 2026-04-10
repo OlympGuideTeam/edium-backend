@@ -498,50 +498,28 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  # ─── Элементы контроля ─────────────────────────────────────────────
+  # ─── Элементы модуля ──────────────────────────────────────────────
 
-  /caesar/v1/courses/{courseId}/elements:
-    get:
-      summary: Получить элементы контроля курса
-      operationId: getCourseElements
-      tags: [Elements]
-      parameters:
-        - $ref: "#/components/parameters/CourseId"
-      responses:
-        "200":
-          description: Список элементов
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ElementsListResponse"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
+  /caesar/v1/modules/{moduleId}/items:
     post:
-      summary: Добавить элемент контроля в курс
-      operationId: createCourseElement
-      tags: [Elements]
+      summary: Добавить элемент в модуль
+      operationId: createCourseItem
+      tags: [Courses]
       parameters:
-        - $ref: "#/components/parameters/CourseId"
+        - $ref: "#/components/parameters/ModuleId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateElementRequest"
+              $ref: "#/components/schemas/CreateCourseItemRequest"
       responses:
         "200":
           description: Элемент добавлен
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreateElementResponse"
+                $ref: "#/components/schemas/CreateCourseItemResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -550,40 +528,16 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        "422":
-          $ref: "#/components/responses/UnprocessableEntity"
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /caesar/v1/elements/{elementId}:
-    get:
-      summary: Получить элемент контроля
-      operationId: getElement
-      tags: [Elements]
-      parameters:
-        - $ref: "#/components/parameters/ElementId"
-      responses:
-        "200":
-          description: Элемент контроля
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ElementDetail"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/InternalError"
-
+  /caesar/v1/items/{itemId}:
     delete:
-      summary: Удалить элемент контроля
-      operationId: deleteElement
-      tags: [Elements]
+      summary: Удалить элемент из модуля
+      operationId: deleteCourseItem
+      tags: [Courses]
       parameters:
-        - $ref: "#/components/parameters/ElementId"
+        - $ref: "#/components/parameters/ItemId"
       responses:
         "204":
           description: Элемент удалён
@@ -655,8 +609,8 @@ components:
         type: string
         format: uuid
         example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-    ElementId:
-      name: elementId
+    ItemId:
+      name: itemId
       in: path
       required: true
       schema:
@@ -695,17 +649,13 @@ components:
     UserStatistic:
       type: object
       required:
-        - quiz_count_created
         - class_teacher_count
         - student_count
+        - course_teacher_count
         - course_student_count
         - quiz_count_passed
         - avg_quiz_score
       properties:
-        quiz_count_created:
-          type: integer
-          description: Количество созданных квизов
-          example: 12
         class_teacher_count:
           type: integer
           description: Количество классов, где пользователь учитель
@@ -714,6 +664,10 @@ components:
           type: integer
           description: Суммарное количество учеников во всех классах пользователя
           example: 45
+        course_teacher_count:
+          type: integer
+          description: Количество курсов, где пользователь является преподавателем
+          example: 7
         course_student_count:
           type: integer
           description: Количество курсов, где пользователь ученик
@@ -928,7 +882,7 @@ components:
 
     ModuleItem:
       type: object
-      required: [id, title, element_count]
+      required: [id, title, element_count, items]
       properties:
         id:
           type: string
@@ -940,6 +894,10 @@ components:
         element_count:
           type: integer
           example: 4
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseItemDTO"
 
     CreateModuleRequest:
       type: object
@@ -966,103 +924,62 @@ components:
           type: string
           example: "Модуль 2: Уравнения"
 
-    QuizShort:
+    # Course items
+    CreateCourseItemRequest:
       type: object
-      required: [id, title, quiz_type, question_count, state]
+      required: [ref_id, type, order_index]
       properties:
-        id:
+        ref_id:
           type: string
-          example: "d4e5f6a7"
-        title:
-          type: string
-          example: "Контрольная №1"
-        quiz_type:
-          type: string
-          enum: [sync, async]
-        question_count:
-          type: integer
-          example: 10
-        state:
-          type: string
-          description: |
-            Для sync: not_started | waiting | running | completed
-            Для async: not_started | in_progress | completed
-          example: "not_started"
-        start_time:
-          type: string
-          format: date-time
-          nullable: true
-          description: Время начала квиза (только для sync)
-          example: "2026-04-01T09:00:00Z"
-        end_time:
-          type: string
-          format: date-time
-          nullable: true
-          description: Дедлайн (только для async)
-          example: "2026-04-07T23:59:00Z"
-
-    # Elements
-    CreateElementRequest:
-      type: object
-      required: [quiz_id]
-      properties:
-        quiz_id:
-          type: string
+          format: uuid
           description: ID квиза из Riddler
-          example: "d4e5f6a7"
-        module_id:
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        type:
           type: string
-          nullable: true
-          description: ID модуля для привязки (если не указан — в корень курса)
-          example: "c3d4e5f6"
-        order:
+          enum: [quiz]
+          example: "quiz"
+        order_index:
           type: integer
-          description: Порядковый номер в модуле/курсе
-          example: 1
+          example: 0
 
-    CreateElementResponse:
+    CreateCourseItemResponse:
       type: object
       required: [id]
       properties:
         id:
           type: string
-          example: "e5f6a7b8"
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
-    ElementDetail:
+    CourseItemDTO:
       type: object
-      required: [id, quiz_id, title, quiz_type, question_count, order]
+      required: [id, ref_id, type, order_index]
       properties:
         id:
           type: string
-          example: "e5f6a7b8"
-        quiz_id:
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        ref_id:
           type: string
-          example: "d4e5f6a7"
-        title:
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        type:
           type: string
-          example: "Контрольная №1"
-        quiz_type:
-          type: string
-          enum: [sync, async]
-        question_count:
+          enum: [quiz]
+          example: "quiz"
+        order_index:
           type: integer
-          example: 10
-        order:
-          type: integer
-          example: 1
-        module_id:
+          example: 0
+        attempt_id:
           type: string
+          format: uuid
           nullable: true
-          example: "c3d4e5f6"
-
-    ElementsListResponse:
-      type: object
-      required: [elements]
-      properties:
-        elements:
-          type: array
-          items:
-            $ref: "#/components/schemas/ElementDetail"
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        score:
+          type: number
+          format: float
+          nullable: true
+          example: 85.0
 
     # Sheet
     CourseSheet:
@@ -1177,7 +1094,5 @@ tags:
     description: Приглашения в класс
   - name: Courses
     description: Курсы внутри классов
-  - name: Elements
-    description: Элементы контроля (квизы в курсе)
   - name: Sheet
     description: Ведомость успеваемости

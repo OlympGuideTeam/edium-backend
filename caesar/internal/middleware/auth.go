@@ -28,7 +28,7 @@ func Auth(keys *jwks.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if !strings.HasPrefix(header, "Bearer ") {
-			httpx.WriteError(c, apperr.New("UNAUTHORIZED", "Требуется авторизация", 401))
+			httpx.WriteError(c, apperr.ErrUnauthorized)
 			c.Abort()
 			return
 		}
@@ -47,14 +47,14 @@ func Auth(keys *jwks.Client) gin.HandlerFunc {
 			return key, nil
 		})
 		if err != nil || !token.Valid {
-			httpx.WriteError(c, apperr.New("UNAUTHORIZED", "Неверный или истёкший токен", 401))
+			httpx.WriteError(c, apperr.ErrUnauthorizedToken)
 			c.Abort()
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			httpx.WriteError(c, apperr.New("UNAUTHORIZED", "Неверные claims", 401))
+			httpx.WriteError(c, apperr.ErrUnauthorizedClaims)
 			c.Abort()
 			return
 		}
@@ -62,7 +62,7 @@ func Auth(keys *jwks.Client) gin.HandlerFunc {
 		subStr, _ := claims["sub"].(string)
 		userID, err := uuid.Parse(subStr)
 		if err != nil {
-			httpx.WriteError(c, apperr.New("UNAUTHORIZED", "Неверный формат sub в токене", 401))
+			httpx.WriteError(c, apperr.ErrUnauthorizedSub)
 			c.Abort()
 			return
 		}

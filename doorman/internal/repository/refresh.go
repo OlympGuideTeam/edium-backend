@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	jwtsvc "doorman/internal/service/jwt"
+	"doorman/internal/pkg/apperr"
 	"errors"
 	"time"
 
@@ -34,7 +34,7 @@ func (s *RefreshTokenStore) GetAndDelToken(ctx context.Context, jti string) (str
 	userID, err := s.client.GetDel(ctx, key).Result()
 
 	if errors.Is(err, redis.Nil) {
-		return "", jwtsvc.ErrRefreshTokenExpired
+		return "", apperr.ErrRefreshTokenExpired
 	}
 
 	if err != nil {

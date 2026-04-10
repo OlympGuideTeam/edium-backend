@@ -25,8 +25,9 @@ type MessageSender interface {
 }
 
 // SMSSender записывает SMS-задачу в outbox для Android-шлюза.
+// idempotencyKey — ID otp_sent-задачи; повтор задачи не создаёт дубль SMS.
 type SMSSender interface {
-	SendSMS(ctx context.Context, phone string, text string) error
+	SendSMS(ctx context.Context, phone string, text string, idempotencyKey uuid.UUID) error
 }
 
 type otpSentTaskRepo interface {
@@ -102,6 +103,7 @@ func (w *OTPSentProcessor) processTask(ctx context.Context, t domain.Task) error
 	slog.InfoContext(ctx, "otp-sent-processor: обработка", "task_id", t.ID, "channel", payload.Channel)
 
 	// SMS-канал: отправляем через Android-шлюз без pending_otp.
+	// t.ID передаётся как idempotency_key — повтор задачи не создаёт дубль sms_task.
 	if payload.Channel == domain.ChannelSMS {
 		if w.smsSender == nil {
 			return fmt.Errorf("SMS-отправитель не настроен (SMS_API_KEY не задан)")
@@ -112,7 +114,7 @@ func (w *OTPSentProcessor) processTask(ctx context.Context, t domain.Task) error
 		} else {
 			text = fmt.Sprintf("Ваш код Edium: %06d", payload.OTP)
 		}
-		if err := w.smsSender.SendSMS(ctx, payload.Phone, text); err != nil {
+		if err := w.smsSender.SendSMS(ctx, payload.Phone, text, t.ID); err != nil {
 			return fmt.Errorf("send sms (phone=%s): %w", payload.Phone, err)
 		}
 		return w.tasks.MarkDone(ctx, t.ID)

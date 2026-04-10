@@ -23,3 +23,7 @@ type classStore interface {
 	UpsertInvitation(ctx context.Context, classID uuid.UUID, role domain.ClassMemberRole) (uuid.UUID, error)
 	GetInvitation(ctx context.Context, invitationID uuid.UUID) (*domain.ClassInvitation, error)
 }
+
+type courseAccessor interface {
+	ListByClassID(ctx context.Context, classID uuid.UUID) ([]domain.CourseListItem, error)
+}

@@ -120,6 +120,7 @@ func (h *Handler) GetClass(c *gin.Context) {
 		IsOwner:   detail.IsOwner,
 		Teachers:  make([]dto.MemberShort, 0, len(detail.Teachers)),
 		Students:  make([]dto.MemberShort, 0, len(detail.Students)),
+		Courses:   make([]dto.CourseSummary, 0, len(detail.Courses)),
 	}
 	for _, m := range detail.Teachers {
 		resp.Teachers = append(resp.Teachers, dto.MemberShort{
@@ -133,6 +134,16 @@ func (h *Handler) GetClass(c *gin.Context) {
 			ID:      m.UserID.String(),
 			Name:    m.Name,
 			Surname: m.Surname,
+		})
+	}
+	for _, course := range detail.Courses {
+		resp.Courses = append(resp.Courses, dto.CourseSummary{
+			ID:           course.ID.String(),
+			Title:        course.Title,
+			TeacherName:  course.TeacherName,
+			ModuleCount:  course.ModuleCount,
+			ElementCount: course.ElementCount,
+			IsTeacher:    course.IsTeacher,
 		})
 	}
 	c.JSON(http.StatusOK, resp)

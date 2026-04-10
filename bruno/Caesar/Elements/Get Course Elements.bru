@@ -1,11 +1,11 @@
 meta {
-  name: Get Course Elements
+  name: Get Course (with items)
   type: http
-  seq: 1
+  seq: 3
 }
 
 get {
-  url: {{caesarUrl}}/caesar/v1/courses/{{courseId}}/elements
+  url: {{caesarUrl}}/caesar/v1/courses/{{courseId}}
   body: none
   auth: bearer
 }

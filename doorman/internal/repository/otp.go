@@ -20,8 +20,12 @@ func NewRedisOTPStore(client *redis.Client) *RedisOTPStore {
 func (s *RedisOTPStore) Exists(ctx context.Context, phone string) (bool, error) {
 	key := s.getKey(phone)
 	count, err := s.client.Exists(ctx, key).Result()
-
 	return count > 0, err
+}
+
+func (s *RedisOTPStore) TTL(ctx context.Context, phone string) (time.Duration, error) {
+	key := s.getKey(phone)
+	return s.client.TTL(ctx, key).Result()
 }
 
 func (s *RedisOTPStore) Save(ctx context.Context, phone string, hashOtp string, ttl time.Duration) error {
@@ -67,12 +71,12 @@ func (s *RedisOTPStore) Delete(ctx context.Context, phone string) error {
 }
 
 func (s *RedisOTPStore) IncrAttempts(ctx context.Context, phone string) error {
-	key := fmt.Sprintf("otp:%s", phone)
+	key := s.getKey(phone)
 	return s.client.HIncrBy(ctx, key, "attempts", 1).Err()
 }
 
 func (s *RedisOTPStore) IncrSendCount(ctx context.Context, phone string) (int64, error) {
-	key := fmt.Sprintf("otp_count:%s", phone)
+	key := s.getSmsOtpKey(phone)
 	count, err := s.client.Incr(ctx, key).Result()
 	if err != nil {
 		return 0, err
@@ -85,4 +89,8 @@ func (s *RedisOTPStore) IncrSendCount(ctx context.Context, phone string) (int64,
 
 func (s *RedisOTPStore) getKey(phone string) string {
 	return fmt.Sprintf("otp:%s", phone)
+}
+
+func (s *RedisOTPStore) getSmsOtpKey(phone string) string {
+	return fmt.Sprintf("otp:sms_count:%s", phone)
 }

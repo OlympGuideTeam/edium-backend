@@ -62,10 +62,10 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	userService := usersvc.NewService(userStore, taskRepo, txManager)
 	userHandler := userhandler.NewHandler(userService)
 
-	classService := classsvc.NewService(classStore)
-	classHandler := classhandler.NewHandler(classService)
-
 	courseStore := repository.NewPgCourseStore(pgdb)
+
+	classService := classsvc.NewService(classStore, courseStore)
+	classHandler := classhandler.NewHandler(classService)
 	courseService := coursesvc.NewService(courseStore, classStore)
 	courseHandler := coursehandler.NewHandler(courseService)
 
@@ -119,6 +119,9 @@ func (a *App) Router(serviceName string) *gin.Engine {
 	api.POST("/courses/:courseId/modules", a.CourseHandler.CreateModule)
 	api.PATCH("/modules/:moduleId", a.CourseHandler.UpdateModule)
 	api.DELETE("/modules/:moduleId", a.CourseHandler.DeleteModule)
+
+	api.POST("/modules/:moduleId/items", a.CourseHandler.CreateCourseItem)
+	api.DELETE("/items/:itemId", a.CourseHandler.DeleteCourseItem)
 
 	return r
 }

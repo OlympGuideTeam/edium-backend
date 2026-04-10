@@ -14,6 +14,7 @@ type OTPStore interface {
 		ttl time.Duration,
 	) error
 	Exists(ctx context.Context, phone string) (bool, error)
+	TTL(ctx context.Context, phone string) (time.Duration, error)
 	Get(ctx context.Context, phone string) (*OtpData, error)
 	Delete(ctx context.Context, phone string) error
 	IncrAttempts(ctx context.Context, phone string) error
