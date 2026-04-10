@@ -61,6 +61,7 @@
 | **Курсы** |
 | `ErrCourseNotFound` | `COURSE_NOT_FOUND` | 404 | Курс не найден |
 | `ErrModuleNotFound` | `MODULE_NOT_FOUND` | 404 | Модуль не найден |
+| `ErrCourseItemNotFound` | `COURSE_ITEM_NOT_FOUND` | 404 | Элемент курса не найден |
 | `ErrCourseForbidden` | `FORBIDDEN` | 403 | Нет прав для выполнения этого действия |
 | `ErrCourseEmptyTitle` | `VALIDATION_ERROR` | 422 | Название не может быть пустым |
 | `ErrCourseNotMember` | `FORBIDDEN` | 403 | Вы не являетесь участником этого класса |

@@ -69,3 +69,6 @@ Riddler публикует батч ответов студентов на од�
 - with_free_answer (llm_type)
 - drag (correct_answers - with order)
 - connection (correct_pairs)
+
+### Взаимодействие с caesar
+- если квиз проверился и он связан с курсом, то в caesar поедет оценка за квиз
