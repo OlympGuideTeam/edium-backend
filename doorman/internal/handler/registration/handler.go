@@ -22,7 +22,7 @@ func NewHandler(service IRegistrationService) *Handler {
 func (h *Handler) Register(c *gin.Context) {
 	regToken := c.GetHeader(regTokenHeader)
 	if regToken == "" {
-		httpx.WriteError(c, apperr.New("MISSING_REG_TOKEN", "Отсутствует токен регистрации", http.StatusUnauthorized))
+		httpx.WriteError(c, apperr.ErrRegTokenMissing)
 		return
 	}
 

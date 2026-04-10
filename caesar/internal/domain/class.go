@@ -24,13 +24,14 @@ type ClassListItem struct {
 	IsOwner   bool
 }
 
-// ClassDetail — класс с полным составом участников.
+// ClassDetail — класс с полным составом участников и курсами.
 type ClassDetail struct {
 	Class
 	OwnerName string
 	IsOwner   bool
 	Teachers  []ClassMember
 	Students  []ClassMember
+	Courses   []CourseListItem
 }
 
 type ClassMember struct {

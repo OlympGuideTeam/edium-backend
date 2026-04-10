@@ -21,6 +21,11 @@ type courseStore interface {
 	ListModules(ctx context.Context, courseID uuid.UUID) ([]domain.CourseModule, error)
 	UpdateModule(ctx context.Context, id uuid.UUID, title string) error
 	DeleteModule(ctx context.Context, id uuid.UUID) error
+
+	CreateItem(ctx context.Context, moduleID, refID uuid.UUID, t domain.CourseItemType, orderIndex int) (uuid.UUID, error)
+	GetItemByID(ctx context.Context, id uuid.UUID) (*domain.CourseItem, error)
+	DeleteItem(ctx context.Context, id uuid.UUID) error
+	ListItemsByModuleIDs(ctx context.Context, moduleIDs []uuid.UUID, userID uuid.UUID) ([]domain.CourseModuleItem, error)
 }
 
 // classAccessor — минимальный доступ к классам для проверки прав.

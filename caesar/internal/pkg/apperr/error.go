@@ -23,13 +23,3 @@ func (e *Error) WithDetails(d map[string]any) *Error {
 	e.Details = d
 	return e
 }
-
-func BadRequest(err error) *Error {
-	return New(
-		"VALIDATION_ERROR",
-		"Ошибка валидации",
-		400,
-	).WithDetails(map[string]any{
-		"error": err,
-	})
-}

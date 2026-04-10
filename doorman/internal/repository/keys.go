@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"doorman/internal/config"
+	"doorman/internal/pkg/apperr"
 	jwtsvc "doorman/internal/service/jwt"
 	"encoding/pem"
 	"errors"
@@ -125,17 +126,17 @@ func (ks *InMemoryKeyStore) ParseRefreshToken(tokenString string) (*jwtsvc.Refre
 		claims,
 		func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-				return nil, jwtsvc.ErrRefreshTokenInvalid
+				return nil, apperr.ErrRefreshTokenInvalid
 			}
 
 			kid, ok := token.Header["kid"].(string)
 			if !ok {
-				return nil, jwtsvc.ErrRefreshTokenInvalid
+				return nil, apperr.ErrRefreshTokenInvalid
 			}
 
 			pubKey, ok := ks.PublicKeys[kid]
 			if !ok {
-				return nil, jwtsvc.ErrRefreshTokenInvalid
+				return nil, apperr.ErrRefreshTokenInvalid
 			}
 
 			return pubKey, nil
@@ -144,14 +145,14 @@ func (ks *InMemoryKeyStore) ParseRefreshToken(tokenString string) (*jwtsvc.Refre
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, jwtsvc.ErrRefreshTokenExpired
+			return nil, apperr.ErrRefreshTokenExpired
 		}
 
-		return nil, jwtsvc.ErrRefreshTokenInvalid
+		return nil, apperr.ErrRefreshTokenInvalid
 	}
 
 	if !token.Valid {
-		return nil, jwtsvc.ErrRefreshTokenInvalid
+		return nil, apperr.ErrRefreshTokenInvalid
 	}
 
 	return claims, nil

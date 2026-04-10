@@ -3,11 +3,13 @@ package sms
 import (
 	"context"
 	"log/slog"
+
+	"github.com/google/uuid"
 )
 
 // SMSTaskRepository — запись задачи в outbox-таблицу.
 type SMSTaskRepository interface {
-	Create(ctx context.Context, phone, text string) error
+	Create(ctx context.Context, phone, text string, idempotencyKey uuid.UUID) error
 }
 
 // Sender реализует отправку SMS через Android-шлюз:
@@ -25,16 +27,16 @@ func NewSender(repo SMSTaskRepository, allowedPhones []string) *Sender {
 	return &Sender{repo: repo, allowedPhones: allowed}
 }
 
-func (s *Sender) SendSMS(ctx context.Context, phone, text string) error {
+func (s *Sender) SendSMS(ctx context.Context, phone, text string, idempotencyKey uuid.UUID) error {
 	if len(s.allowedPhones) > 0 {
 		if _, ok := s.allowedPhones[phone]; !ok {
 			slog.WarnContext(ctx, "sms: телефон не в белом списке, пропускаем", "phone", phone)
 			return nil
 		}
 	}
-	if err := s.repo.Create(ctx, phone, text); err != nil {
+	if err := s.repo.Create(ctx, phone, text, idempotencyKey); err != nil {
 		return err
 	}
-	slog.InfoContext(ctx, "sms: задача создана", "phone", phone, "text", text)
+	slog.InfoContext(ctx, "sms: задача создана", "phone", phone)
 	return nil
 }

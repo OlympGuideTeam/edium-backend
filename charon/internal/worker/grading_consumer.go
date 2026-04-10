@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+
+	"go.opentelemetry.io/otel"
 )
 
 type GradingConsumer struct {
@@ -24,6 +26,9 @@ func (c *GradingConsumer) Run(ctx context.Context) error {
 }
 
 func (c *GradingConsumer) handle(ctx context.Context, data []byte) error {
+	ctx, span := otel.Tracer("charon").Start(ctx, "worker.grading_consumer")
+	defer span.End()
+
 	var msg domain.QuizGradeRequest
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return fmt.Errorf("decode message: %w", err)

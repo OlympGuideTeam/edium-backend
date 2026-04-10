@@ -10,7 +10,6 @@ type Config struct {
 	Postgres PostgresConfig
 	NATS     NATSConfig
 	Telegram TelegramConfig
-	VK       VKConfig
 	SMS      SMSConfig
 	OTel     OTelConfig
 }
@@ -31,12 +30,6 @@ type TelegramConfig struct {
 	BotToken string `env:"TELEGRAM_BOT_TOKEN,required"`
 }
 
-type VKConfig struct {
-	GroupToken string `env:"VK_GROUP_TOKEN,required"`
-	GroupID    int    `env:"VK_GROUP_ID,required"`
-}
-
-// SMSConfig — настройки SMS-канала (Android-шлюз).
 // AllowedPhones — белый список телефонов, на которые разрешена отправка.
 type SMSConfig struct {
 	APIKey        string   `env:"SMS_API_KEY"`
