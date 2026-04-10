@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"caesar/internal/domain"
+	"caesar/internal/pkg/apperr"
 
 	"github.com/google/uuid"
 )
@@ -30,7 +31,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, invitationID, userID uui
 		return fmt.Errorf("getInvitation: %w", err)
 	}
 	if inv == nil {
-		return ErrInvitationNotFound
+		return apperr.ErrInvitationNotFound
 	}
 
 	c, err := s.getClass(ctx, inv.ClassID)
@@ -38,7 +39,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, invitationID, userID uui
 		return err
 	}
 	if c.OwnerID == userID {
-		return ErrAlreadyMember
+		return apperr.ErrAlreadyMember
 	}
 
 	isMember, err := s.classes.IsMember(ctx, inv.ClassID, userID)
@@ -46,7 +47,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, invitationID, userID uui
 		return fmt.Errorf("isMember: %w", err)
 	}
 	if isMember {
-		return ErrAlreadyMember
+		return apperr.ErrAlreadyMember
 	}
 
 	if err := s.classes.AddMember(ctx, inv.ClassID, userID, inv.Role); err != nil {

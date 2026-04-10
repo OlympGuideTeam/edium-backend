@@ -7,6 +7,7 @@ import (
 	"doorman/internal/domain"
 	otphandler "doorman/internal/handler/otp"
 	tokenhandler "doorman/internal/handler/token"
+	"doorman/internal/pkg/apperr"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -63,7 +64,7 @@ func (s *Service) SendOTP(ctx context.Context, phone string, channel domain.Chan
 		if err != nil {
 			return 0, err
 		}
-		return ttl, ErrAlreadySent
+		return ttl, apperr.ErrOTPAlreadySent
 	}
 
 	if channel == domain.ChannelSMS {
@@ -72,7 +73,7 @@ func (s *Service) SendOTP(ctx context.Context, phone string, channel domain.Chan
 			return 0, err
 		}
 		if count > maxDailySMSSends {
-			return 0, ErrDailyLimitExceeded
+			return 0, apperr.ErrOTPDailyLimit
 		}
 	}
 
@@ -83,7 +84,7 @@ func (s *Service) SendOTP(ctx context.Context, phone string, channel domain.Chan
 
 	if identity != nil &&
 		(identity.Status == domain.IdentityStatusBlocked || identity.Status == domain.IdentityStatusDeleted) {
-		return 0, ErrPhoneUnavailable
+		return 0, apperr.ErrPhoneUnavailable
 	}
 
 	otp, err := generateOTP()
@@ -124,18 +125,18 @@ func (s *Service) VerifyOTP(ctx context.Context, phone string, otp uint64) (otph
 	}
 
 	if otpData == nil {
-		return nil, ErrNotFoundOrExpired
+		return nil, apperr.ErrOTPNotFoundOrExpired
 	}
 
 	if otpData.Attempts >= maxOTPAttempts {
-		return nil, ErrAttemptsExceeded
+		return nil, apperr.ErrOTPAttemptsExceeded
 	}
 
 	if !s.isValidOTP(otpData.Hash, otp) {
 		if err := s.otpStore.IncrAttempts(ctx, phone); err != nil {
 			return nil, err
 		}
-		return nil, ErrInvalid
+		return nil, apperr.ErrOTPInvalid
 	}
 
 	if err := s.otpStore.Delete(ctx, phone); err != nil {
@@ -157,7 +158,7 @@ func (s *Service) issueResult(ctx context.Context, phone string) (otphandler.Ver
 
 	if identity.Status == domain.IdentityStatusBlocked ||
 		identity.Status == domain.IdentityStatusDeleted {
-		return nil, ErrPhoneUnavailable
+		return nil, apperr.ErrPhoneUnavailable
 	}
 
 	return s.issueAuthTokens(ctx, identity.ID.String())

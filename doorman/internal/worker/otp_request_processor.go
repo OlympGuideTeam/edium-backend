@@ -4,7 +4,7 @@ import (
 	"context"
 	"doorman/internal/domain"
 	"doorman/internal/infra/telemetry"
-	otpsvc "doorman/internal/service/otp"
+	"doorman/internal/pkg/apperr"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -82,9 +82,9 @@ func (w *OTPRequestProcessor) processTask(ctx context.Context, t domain.Task) er
 	slog.InfoContext(ctx, "otp-request-processor: обработка", "task_id", t.ID, "phone", payload.Phone)
 
 	if _, err := w.service.SendOTP(ctx, payload.Phone, payload.Channel); err != nil {
-		if errors.Is(err, otpsvc.ErrAlreadySent) ||
-			errors.Is(err, otpsvc.ErrPhoneUnavailable) ||
-			errors.Is(err, otpsvc.ErrDailyLimitExceeded) {
+		if errors.Is(err, apperr.ErrOTPAlreadySent) ||
+			errors.Is(err, apperr.ErrPhoneUnavailable) ||
+			errors.Is(err, apperr.ErrOTPDailyLimit) {
 			if schedErr := w.scheduleErrorNotification(ctx, payload.Phone, payload.Channel, err.Error()); schedErr != nil {
 				return fmt.Errorf("scheduleErrorNotification: %w", schedErr)
 			}
