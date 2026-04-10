@@ -1,7 +1,7 @@
 package domain
 
 // QuizGradeRequest — запрос от Riddler на оценку свободных ответов.
-// Публикуется в NATS subject: charon.quiz.grade.requested
+// Публикуется в NATS subject: riddler.quiz.grade.requested
 type QuizGradeRequest struct {
 	RequestID string          `json:"request_id"`
 	Question  string          `json:"question"`
