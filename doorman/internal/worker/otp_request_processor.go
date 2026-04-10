@@ -82,7 +82,9 @@ func (w *OTPRequestProcessor) processTask(ctx context.Context, t domain.Task) er
 	slog.InfoContext(ctx, "otp-request-processor: обработка", "task_id", t.ID, "phone", payload.Phone)
 
 	if err := w.service.SendOTP(ctx, payload.Phone, payload.Channel); err != nil {
-		if errors.Is(err, otpsvc.ErrAlreadySent) || errors.Is(err, otpsvc.ErrPhoneUnavailable) {
+		if errors.Is(err, otpsvc.ErrAlreadySent) ||
+			errors.Is(err, otpsvc.ErrPhoneUnavailable) ||
+			errors.Is(err, otpsvc.ErrDailyLimitExceeded) {
 			if schedErr := w.scheduleErrorNotification(ctx, payload.Phone, payload.Channel, err.Error()); schedErr != nil {
 				return fmt.Errorf("scheduleErrorNotification: %w", schedErr)
 			}
