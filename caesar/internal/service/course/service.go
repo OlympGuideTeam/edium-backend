@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"caesar/internal/domain"
+	"caesar/internal/pkg/apperr"
 
 	"github.com/google/uuid"
 )
@@ -21,7 +22,7 @@ func NewService(courses courseStore, classes classAccessor) *Service {
 
 func (s *Service) CreateCourse(ctx context.Context, classID, userID uuid.UUID, title string) (uuid.UUID, error) {
 	if strings.TrimSpace(title) == "" {
-		return uuid.Nil, ErrEmptyTitle
+		return uuid.Nil, apperr.ErrCourseEmptyTitle
 	}
 
 	role, ok, err := s.classes.GetMemberRole(ctx, classID, userID)
@@ -29,10 +30,10 @@ func (s *Service) CreateCourse(ctx context.Context, classID, userID uuid.UUID, t
 		return uuid.Nil, fmt.Errorf("getMemberRole: %w", err)
 	}
 	if !ok {
-		return uuid.Nil, ErrNotMember
+		return uuid.Nil, apperr.ErrCourseNotMember
 	}
 	if role == domain.ClassMemberRoleStudent {
-		return uuid.Nil, ErrForbidden
+		return uuid.Nil, apperr.ErrCourseForbidden
 	}
 
 	id, err := s.courses.Create(ctx, classID, userID, title)
@@ -48,7 +49,7 @@ func (s *Service) GetCourse(ctx context.Context, courseID, userID uuid.UUID) (*d
 		return nil, fmt.Errorf("getDetail: %w", err)
 	}
 	if detail == nil {
-		return nil, ErrNotFound
+		return nil, apperr.ErrCourseNotFound
 	}
 
 	role, ok, err := s.classes.GetMemberRole(ctx, detail.ClassID, userID)
@@ -56,7 +57,7 @@ func (s *Service) GetCourse(ctx context.Context, courseID, userID uuid.UUID) (*d
 		return nil, fmt.Errorf("getMemberRole: %w", err)
 	}
 	if !ok {
-		return nil, ErrNotMember
+		return nil, apperr.ErrCourseNotMember
 	}
 
 	modules, err := s.courses.ListModules(ctx, courseID)
@@ -75,7 +76,7 @@ func (s *Service) GetClassCourses(ctx context.Context, classID, userID uuid.UUID
 		return nil, fmt.Errorf("getClass: %w", err)
 	}
 	if cl == nil {
-		return nil, ErrNotFound
+		return nil, apperr.ErrCourseNotFound
 	}
 
 	role, ok, err := s.classes.GetMemberRole(ctx, classID, userID)
@@ -83,7 +84,7 @@ func (s *Service) GetClassCourses(ctx context.Context, classID, userID uuid.UUID
 		return nil, fmt.Errorf("getMemberRole: %w", err)
 	}
 	if !ok {
-		return nil, ErrNotMember
+		return nil, apperr.ErrCourseNotMember
 	}
 
 	isTeacher := role != domain.ClassMemberRoleStudent
@@ -100,7 +101,7 @@ func (s *Service) GetClassCourses(ctx context.Context, classID, userID uuid.UUID
 
 func (s *Service) UpdateCourse(ctx context.Context, courseID, userID uuid.UUID, title string) error {
 	if strings.TrimSpace(title) == "" {
-		return ErrEmptyTitle
+		return apperr.ErrCourseEmptyTitle
 	}
 
 	c, err := s.getCourse(ctx, courseID)
@@ -138,7 +139,7 @@ func (s *Service) getCourse(ctx context.Context, id uuid.UUID) (*domain.Course, 
 		return nil, fmt.Errorf("getByID: %w", err)
 	}
 	if c == nil {
-		return nil, ErrNotFound
+		return nil, apperr.ErrCourseNotFound
 	}
 	return c, nil
 }
@@ -153,7 +154,7 @@ func (s *Service) requireCanModify(ctx context.Context, c *domain.Course, userID
 		return fmt.Errorf("getClass: %w", err)
 	}
 	if cl == nil || cl.OwnerID != userID {
-		return ErrForbidden
+		return apperr.ErrCourseForbidden
 	}
 	return nil
 }

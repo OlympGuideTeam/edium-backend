@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"caesar/internal/domain"
+	"caesar/internal/pkg/apperr"
 
 	"github.com/google/uuid"
 )
@@ -26,10 +27,10 @@ func (s *Service) getActiveUser(ctx context.Context, userID uuid.UUID) (*domain.
 		return nil, fmt.Errorf("GetByID: %w", err)
 	}
 	if u == nil {
-		return nil, ErrNotFound
+		return nil, apperr.ErrUserNotFound
 	}
 	if u.Status != domain.UserStatusActive {
-		return nil, ErrBlockedOrDeleted
+		return nil, apperr.ErrUserBlockedOrDeleted
 	}
 	return u, nil
 }

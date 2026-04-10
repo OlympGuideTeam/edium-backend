@@ -4,6 +4,7 @@ import (
 	"context"
 	"doorman/internal/domain"
 	tokenhandler "doorman/internal/handler/token"
+	"doorman/internal/pkg/apperr"
 	"encoding/json"
 )
 
@@ -41,10 +42,10 @@ type userCreatedPayload struct {
 func (s *Service) Register(ctx context.Context, phone, name, surname, regToken string) (*tokenhandler.AuthTokens, error) {
 	storedToken, err := s.regTokenStore.Get(ctx, phone)
 	if err != nil {
-		return nil, ErrInvalidToken
+		return nil, apperr.ErrRegTokenInvalid
 	}
 	if storedToken != regToken {
-		return nil, ErrInvalidToken
+		return nil, apperr.ErrRegTokenInvalid
 	}
 
 	var identity domain.Identity
