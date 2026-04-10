@@ -268,7 +268,7 @@ components:
         channel:
           type: string
           description: Канал доставки кода
-          enum: [tg, vk]
+          enum: [tg, vk, sms]
           example: tg
 
     VerifyOTPRequest:
