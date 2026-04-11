@@ -1,15 +1,16 @@
 package main
 
 import (
-	"caesar/internal/app"
-	"caesar/internal/config"
-	"caesar/internal/infra/telemetry"
-	"caesar/internal/pkg/logger"
 	"context"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"caesar/internal/app"
+	"caesar/internal/config"
+	"caesar/internal/infra/telemetry"
+	"caesar/internal/pkg/logger"
 )
 
 func main() {
@@ -43,5 +44,5 @@ func run(ctx context.Context, cfg *config.Config) error {
 		return err
 	}
 
-	return application.Run(ctx, cfg)
+	return application.Run(ctx)
 }

@@ -43,5 +43,5 @@ func run(ctx context.Context, cfg *config.Config) error {
 		return err
 	}
 
-	return application.Run(ctx, cfg)
+	return application.Run(ctx)
 }

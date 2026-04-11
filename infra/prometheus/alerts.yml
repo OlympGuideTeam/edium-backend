@@ -1,0 +1,20 @@
+groups:
+  - name: edium
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Сервис недоступен: {{ $labels.job }}"
+          description: "Prometheus не может достучаться до {{ $labels.instance }}"
+
+      - alert: Http500
+        expr: increase(http_requests_total{status=~"5.."}[1m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "500 ошибка в {{ $labels.service }}"
+          description: "{{ $value | printf \"%.0f\" }} запросов с 5xx за последнюю минуту"
