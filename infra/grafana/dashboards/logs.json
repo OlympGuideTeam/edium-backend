@@ -97,13 +97,7 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "red", "value": 1 }
-            ]
-          }
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] }
         },
         "overrides": []
       },
@@ -133,13 +127,7 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "orange", "value": 1 }
-            ]
-          }
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }] }
         },
         "overrides": []
       },
@@ -193,27 +181,18 @@
         "overrides": [
           {
             "matcher": { "id": "byName", "options": "timestamp" },
-            "properties": [
-              { "id": "custom.width", "value": 190 },
-              { "id": "displayName", "value": "Время" }
-            ]
+            "properties": [{ "id": "custom.width", "value": 190 }, { "id": "displayName", "value": "Время" }]
           },
           {
             "matcher": { "id": "byName", "options": "service" },
-            "properties": [
-              { "id": "custom.width", "value": 120 },
-              { "id": "displayName", "value": "Сервис" }
-            ]
+            "properties": [{ "id": "custom.width", "value": 120 }, { "id": "displayName", "value": "Сервис" }]
           },
           {
             "matcher": { "id": "byName", "options": "level" },
             "properties": [
               { "id": "custom.width", "value": 80 },
               { "id": "displayName", "value": "Уровень" },
-              {
-                "id": "custom.displayMode",
-                "value": "color-background"
-              },
+              { "id": "custom.displayMode", "value": "color-background" },
               {
                 "id": "mappings",
                 "value": [
@@ -227,10 +206,7 @@
           },
           {
             "matcher": { "id": "byName", "options": "message" },
-            "properties": [
-              { "id": "displayName", "value": "Сообщение" },
-              { "id": "custom.wrap", "value": true }
-            ]
+            "properties": [{ "id": "displayName", "value": "Сообщение" }, { "id": "custom.wrap", "value": true }]
           },
           {
             "matcher": { "id": "byName", "options": "trace_id" },
@@ -246,10 +222,7 @@
                     "internal": {
                       "datasourceUid": "edium-jaeger",
                       "datasourceName": "Jaeger",
-                      "query": {
-                        "queryType": "byid",
-                        "query": "${__value.raw}"
-                      }
+                      "query": { "queryType": "byid", "query": "${__value.raw}" }
                     }
                   }
                 ]

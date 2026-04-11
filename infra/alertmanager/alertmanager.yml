@@ -1,0 +1,34 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'service']
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 4h
+  receiver: telegram
+  routes:
+    - matchers:
+        - alertname = "Http500"
+      group_wait: 10s
+      group_interval: 1m
+      repeat_interval: 1m
+      receiver: telegram
+    - matchers:
+        - alertname = "ServiceDown"
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 30m
+      receiver: telegram
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token: ${ALERTMANAGER_TG_TOKEN}
+        chat_id: ${ALERTMANAGER_TG_CHAT_ID}
+        parse_mode: HTML
+        message: |-
+          <b>{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}</b>
+          {{ range .Alerts }}{{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true

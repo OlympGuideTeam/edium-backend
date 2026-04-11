@@ -1,0 +1,114 @@
+{
+  "title": "Doorman — HTTP",
+  "uid": "edium-doorman",
+  "version": 1,
+  "schemaVersion": 39,
+  "tags": ["edium", "doorman", "http"],
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "30s",
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [],
+  "annotations": { "list": [] },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "weekStart": "",
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "RPS",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(http_requests_total{service=\"doorman\"}[1m]))", "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }, "color": { "mode": "thresholds" } }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Доля 5xx",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(http_requests_total{service=\"doorman\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{service=\"doorman\"}[5m]))", "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 }] }, "color": { "mode": "thresholds" } }, "overrides": [] }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "5xx / мин",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(increase(http_requests_total{service=\"doorman\",status=~\"5..\"}[1m]))", "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] }, "color": { "mode": "thresholds" } }, "overrides": [] }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "4xx / мин",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(increase(http_requests_total{service=\"doorman\",status=~\"4..\"}[1m]))", "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 50 }] }, "color": { "mode": "thresholds" } }, "overrides": [] }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "RPS по эндпоинтам",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum by (method, path) (rate(http_requests_total{service=\"doorman\"}[1m]))", "legendFormat": "{{method}} {{path}}" }],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 10 } }, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "5xx по эндпоинтам",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum by (method, path) (rate(http_requests_total{service=\"doorman\",status=~\"5..\"}[1m]))", "legendFormat": "{{method}} {{path}}" }],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [{ "matcher": { "id": "byFrameRefID", "options": "A" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }]
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Статусы",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum by (status) (rate(http_requests_total{service=\"doorman\"}[1m]))", "legendFormat": "{{status}}" }],
+      "options": { "tooltip": { "mode": "multi", "sort": "desc" }, "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"] } },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "200" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] },
+          { "matcher": { "id": "byRegexp", "options": "^4..$" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }] },
+          { "matcher": { "id": "byRegexp", "options": "^5..$" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Топ эндпоинтов",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sort_desc(sum by (method, path) (increase(http_requests_total{service=\"doorman\"}[$__range])))", "legendFormat": "", "instant": true }],
+      "options": { "sortBy": [{ "displayName": "Value", "desc": true }], "footer": { "show": false } },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "decimals": 0, "custom": { "align": "auto", "displayMode": "auto" } },
+        "overrides": [{ "matcher": { "id": "byName", "options": "Value" }, "properties": [{ "id": "displayName", "value": "Запросов" }] }]
+      },
+      "transformations": [{ "id": "organize", "options": { "renameByName": { "method": "Метод", "path": "Путь" } } }]
+    }
+  ]
+}
