@@ -19,7 +19,10 @@ import (
 	otpsvc "herald/internal/service/otp"
 	"herald/internal/worker"
 
+	"herald/internal/pkg/metrics"
+
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
@@ -86,6 +89,8 @@ func New(cfg *config.Config) (*App, error) {
 func (a *App) Router() *gin.Engine {
 	r := gin.Default()
 	r.Use(otelgin.Middleware(a.serviceName))
+	r.Use(metrics.Middleware(a.serviceName))
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	api := r.Group("/herald/v1")
 	if a.smsHandler != nil {
