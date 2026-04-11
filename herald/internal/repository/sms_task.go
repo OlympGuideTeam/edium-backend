@@ -43,7 +43,7 @@ func (r *PgSMSTaskRepository) Create(ctx context.Context, phone, text string, id
 // Задачи с просроченным клеймом (> 5 минут) доступны для повторного клейма.
 func (r *PgSMSTaskRepository) ListPending(ctx context.Context, limit int) ([]domain.SMSTask, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, phone, text, status, created_at, processed_at
+		SELECT id, phone, text, created_at, processed_at
 		FROM sms_task
 		WHERE status = 'pending'
 		ORDER BY created_at
@@ -58,7 +58,7 @@ func (r *PgSMSTaskRepository) ListPending(ctx context.Context, limit int) ([]dom
 	var tasks []domain.SMSTask
 	for rows.Next() {
 		var t domain.SMSTask
-		if err := rows.Scan(&t.ID, &t.Phone, &t.Text, &t.Status, &t.CreatedAt, &t.ProcessedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.Phone, &t.Text, &t.CreatedAt, &t.ProcessedAt); err != nil {
 			return nil, fmt.Errorf("SMSTask.ListPending scan: %w", err)
 		}
 		tasks = append(tasks, t)
