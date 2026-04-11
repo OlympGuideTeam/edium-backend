@@ -181,6 +181,7 @@ services:
       SMS_ALLOWED_PHONES: ${SMS_ALLOWED_PHONES}
       OTEL_ENDPOINT: jaeger:4317
       HTTPS_PROXY: socks5://tor:9050
+      NO_PROXY: jaeger
     ports:
       - "8084:80"
     depends_on:
