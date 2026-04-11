@@ -232,6 +232,32 @@ services:
     networks:
       - edium
 
+  prometheus:
+    image: prom/prometheus:v3.3.0
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    expose:
+      - "9090"
+    networks:
+      - edium
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    restart: unless-stopped
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager"]
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    expose:
+      - "9093"
+    depends_on:
+      - prometheus
+    networks:
+      - edium
+
   grafana:
     image: grafana/grafana:11.4.0
     restart: unless-stopped
@@ -242,13 +268,14 @@ services:
     volumes:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
       - ./grafana/provisioning:/etc/grafana/provisioning/dashboards:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     expose:
       - "3000"
     depends_on:
       - clickhouse
       - jaeger
+      - prometheus
     networks:
       - edium
 
@@ -289,6 +316,8 @@ volumes:
   nats_data:
   clickhouse_data:
   grafana_data:
+  prometheus_data:
+  alertmanager_data:
 
 networks:
   edium:

@@ -10,6 +10,9 @@ on:
       - "caesar/**"
       - "infra/compose/test/**"
       - "infra/compose/prod/nats/**"
+      - "infra/grafana/**"
+      - "infra/alertmanager/**"
+      - "infra/prometheus/**"
   workflow_dispatch:
 
 permissions:
@@ -429,7 +432,7 @@ jobs:
           host: ${{ secrets.TEST_VM_HOST }}
           username: deploy
           key: ${{ secrets.TEST_VM_SSH_KEY }}
-          source: "infra/compose/test/docker-compose.yml,infra/compose/test/Caddyfile,infra/compose/test/vector.yaml,infra/compose/test/clickhouse/,infra/compose/test/grafana/,infra/compose/prod/nats/nats-server.conf,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/"
+          source: "infra/compose/test/docker-compose.yml,infra/compose/test/Caddyfile,infra/compose/test/vector.yaml,infra/compose/test/prometheus.yml,infra/compose/test/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -446,12 +449,17 @@ jobs:
             cp /tmp/edium-deploy/infra/compose/test/docker-compose.yml /opt/edium/docker-compose.yml
             cp /tmp/edium-deploy/infra/compose/test/Caddyfile /opt/edium/Caddyfile
             cp /tmp/edium-deploy/infra/compose/test/vector.yaml /opt/edium/vector.yaml
+            cp /tmp/edium-deploy/infra/compose/test/prometheus.yml /opt/edium/prometheus.yml
             mkdir -p /opt/edium/clickhouse
             cp /tmp/edium-deploy/infra/compose/test/clickhouse/init.sql /opt/edium/clickhouse/init.sql
             cp /tmp/edium-deploy/infra/compose/test/clickhouse/migrate.sql /opt/edium/clickhouse/migrate.sql
             mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
             rm -rf /opt/edium/grafana/provisioning/dashboards.yaml
-            cp -r /tmp/edium-deploy/infra/compose/test/grafana/. /opt/edium/grafana/
+            cp -r /tmp/edium-deploy/infra/grafana/. /opt/edium/grafana/
+            mkdir -p /opt/edium/alertmanager
+            cp /tmp/edium-deploy/infra/alertmanager/alertmanager.yml /opt/edium/alertmanager/alertmanager.yml
+            mkdir -p /opt/edium/prometheus
+            cp /tmp/edium-deploy/infra/prometheus/alerts.yml /opt/edium/prometheus/alerts.yml
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
@@ -498,6 +506,8 @@ jobs:
             NATS_PASSWORD_CHARON=${{ secrets.NATS_PASSWORD_CHARON }}
             NATS_PASSWORD_RIDDLER=${{ secrets.NATS_PASSWORD_RIDDLER }}
             NATS_PASSWORD_SPHINX=${{ secrets.NATS_PASSWORD_SPHINX }}
+            ALERTMANAGER_TG_TOKEN=${{ secrets.ALERTMANAGER_TG_TOKEN }}
+            ALERTMANAGER_TG_CHAT_ID=${{ secrets.ALERTMANAGER_TG_CHAT_ID }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 
@@ -512,13 +522,19 @@ jobs:
               < /opt/edium/nats/nats-server.conf > /tmp/nats-expanded.conf
             mv /tmp/nats-expanded.conf /opt/edium/nats/nats-server.conf
 
+            # Раскрываем переменные в alertmanager.yml
+            export $(grep -E '^ALERTMANAGER_' .env | xargs)
+            envsubst '$ALERTMANAGER_TG_TOKEN $ALERTMANAGER_TG_CHAT_ID' \
+              < /opt/edium/alertmanager/alertmanager.yml > /tmp/alertmanager-expanded.yml
+            mv /tmp/alertmanager-expanded.yml /opt/edium/alertmanager/alertmanager.yml
+
             # Авторизация в CR
             echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
 
             # Обновление и запуск
             docker compose pull
             docker compose up -d --remove-orphans
-            docker compose restart nats grafana vector caddy
+            docker compose restart nats grafana vector caddy alertmanager
             docker image prune -f
 
             # Ждём готовности ClickHouse (до 60 сек)
@@ -571,7 +587,7 @@ jobs:
           host: ${{ secrets.PROD_VM_HOST }}
           username: deploy
           key: ${{ secrets.PROD_VM_SSH_KEY }}
-          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/clickhouse/,infra/compose/prod/grafana/,infra/compose/prod/nats/nats-server.conf,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/"
+          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/prometheus.yml,infra/compose/prod/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -588,12 +604,17 @@ jobs:
             cp /tmp/edium-deploy/infra/compose/prod/docker-compose.yml /opt/edium/docker-compose.yml
             cp /tmp/edium-deploy/infra/compose/prod/Caddyfile /opt/edium/Caddyfile
             cp /tmp/edium-deploy/infra/compose/prod/vector.yaml /opt/edium/vector.yaml
+            cp /tmp/edium-deploy/infra/compose/prod/prometheus.yml /opt/edium/prometheus.yml
             mkdir -p /opt/edium/clickhouse
             cp /tmp/edium-deploy/infra/compose/prod/clickhouse/init.sql /opt/edium/clickhouse/init.sql
             cp /tmp/edium-deploy/infra/compose/prod/clickhouse/migrate.sql /opt/edium/clickhouse/migrate.sql
             mkdir -p /opt/edium/grafana/datasources /opt/edium/grafana/provisioning /opt/edium/grafana/dashboards
             rm -rf /opt/edium/grafana/provisioning/dashboards.yaml
-            cp -r /tmp/edium-deploy/infra/compose/prod/grafana/. /opt/edium/grafana/
+            cp -r /tmp/edium-deploy/infra/grafana/. /opt/edium/grafana/
+            mkdir -p /opt/edium/alertmanager
+            cp /tmp/edium-deploy/infra/alertmanager/alertmanager.yml /opt/edium/alertmanager/alertmanager.yml
+            mkdir -p /opt/edium/prometheus
+            cp /tmp/edium-deploy/infra/prometheus/alerts.yml /opt/edium/prometheus/alerts.yml
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
@@ -641,6 +662,8 @@ jobs:
             NATS_PASSWORD_CHARON=${{ secrets.NATS_PASSWORD_CHARON }}
             NATS_PASSWORD_RIDDLER=${{ secrets.NATS_PASSWORD_RIDDLER }}
             NATS_PASSWORD_SPHINX=${{ secrets.NATS_PASSWORD_SPHINX }}
+            ALERTMANAGER_TG_TOKEN=${{ secrets.ALERTMANAGER_TG_TOKEN }}
+            ALERTMANAGER_TG_CHAT_ID=${{ secrets.ALERTMANAGER_TG_CHAT_ID }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 
@@ -655,13 +678,19 @@ jobs:
               < /opt/edium/nats/nats-server.conf > /tmp/nats-expanded.conf
             mv /tmp/nats-expanded.conf /opt/edium/nats/nats-server.conf
 
+            # Раскрываем переменные в alertmanager.yml
+            export $(grep -E '^ALERTMANAGER_' .env | xargs)
+            envsubst '$ALERTMANAGER_TG_TOKEN $ALERTMANAGER_TG_CHAT_ID' \
+              < /opt/edium/alertmanager/alertmanager.yml > /tmp/alertmanager-expanded.yml
+            mv /tmp/alertmanager-expanded.yml /opt/edium/alertmanager/alertmanager.yml
+
             # Авторизация в CR
             echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
 
             # Обновление и запуск
             docker compose pull
             docker compose up -d --remove-orphans
-            docker compose restart nats grafana vector
+            docker compose restart nats grafana vector alertmanager
             docker image prune -f
 
             # Ждём готовности ClickHouse (до 60 сек)
