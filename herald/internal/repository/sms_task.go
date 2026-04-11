@@ -29,7 +29,7 @@ func (r *PgSMSTaskRepository) Create(ctx context.Context, phone, text string, id
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO sms_task (phone, text, idempotency_key, trace_ctx)
 		 VALUES ($1, $2, $3, $4)
-		 ON CONFLICT (idempotency_key) DO NOTHING`,
+		 ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING`,
 		phone, text, idempotencyKey, nullableString(traceCtx),
 	)
 	if err != nil {
@@ -43,20 +43,11 @@ func (r *PgSMSTaskRepository) Create(ctx context.Context, phone, text string, id
 // Задачи с просроченным клеймом (> 5 минут) доступны для повторного клейма.
 func (r *PgSMSTaskRepository) ListPending(ctx context.Context, limit int) ([]domain.SMSTask, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		WITH claimed AS (
-		    SELECT id FROM sms_task
-		    WHERE status = 'pending'
-		      AND (claimed_at IS NULL OR claimed_at < NOW() - INTERVAL '5 minutes')
-		    ORDER BY created_at
-		    FOR UPDATE SKIP LOCKED
-		    LIMIT $1
-		)
-		UPDATE sms_task
-		SET claimed_at = NOW()
-		FROM claimed
-		WHERE sms_task.id = claimed.id
-		RETURNING sms_task.id, sms_task.phone, sms_task.text, sms_task.status,
-		          sms_task.created_at, sms_task.processed_at`,
+		SELECT id, phone, text, created_at, processed_at
+		FROM sms_task
+		WHERE status = 'pending'
+		ORDER BY created_at
+		LIMIT $1`,
 		limit,
 	)
 	if err != nil {
@@ -67,7 +58,7 @@ func (r *PgSMSTaskRepository) ListPending(ctx context.Context, limit int) ([]dom
 	var tasks []domain.SMSTask
 	for rows.Next() {
 		var t domain.SMSTask
-		if err := rows.Scan(&t.ID, &t.Phone, &t.Text, &t.Status, &t.CreatedAt, &t.ProcessedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.Phone, &t.Text, &t.CreatedAt, &t.ProcessedAt); err != nil {
 			return nil, fmt.Errorf("SMSTask.ListPending scan: %w", err)
 		}
 		tasks = append(tasks, t)
@@ -83,7 +74,7 @@ func (r *PgSMSTaskRepository) Ack(ctx context.Context, id uuid.UUID, success boo
 	if success {
 		_, err := r.db.ExecContext(ctx,
 			`UPDATE sms_task
-			 SET status = 'sent', processed_at = NOW(), claimed_at = NULL
+			 SET status = 'sent', processed_at = NOW()
 			 WHERE id = $1 AND status = 'pending'`,
 			id,
 		)
@@ -96,7 +87,6 @@ func (r *PgSMSTaskRepository) Ack(ctx context.Context, id uuid.UUID, success boo
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE sms_task
 		SET retry_count  = retry_count + 1,
-		    claimed_at   = NULL,
 		    status       = CASE WHEN retry_count + 1 >= max_retries THEN 'failed' ELSE 'pending' END,
 		    processed_at = CASE WHEN retry_count + 1 >= max_retries THEN NOW() ELSE NULL END
 		WHERE id = $1 AND status = 'pending'`,
