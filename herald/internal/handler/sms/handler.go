@@ -1,17 +1,17 @@
 package smshandler
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 // Handler обслуживает HTTP-эндпоинты для Android SMS-шлюза.
 // GET  /herald/v1/sms/tasks        — поллинг ожидающих задач
-// POST /herald/v1/sms/tasks/{id}/ack — подтверждение отправки
+// POST /herald/v1/sms/tasks/:id/ack — подтверждение отправки
 type Handler struct {
 	tasks  SMSTaskRepository
 	apiKey string
@@ -21,19 +21,20 @@ func NewHandler(tasks SMSTaskRepository, apiKey string) *Handler {
 	return &Handler{tasks: tasks, apiKey: apiKey}
 }
 
-func (h *Handler) Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /herald/v1/sms/tasks", h.auth(h.listTasks))
-	mux.HandleFunc("POST /herald/v1/sms/tasks/{id}/ack", h.auth(h.ackTask))
+func (h *Handler) Register(rg *gin.RouterGroup) {
+	sms := rg.Group("/sms", h.authMiddleware())
+	sms.GET("/tasks", h.listTasks)
+	sms.POST("/tasks/:id/ack", h.ackTask)
 }
 
-func (h *Handler) auth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+func (h *Handler) authMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 		if token == "" || token != h.apiKey {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
-		next(w, r)
+		c.Next()
 	}
 }
 
@@ -43,11 +44,11 @@ type smsTaskResponse struct {
 	Text  string `json:"text"`
 }
 
-func (h *Handler) listTasks(w http.ResponseWriter, r *http.Request) {
-	tasks, err := h.tasks.ListPending(r.Context(), 10)
+func (h *Handler) listTasks(c *gin.Context) {
+	tasks, err := h.tasks.ListPending(c.Request.Context(), 10)
 	if err != nil {
-		slog.ErrorContext(r.Context(), "sms-handler: ListPending", "err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		slog.ErrorContext(c.Request.Context(), "sms-handler: ListPending", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
 
@@ -59,11 +60,7 @@ func (h *Handler) listTasks(w http.ResponseWriter, r *http.Request) {
 			Text:  t.Text,
 		})
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		slog.ErrorContext(r.Context(), "sms-handler: encode response", "err", err)
-	}
+	c.JSON(http.StatusOK, resp)
 }
 
 type ackRequest struct {
@@ -71,24 +68,24 @@ type ackRequest struct {
 	Error   string `json:"error,omitempty"`
 }
 
-func (h *Handler) ackTask(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(r.PathValue("id"))
+func (h *Handler) ackTask(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
 
 	var req ackRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad request"})
 		return
 	}
 
-	if err := h.tasks.Ack(r.Context(), id, req.Success, req.Error); err != nil {
-		slog.ErrorContext(r.Context(), "sms-handler: Ack", "task_id", id, "err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+	if err := h.tasks.Ack(c.Request.Context(), id, req.Success, req.Error); err != nil {
+		slog.ErrorContext(c.Request.Context(), "sms-handler: Ack", "task_id", id, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
