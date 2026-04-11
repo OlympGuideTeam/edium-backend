@@ -21,7 +21,6 @@ type SMSTask struct {
 	Status      SMSTaskStatus
 	CreatedAt   time.Time
 	ProcessedAt *time.Time
-	ClaimedAt   *time.Time
 	RetryCount  int
 	MaxRetries  int
 }

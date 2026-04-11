@@ -40,7 +40,7 @@ WHERE id = $2`
 
 const markFailedQuery = `
 UPDATE task
-SET status       = CASE WHEN attempts >= max_attempts THEN $1 ELSE $2 END,
+SET status       = CASE WHEN attempts >= max_attempts THEN $1::task_status ELSE $2::task_status END,
     last_error   = $3,
     available_at = NOW() + $4,
     updated_at   = NOW()
