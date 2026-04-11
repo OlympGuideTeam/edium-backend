@@ -2,6 +2,11 @@ package app
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+
 	"doorman/internal/config"
 	keyhandler "doorman/internal/handler/key"
 	otphandler "doorman/internal/handler/otp"
@@ -10,15 +15,15 @@ import (
 	"doorman/internal/infra/db"
 	natsinf "doorman/internal/infra/nats"
 	"doorman/internal/infra/redis"
+	"doorman/internal/pkg/metrics"
 	"doorman/internal/repository"
 	jwtsvc "doorman/internal/service/jwt"
 	otpsvc "doorman/internal/service/otp"
 	regsvc "doorman/internal/service/registration"
 	"doorman/internal/worker"
-	"fmt"
-	"log/slog"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
@@ -34,6 +39,9 @@ type App struct {
 	UserCreatedPublisher *worker.UserCreatedPublisher
 	UserDeletedConsumer  *worker.UserDeletedConsumer
 	UserDeletedProcessor *worker.UserDeletedProcessor
+
+	httpAddr    string
+	serviceName string
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -89,6 +97,9 @@ func New(cfg *config.Config) (*App, error) {
 		UserCreatedPublisher: worker.NewUserCreatedPublisher(taskRepo, natsPublisher),
 		UserDeletedConsumer:  worker.NewUserDeletedConsumer(natsSubscriber, taskRepo),
 		UserDeletedProcessor: worker.NewUserDeletedProcessor(taskRepo, identityStore, refreshTokenStore),
+
+		httpAddr:    fmt.Sprintf(":%d", cfg.App.Port),
+		serviceName: cfg.OTel.ServiceName,
 	}
 	return a, nil
 }
@@ -104,9 +115,11 @@ func (a *App) Workers() map[string]func(context.Context) error {
 	}
 }
 
-func (a *App) Router(serviceName string) *gin.Engine {
+func (a *App) Router() *gin.Engine {
 	r := gin.Default()
-	r.Use(otelgin.Middleware(serviceName))
+	r.Use(otelgin.Middleware(a.serviceName))
+	r.Use(metrics.Middleware(a.serviceName))
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	api := r.Group("/doorman/v1")
 	api.POST("/otp/send", a.OtpHandler.Send)
@@ -119,7 +132,7 @@ func (a *App) Router(serviceName string) *gin.Engine {
 	return r
 }
 
-func (a *App) Run(ctx context.Context, cfg *config.Config) error {
+func (a *App) Run(ctx context.Context) error {
 	for name, run := range a.Workers() {
 		go func() {
 			if err := run(ctx); err != nil {
@@ -127,8 +140,16 @@ func (a *App) Run(ctx context.Context, cfg *config.Config) error {
 			}
 		}()
 	}
-	if err := a.Router(cfg.OTel.ServiceName).Run(fmt.Sprintf(":%d", cfg.App.Port)); err != nil {
-		return fmt.Errorf("сервер: %w", err)
+
+	srv := &http.Server{Addr: a.httpAddr, Handler: a.Router()}
+	go func() {
+		<-ctx.Done()
+		_ = srv.Shutdown(context.WithoutCancel(ctx))
+	}()
+
+	slog.Info("http-сервер: запущен", "addr", a.httpAddr)
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("http-сервер: %w", err)
 	}
 	return nil
 }
