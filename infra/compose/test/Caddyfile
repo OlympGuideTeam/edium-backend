@@ -16,3 +16,10 @@ test.edium.online {
 grafana-test.edium.online {
     reverse_proxy grafana:3000
 }
+
+jaeger-test.edium.online {
+    basicauth {
+        admin ${JAEGER_BASIC_AUTH_HASH}
+    }
+    reverse_proxy jaeger:16686
+}
