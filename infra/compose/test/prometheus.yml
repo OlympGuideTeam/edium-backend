@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: doorman
+    static_configs:
+      - targets: ["doorman:80"]
+
+  - job_name: caesar
+    static_configs:
+      - targets: ["caesar:80"]
+
+  - job_name: herald
+    static_configs:
+      - targets: ["herald:80"]
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
