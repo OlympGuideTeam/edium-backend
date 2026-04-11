@@ -121,6 +121,7 @@ jobs:
             NATS_PASSWORD_SPHINX=${{ secrets.NATS_PASSWORD_SPHINX }}
             ALERTMANAGER_TG_TOKEN=${{ secrets.ALERTMANAGER_TG_TOKEN }}
             ALERTMANAGER_TG_CHAT_ID=${{ secrets.ALERTMANAGER_TG_CHAT_ID }}
+            JAEGER_BASIC_AUTH_HASH=${{ secrets.JAEGER_BASIC_AUTH_HASH }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 
@@ -129,7 +130,7 @@ jobs:
             printf '%s' '${{ secrets.JWT_RSA_PRIVATE_KEY }}' | awk 'NR>1{printf "\\n"}{printf "%s",$0}' >> .env
             echo >> .env
 
-            # Раскрываем переменные в nats-server.conf (envsubst заменяет $VAR → реальный пароль, кавычки остаются)
+            # Раскрываем переменные в nats-server.conf
             export $(grep -E '^NATS_PASSWORD_' .env | xargs)
             envsubst '$NATS_PASSWORD_DOORMAN $NATS_PASSWORD_HERALD $NATS_PASSWORD_CAESAR $NATS_PASSWORD_CHARON $NATS_PASSWORD_RIDDLER $NATS_PASSWORD_SPHINX' \
               < /opt/edium/nats/nats-server.conf > /tmp/nats-expanded.conf
@@ -141,13 +142,19 @@ jobs:
               < /opt/edium/alertmanager/alertmanager.yml > /tmp/alertmanager-expanded.yml
             mv /tmp/alertmanager-expanded.yml /opt/edium/alertmanager/alertmanager.yml
 
+            # Раскрываем переменные в Caddyfile
+            export JAEGER_BASIC_AUTH_HASH="$(grep '^JAEGER_BASIC_AUTH_HASH=' .env | cut -d= -f2-)"
+            envsubst '$JAEGER_BASIC_AUTH_HASH' \
+              < /opt/edium/Caddyfile > /tmp/Caddyfile-expanded
+            mv /tmp/Caddyfile-expanded /opt/edium/Caddyfile
+
             # Авторизация в CR
             echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
 
             # Обновление и запуск
             docker compose pull
             docker compose up -d --remove-orphans
-            docker compose restart nats grafana vector alertmanager
+            docker compose restart nats grafana vector caddy alertmanager
             docker image prune -f
 
             # Миграции ClickHouse
