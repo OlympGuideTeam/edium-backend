@@ -165,6 +165,16 @@ locals {
       ttl  = 300
       data = [module.vm_test.external_ip]
     }
+    "jaeger" = {
+      type = "A"
+      ttl  = 300
+      data = [module.vm_prod.external_ip]
+    }
+    "jaeger-test" = {
+      type = "A"
+      ttl  = 300
+      data = [module.vm_test.external_ip]
+    }
   }
 
   sphinx_dns_record = var.sphinx_vm_ip != "" ? {
