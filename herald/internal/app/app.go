@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -17,6 +18,9 @@ import (
 	"herald/internal/repository"
 	otpsvc "herald/internal/service/otp"
 	"herald/internal/worker"
+
+	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 type App struct {
@@ -24,8 +28,9 @@ type App struct {
 	OTPRequestPublisher *worker.OTPRequestPublisher
 	OTPSentConsumer     *worker.OTPSentConsumer
 	OTPSentProcessor    *worker.OTPSentProcessor
-	httpMux             *http.ServeMux
+	smsHandler          *smshandler.Handler // nil если SMS не настроен
 	httpAddr            string
+	serviceName         string
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -60,10 +65,10 @@ func New(cfg *config.Config) (*App, error) {
 
 	// SMS-отправитель: активен только если задан API-ключ.
 	var smsSender worker.SMSSender
-	mux := http.NewServeMux()
+	var sh *smshandler.Handler
 	if cfg.SMS.APIKey != "" {
 		smsSender = smsinf.NewSender(smsTaskRepo, cfg.SMS.AllowedPhones)
-		smshandler.NewHandler(smsTaskRepo, cfg.SMS.APIKey).Register(mux)
+		sh = smshandler.NewHandler(smsTaskRepo, cfg.SMS.APIKey)
 		slog.Info("sms-шлюз: активирован", "allowed_phones", cfg.SMS.AllowedPhones)
 	}
 
@@ -72,12 +77,25 @@ func New(cfg *config.Config) (*App, error) {
 		OTPRequestPublisher: worker.NewOTPRequestPublisher(taskRepo, natsPublisher),
 		OTPSentConsumer:     worker.NewOTPSentConsumer(natsSubscriber, taskRepo),
 		OTPSentProcessor:    worker.NewOTPSentProcessor(taskRepo, otpService, senders, smsSender),
-		httpMux:             mux,
+		smsHandler:          sh,
 		httpAddr:            fmt.Sprintf(":%d", cfg.App.Port),
+		serviceName:         cfg.OTel.ServiceName,
 	}, nil
 }
 
-func (a *App) Run(ctx context.Context, cfg *config.Config) error {
+func (a *App) Router() *gin.Engine {
+	r := gin.Default()
+	r.Use(otelgin.Middleware(a.serviceName))
+
+	api := r.Group("/herald/v1")
+	if a.smsHandler != nil {
+		a.smsHandler.Register(api)
+	}
+
+	return r
+}
+
+func (a *App) Run(ctx context.Context) error {
 	workers := map[string]func(context.Context) error{
 		"OTPRequestPublisher": a.OTPRequestPublisher.Run,
 		"OTPSentConsumer":     a.OTPSentConsumer.Run,
@@ -92,14 +110,14 @@ func (a *App) Run(ctx context.Context, cfg *config.Config) error {
 		}()
 	}
 
-	srv := &http.Server{Addr: a.httpAddr, Handler: a.httpMux}
+	srv := &http.Server{Addr: a.httpAddr, Handler: a.Router()}
 	go func() {
 		<-ctx.Done()
 		_ = srv.Shutdown(context.WithoutCancel(ctx))
 	}()
 
 	slog.Info("http-сервер: запущен", "addr", a.httpAddr)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("http-сервер: %w", err)
 	}
 	return nil
