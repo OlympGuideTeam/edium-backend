@@ -7,8 +7,6 @@ services:
     ports:
       - "80:80"
       - "443:443"
-    environment:
-      JAEGER_BASIC_AUTH_HASH: ${JAEGER_BASIC_AUTH_HASH}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
