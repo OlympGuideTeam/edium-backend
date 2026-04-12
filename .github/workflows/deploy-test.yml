@@ -8,6 +8,7 @@ on:
       - "herald/**"
       - "charon/**"
       - "caesar/**"
+      - "riddler/**"
       - "infra/compose/test/**"
       - "infra/compose/prod/nats/**"
       - "infra/grafana/**"
@@ -34,6 +35,7 @@ jobs:
       herald: ${{ steps.filter.outputs.herald }}
       charon: ${{ steps.filter.outputs.charon }}
       caesar: ${{ steps.filter.outputs.caesar }}
+      riddler: ${{ steps.filter.outputs.riddler }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -48,6 +50,8 @@ jobs:
               - 'charon/**'
             caesar:
               - 'caesar/**'
+            riddler:
+              - 'riddler/**'
 
   # ========================
   # Go — Doorman
@@ -396,31 +400,44 @@ jobs:
 
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
+  build-riddler:
+    needs: [detect-changes]
+    if: github.event_name == 'push' && needs.detect-changes.outputs.riddler == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-riddler
+          TAG=main-${GITHUB_SHA::7}
+
+          docker build -t ${IMAGE}:${TAG} riddler/
+          docker push ${IMAGE}:${TAG}
+
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
+
   # ========================
   # Deploy на test VM
   # ========================
 
   deploy-test:
     # ВРЕМЕННО: lint и test отключены, depends только на build-джобах
-    # needs: [test-doorman, test-herald, test-charon, test-caesar, build-doorman, build-herald, build-charon, build-caesar]
-    needs: [build-doorman, build-herald, build-charon, build-caesar]
-    # ВРЕМЕННО: условие без test-джобов
-    # if: |
-    #   always() &&
-    #   needs.test-doorman.result == 'success' &&
-    #   needs.test-herald.result == 'success' &&
-    #   needs.test-charon.result == 'success' &&
-    #   needs.test-caesar.result == 'success' &&
-    #   (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') &&
-    #   (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') &&
-    #   (needs.build-charon.result == 'success' || needs.build-charon.result == 'skipped') &&
-    #   (needs.build-caesar.result == 'success' || needs.build-caesar.result == 'skipped')
+    # needs: [test-doorman, test-herald, test-charon, test-caesar, test-riddler, build-doorman, build-herald, build-charon, build-caesar, build-riddler]
+    needs: [build-doorman, build-herald, build-charon, build-caesar, build-riddler]
     if: |
       always() &&
       (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') &&
       (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') &&
       (needs.build-charon.result == 'success' || needs.build-charon.result == 'skipped') &&
-      (needs.build-caesar.result == 'success' || needs.build-caesar.result == 'skipped')
+      (needs.build-caesar.result == 'success' || needs.build-caesar.result == 'skipped') &&
+      (needs.build-riddler.result == 'success' || needs.build-riddler.result == 'skipped')
     runs-on: ubuntu-latest
     environment: test
     steps:
@@ -432,7 +449,7 @@ jobs:
           host: ${{ secrets.TEST_VM_HOST }}
           username: deploy
           key: ${{ secrets.TEST_VM_SSH_KEY }}
-          source: "infra/compose/test/docker-compose.yml,infra/compose/test/Caddyfile,infra/compose/test/vector.yaml,infra/compose/test/prometheus.yml,infra/compose/test/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/"
+          source: "infra/compose/test/docker-compose.yml,infra/compose/test/Caddyfile,infra/compose/test/vector.yaml,infra/compose/test/prometheus.yml,infra/compose/test/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/,riddler/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -460,11 +477,12 @@ jobs:
             cp /tmp/edium-deploy/infra/alertmanager/alertmanager.yml /opt/edium/alertmanager/alertmanager.yml
             mkdir -p /opt/edium/prometheus
             cp /tmp/edium-deploy/infra/prometheus/alerts.yml /opt/edium/prometheus/alerts.yml
-            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar
+            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar /opt/edium/migrations/riddler
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
             cp -r /tmp/edium-deploy/charon/migrations/* /opt/edium/migrations/charon/
             cp -r /tmp/edium-deploy/caesar/migrations/* /opt/edium/migrations/caesar/
+            cp -r /tmp/edium-deploy/riddler/migrations/* /opt/edium/migrations/riddler/
             mkdir -p /opt/edium/nats
             cp /tmp/edium-deploy/infra/compose/prod/nats/nats-server.conf /opt/edium/nats/nats-server.conf
 
@@ -491,6 +509,9 @@ jobs:
             CAESAR_PG_USER=${{ secrets.CAESAR_PG_USER }}
             CAESAR_PG_PWD=${{ secrets.CAESAR_PG_PWD }}
             CAESAR_PG_DB=${{ secrets.CAESAR_PG_DB }}
+            RIDDLER_PG_USER=${{ secrets.RIDDLER_PG_USER }}
+            RIDDLER_PG_PWD=${{ secrets.RIDDLER_PG_PWD }}
+            RIDDLER_PG_DB=${{ secrets.RIDDLER_PG_DB }}
             CHARON_PG_USER=${{ secrets.CHARON_PG_USER }}
             CHARON_PG_PWD=${{ secrets.CHARON_PG_PWD }}
             CHARON_PG_DB=${{ secrets.CHARON_PG_DB }}
@@ -654,6 +675,9 @@ jobs:
             CAESAR_PG_USER=${{ secrets.CAESAR_PG_USER }}
             CAESAR_PG_PWD=${{ secrets.CAESAR_PG_PWD }}
             CAESAR_PG_DB=${{ secrets.CAESAR_PG_DB }}
+            RIDDLER_PG_USER=${{ secrets.RIDDLER_PG_USER }}
+            RIDDLER_PG_PWD=${{ secrets.RIDDLER_PG_PWD }}
+            RIDDLER_PG_DB=${{ secrets.RIDDLER_PG_DB }}
             CHARON_PG_USER=${{ secrets.CHARON_PG_USER }}
             CHARON_PG_PWD=${{ secrets.CHARON_PG_PWD }}
             CHARON_PG_DB=${{ secrets.CHARON_PG_DB }}
