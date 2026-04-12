@@ -29,3 +29,13 @@ jaeger.edium.online {
     }
     reverse_proxy jaeger:16686
 }
+
+links.edium.online {
+    handle /.well-known/apple-app-site-association {
+        header Content-Type application/json
+        respond `{"applinks":{"details":[{"appIDs":["FV7B395QF2.online.edium.app"],"components":[{"/":"/invite/*"}]}]}}`
+    }
+    handle {
+        respond "Not Found" 404
+    }
+}
