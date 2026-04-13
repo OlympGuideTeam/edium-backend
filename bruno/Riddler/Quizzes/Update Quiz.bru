@@ -1,0 +1,22 @@
+meta {
+  name: Update Quiz
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{riddlerUrl}}/riddler/v1/quizzes/{{quizId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "title": "Обновлённое название",
+    "description": "Обновлённое описание"
+  }
+}
