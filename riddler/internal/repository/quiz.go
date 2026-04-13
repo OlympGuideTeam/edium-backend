@@ -140,6 +140,18 @@ func (r *PgQuizRepository) Update(ctx context.Context, id uuid.UUID, title, desc
 	return nil
 }
 
+func (r *PgQuizRepository) Publish(ctx context.Context, id uuid.UUID, isPublic bool) error {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	_, err := exec.ExecContext(ctx,
+		`UPDATE quiz_template SET is_draft = false, is_public = $1 WHERE id = $2`,
+		isPublic, id,
+	)
+	if err != nil {
+		return fmt.Errorf("publish quiz_template: %w", err)
+	}
+	return nil
+}
+
 func (r *PgQuizRepository) DeleteQuestion(ctx context.Context, quizID, questionID uuid.UUID) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	res, err := exec.ExecContext(ctx,

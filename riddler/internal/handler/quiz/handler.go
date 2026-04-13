@@ -59,6 +59,32 @@ func (h *Handler) CreateQuiz(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.CreateQuizResponse{ID: id.String()})
 }
 
+func (h *Handler) PublishQuiz(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	quizID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	var req dto.PublishQuizRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.WriteError(c, apperr.ErrBadRequest)
+		return
+	}
+
+	if err := h.service.PublishQuiz(c.Request.Context(), quizID, userID, req.IsPublic); err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
 func (h *Handler) DeleteQuestion(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
 	if !ok {

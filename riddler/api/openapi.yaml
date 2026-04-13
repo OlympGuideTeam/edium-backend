@@ -146,6 +146,37 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
 
+  /quizzes/{id}/publish:
+    post:
+      summary: Опубликовать квиз
+      operationId: publishQuiz
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_public
+              properties:
+                is_public:
+                  type: boolean
+                  description: Доступен ли квиз другим учителям как шаблон
+      responses:
+        "200":
+          description: Квиз опубликован
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
   /quizzes/{id}/questions/order:
     patch:
       summary: Изменить порядок вопросов

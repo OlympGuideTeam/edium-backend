@@ -15,6 +15,7 @@ type quizRepository interface {
 	Update(ctx context.Context, id uuid.UUID, title, description *string) error
 	ReorderQuestions(ctx context.Context, quizID uuid.UUID, questionIDs []uuid.UUID) error
 	DeleteQuestion(ctx context.Context, quizID, questionID uuid.UUID) error
+	Publish(ctx context.Context, id uuid.UUID, isPublic bool) error
 	SetNeedEvaluation(ctx context.Context, quizID uuid.UUID, value bool) error
 	HasFreeAnswerQuestions(ctx context.Context, quizID uuid.UUID) (bool, error)
 }

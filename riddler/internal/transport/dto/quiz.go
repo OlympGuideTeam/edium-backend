@@ -42,3 +42,7 @@ type UpdateQuizRequest struct {
 type ReorderQuestionsRequest struct {
 	QuestionIDs []string `json:"question_ids" binding:"required,min=1"`
 }
+
+type PublishQuizRequest struct {
+	IsPublic bool `json:"is_public"`
+}

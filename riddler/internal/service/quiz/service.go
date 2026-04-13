@@ -104,6 +104,24 @@ func (s *Service) ReorderQuestions(ctx context.Context, quizID, authorID uuid.UU
 	return nil
 }
 
+func (s *Service) PublishQuiz(ctx context.Context, id, authorID uuid.UUID, isPublic bool) error {
+	quiz, err := s.quizzes.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get quiz: %w", err)
+	}
+	if quiz == nil {
+		return apperr.ErrQuizNotFound
+	}
+	if quiz.AuthorID != authorID {
+		return apperr.ErrQuizForbidden
+	}
+
+	if err := s.quizzes.Publish(ctx, id, isPublic); err != nil {
+		return fmt.Errorf("publish quiz: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) DeleteQuestion(ctx context.Context, quizID, questionID, authorID uuid.UUID) error {
 	quiz, err := s.quizzes.GetByID(ctx, quizID)
 	if err != nil {
