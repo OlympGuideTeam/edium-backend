@@ -1,0 +1,317 @@
+{
+  "title": "Logs Analytics",
+  "uid": "edium-logs-analytics",
+  "version": 1,
+  "schemaVersion": 39,
+  "tags": ["edium", "logs", "analytics"],
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "1m",
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [],
+  "annotations": { "list": [] },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "weekStart": "",
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": true, "text": "All", "value": "%" },
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "definition": "SELECT DISTINCT service FROM logs ORDER BY service",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "%",
+        "label": "Сервис",
+        "multi": false,
+        "name": "service",
+        "options": [],
+        "query": "SELECT DISTINCT service FROM logs ORDER BY service",
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Ошибок (error)",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "format": 0,
+        "rawSql": "SELECT count() AS count FROM logs WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND level = 'error'",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Предупреждений (warn)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "format": 0,
+        "rawSql": "SELECT count() AS count FROM logs WHERE $__timeFilter(timestamp) AND service LIKE '${service}' AND level = 'warn'",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Сервисов с ошибками",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "format": 0,
+        "rawSql": "SELECT uniq(service) AS count FROM logs WHERE $__timeFilter(timestamp) AND level = 'error'",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Доля ошибок",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "format": 0,
+        "rawSql": "SELECT countIf(level = 'error') / count() AS ratio FROM logs WHERE $__timeFilter(timestamp) AND service LIKE '${service}'",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Объём логов по уровням",
+      "description": "Stacked area — цвет показывает долю каждого уровня логирования. Красные выбросы = инциденты.",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "max"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": { "mode": "normal", "group": "A" }
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "error" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
+          { "matcher": { "id": "byName", "options": "warn" },  "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] },
+          { "matcher": { "id": "byName", "options": "info" },  "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#5794F2" } }] },
+          { "matcher": { "id": "byName", "options": "debug" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "gray" } }] }
+        ]
+      },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "format": 1,
+        "rawSql": "SELECT toStartOfMinute(timestamp) AS time, count() AS count, level FROM logs WHERE $__timeFilter(timestamp) AND service LIKE '${service}' GROUP BY time, level ORDER BY time ASC",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Ошибки по сервисам",
+      "description": "Только level=error. Резкие пики — признак инцидента.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "max"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "format": 1,
+        "rawSql": "SELECT toStartOfMinute(timestamp) AS time, count() AS errors, service FROM logs WHERE $__timeFilter(timestamp) AND level = 'error' GROUP BY time, service ORDER BY time ASC",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 7,
+      "type": "bargauge",
+      "title": "Ошибки по сервисам (за период)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "color": { "mode": "continuous-RdYlGr" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 50 }] }
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "format": 0,
+        "rawSql": "SELECT service, count() AS errors FROM logs WHERE $__timeFilter(timestamp) AND level = 'error' GROUP BY service ORDER BY errors DESC",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Предупреждения по сервисам",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 21 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["sum", "max"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": true },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "format": 1,
+        "rawSql": "SELECT toStartOfMinute(timestamp) AS time, count() AS warns, service FROM logs WHERE $__timeFilter(timestamp) AND level = 'warn' AND service LIKE '${service}' GROUP BY time, service ORDER BY time ASC",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 9,
+      "type": "piechart",
+      "title": "Распределение по уровням",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 21 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["percent", "name"],
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "error" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
+          { "matcher": { "id": "byName", "options": "warn" },  "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] },
+          { "matcher": { "id": "byName", "options": "info" },  "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#5794F2" } }] },
+          { "matcher": { "id": "byName", "options": "debug" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "gray" } }] }
+        ]
+      },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "format": 0,
+        "rawSql": "SELECT level, count() AS count FROM logs WHERE $__timeFilter(timestamp) AND service LIKE '${service}' GROUP BY level",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Топ ошибок по частоте встречаемости",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 28 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+      "options": {
+        "sortBy": [{ "displayName": "Кол-во", "desc": true }],
+        "footer": { "show": false },
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left", "displayMode": "auto", "filterable": true } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "occurrences" },
+            "properties": [
+              { "id": "displayName", "value": "Кол-во" },
+              { "id": "custom.width", "value": 100 },
+              { "id": "custom.displayMode", "value": "color-background" },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "yellow", "value": null }, { "color": "orange", "value": 10 }, { "color": "red", "value": 50 }] } },
+              { "id": "color", "value": { "mode": "thresholds" } }
+            ]
+          },
+          { "matcher": { "id": "byName", "options": "service" }, "properties": [{ "id": "displayName", "value": "Сервис" }, { "id": "custom.width", "value": 120 }] },
+          { "matcher": { "id": "byName", "options": "message" }, "properties": [{ "id": "displayName", "value": "Сообщение" }, { "id": "custom.wrap", "value": true }] },
+          { "matcher": { "id": "byName", "options": "last_seen" }, "properties": [{ "id": "displayName", "value": "Последний раз" }, { "id": "custom.width", "value": 190 }] }
+        ]
+      },
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "edium-clickhouse" },
+        "format": 0,
+        "rawSql": "SELECT message, count() AS occurrences, any(service) AS service, max(timestamp) AS last_seen FROM logs WHERE $__timeFilter(timestamp) AND level = 'error' AND service LIKE '${service}' GROUP BY message ORDER BY occurrences DESC LIMIT 25",
+        "refId": "A"
+      }]
+    }
+  ]
+}
