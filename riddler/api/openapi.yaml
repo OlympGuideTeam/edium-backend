@@ -113,6 +113,78 @@ paths:
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
 
   /quizzes/{id}:
+    get:
+      summary: Получить квиз с вопросами
+      operationId: getQuiz
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Квиз с вопросами
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  title:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+                  default_settings:
+                    $ref: "#/components/schemas/QuizDefaultSettings"
+                  is_public:
+                    type: boolean
+                  is_draft:
+                    type: boolean
+                  need_evaluation:
+                    type: boolean
+                  questions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        type:
+                          type: string
+                          enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
+                        text:
+                          type: string
+                        image_link:
+                          type: string
+                          nullable: true
+                        order_index:
+                          type: integer
+                        max_score:
+                          type: integer
+                        metadata:
+                          type: object
+                          nullable: true
+                        options:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                format: uuid
+                              text:
+                                type: string
+                              is_correct:
+                                type: boolean
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
     patch:
       summary: Обновить квиз
       operationId: updateQuiz

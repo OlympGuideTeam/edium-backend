@@ -73,6 +73,7 @@ func (a *App) Router() *gin.Engine {
 	quizzes := api.Group("/quizzes")
 	{
 		quizzes.POST("", a.quizHandler.CreateQuiz)
+		quizzes.GET("/:id", a.quizHandler.GetQuiz)
 		quizzes.PATCH("/:id", a.quizHandler.UpdateQuiz)
 		quizzes.POST("/:id/publish", a.quizHandler.PublishQuiz)
 		quizzes.PATCH("/:id/questions/order", a.quizHandler.ReorderQuestions)
