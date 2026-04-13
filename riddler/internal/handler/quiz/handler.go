@@ -59,6 +59,62 @@ func (h *Handler) CreateQuiz(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.CreateQuizResponse{ID: id.String()})
 }
 
+func (h *Handler) GetQuiz(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	quizID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	detail, err := h.service.GetQuiz(c.Request.Context(), quizID, userID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	questions := make([]dto.QuestionResponse, len(detail.Questions))
+	for i := range detail.Questions {
+		q := &detail.Questions[i]
+		options := make([]dto.AnswerOptionResponse, len(q.Options))
+		for j, o := range q.Options {
+			options[j] = dto.AnswerOptionResponse{
+				ID:        o.ID.String(),
+				Text:      o.Text,
+				IsCorrect: o.IsCorrect,
+			}
+		}
+		questions[i] = dto.QuestionResponse{
+			ID:         q.ID.String(),
+			Type:       string(q.Type),
+			Text:       q.Text,
+			ImageLink:  q.ImageLink,
+			OrderIndex: q.OrderIndex,
+			MaxScore:   q.MaxScore,
+			Metadata:   q.Metadata,
+			Options:    options,
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.QuizDetailResponse{
+		ID:          detail.ID.String(),
+		Title:       detail.Title,
+		Description: detail.Description,
+		DefaultSettings: dto.QuizDefaultSettings{
+			TotalTimeLimitSec:    detail.DefaultSettings.TotalTimeLimitSec,
+			QuestionTimeLimitSec: detail.DefaultSettings.QuestionTimeLimitSec,
+		},
+		IsPublic:       detail.IsPublic,
+		IsDraft:        detail.IsDraft,
+		NeedEvaluation: detail.NeedEvaluation,
+		Questions:      questions,
+	})
+}
+
 func (h *Handler) PublishQuiz(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
 	if !ok {
