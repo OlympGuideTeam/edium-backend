@@ -1,0 +1,113 @@
+openapi: "3.0.3"
+info:
+  title: Edium Riddler
+  version: "1.0.0"
+servers:
+  - url: /riddler/v1
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: QUIZ_NOT_FOUND
+        description:
+          type: string
+          example: Квиз не найден
+        details:
+          type: object
+          additionalProperties: true
+
+    QuizDefaultSettings:
+      type: object
+      properties:
+        total_time_limit_sec:
+          type: integer
+          nullable: true
+          example: 600
+        question_time_limit_sec:
+          type: integer
+          nullable: true
+          example: 30
+
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Требуется авторизация
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Нет прав
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnprocessableEntity:
+      description: Ошибка валидации
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+paths:
+  /quizzes:
+    post:
+      summary: Создать квиз
+      operationId: createQuiz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                  example: Квиз по биологии
+                description:
+                  type: string
+                  nullable: true
+                  example: Проверочная работа за 3-ю четверть
+                default_settings:
+                  $ref: "#/components/schemas/QuizDefaultSettings"
+      responses:
+        "200":
+          description: Квиз создан
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: 3f6a1b2c-d4e5-6789-abcd-ef0123456789
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
