@@ -146,6 +146,40 @@ paths:
         "404": {$ref: "#/components/responses/NotFound"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
 
+  /quizzes/{id}/questions/order:
+    patch:
+      summary: Изменить порядок вопросов
+      operationId: reorderQuestions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - question_ids
+              properties:
+                question_ids:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        "200":
+          description: Порядок обновлён
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
   /quizzes/{id}/questions:
     post:
       summary: Добавить вопрос в квиз
