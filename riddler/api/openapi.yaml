@@ -8,6 +8,12 @@ servers:
 security:
   - bearerAuth: []
 
+tags:
+  - name: Quizzes
+    description: Управление квизами
+  - name: Questions
+    description: Управление вопросами квиза
+
 components:
   securitySchemes:
     bearerAuth:
@@ -76,6 +82,7 @@ components:
 paths:
   /quizzes:
     get:
+      tags: [Quizzes]
       summary: Получить список опубликованных квизов
       operationId: listQuizzes
       parameters:
@@ -117,6 +124,7 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
     post:
+      tags: [Quizzes]
       summary: Создать квиз
       operationId: createQuiz
       requestBody:
@@ -155,6 +163,7 @@ paths:
 
   /quizzes/my:
     get:
+      tags: [Quizzes]
       summary: Получить квизы, созданные пользователем
       operationId: listMyQuizzes
       responses:
@@ -189,6 +198,7 @@ paths:
 
   /quizzes/{id}:
     get:
+      tags: [Quizzes]
       summary: Получить квиз с вопросами
       operationId: getQuiz
       parameters:
@@ -261,6 +271,7 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
     patch:
+      tags: [Quizzes]
       summary: Обновить квиз
       operationId: updateQuiz
       parameters:
@@ -295,6 +306,7 @@ paths:
 
   /quizzes/{id}/publish:
     post:
+      tags: [Quizzes]
       summary: Опубликовать квиз
       operationId: publishQuiz
       parameters:
@@ -326,6 +338,7 @@ paths:
 
   /quizzes/{id}/copy:
     post:
+      tags: [Quizzes]
       summary: Скопировать опубликованный квиз
       operationId: copyQuiz
       parameters:
@@ -352,6 +365,7 @@ paths:
 
   /quizzes/{id}/questions/order:
     patch:
+      tags: [Questions]
       summary: Изменить порядок вопросов
       operationId: reorderQuestions
       parameters:
@@ -386,6 +400,7 @@ paths:
 
   /quizzes/{id}/questions/{question_id}:
     delete:
+      tags: [Questions]
       summary: Удалить вопрос из квиза
       operationId: deleteQuestion
       parameters:
@@ -410,6 +425,7 @@ paths:
 
   /quizzes/{id}/questions:
     post:
+      tags: [Questions]
       summary: Добавить вопрос в квиз
       operationId: addQuestion
       parameters:
