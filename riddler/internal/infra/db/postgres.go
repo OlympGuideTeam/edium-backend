@@ -1,13 +1,14 @@
 package db
 
 import (
-	"riddler/internal/config"
 	"database/sql"
 	"fmt"
 
 	"github.com/XSAM/otelsql"
 	_ "github.com/lib/pq"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+
+	"riddler/internal/config"
 )
 
 func NewDB(cfg config.PostgresConfig) (*sql.DB, error) {

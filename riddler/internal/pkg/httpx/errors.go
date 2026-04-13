@@ -1,11 +1,12 @@
 package httpx
 
 import (
-	"riddler/internal/pkg/apperr"
 	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"riddler/internal/pkg/apperr"
 )
 
 type ErrorResponse struct {

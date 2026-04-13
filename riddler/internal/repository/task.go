@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"riddler/internal/domain"
-	"riddler/internal/infra/db"
 	"context"
 	"database/sql"
 	"fmt"
@@ -11,6 +9,9 @@ import (
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
+
+	"riddler/internal/domain"
+	"riddler/internal/infra/db"
 )
 
 const claimPendingQuery = `
