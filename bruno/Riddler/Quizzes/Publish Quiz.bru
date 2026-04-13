@@ -1,0 +1,21 @@
+meta {
+  name: Publish Quiz
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/quizzes/{{quizId}}/publish
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "is_public": false
+  }
+}

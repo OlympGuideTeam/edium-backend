@@ -14,4 +14,5 @@ type quizService interface {
 	UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title, description *string) error
 	ReorderQuestions(ctx context.Context, quizID, authorID uuid.UUID, questionIDs []uuid.UUID) error
 	DeleteQuestion(ctx context.Context, quizID, questionID, authorID uuid.UUID) error
+	PublishQuiz(ctx context.Context, id, authorID uuid.UUID, isPublic bool) error
 }
