@@ -75,6 +75,47 @@ components:
 
 paths:
   /quizzes:
+    get:
+      summary: Получить список опубликованных квизов
+      operationId: listQuizzes
+      parameters:
+        - name: role
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [teacher, student]
+          description: |
+            teacher — все опубликованные квизы;
+            student — опубликованные квизы без ручной проверки
+      responses:
+        "200":
+          description: Список квизов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    title:
+                      type: string
+                    description:
+                      type: string
+                      nullable: true
+                    default_settings:
+                      $ref: "#/components/schemas/QuizDefaultSettings"
+                    is_public:
+                      type: boolean
+                    need_evaluation:
+                      type: boolean
+                    question_count:
+                      type: integer
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
     post:
       summary: Создать квиз
       operationId: createQuiz
@@ -111,6 +152,40 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
+  /quizzes/my:
+    get:
+      summary: Получить квизы, созданные пользователем
+      operationId: listMyQuizzes
+      responses:
+        "200":
+          description: Список квизов, созданных текущим пользователем
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    title:
+                      type: string
+                    description:
+                      type: string
+                      nullable: true
+                    default_settings:
+                      $ref: "#/components/schemas/QuizDefaultSettings"
+                    is_public:
+                      type: boolean
+                    is_draft:
+                      type: boolean
+                    need_evaluation:
+                      type: boolean
+                    question_count:
+                      type: integer
+        "401": {$ref: "#/components/responses/Unauthorized"}
 
   /quizzes/{id}:
     get:
@@ -248,6 +323,32 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+
+  /quizzes/{id}/copy:
+    post:
+      summary: Скопировать опубликованный квиз
+      operationId: copyQuiz
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Квиз скопирован, возвращается ID новой копии
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
 
   /quizzes/{id}/questions/order:
     patch:

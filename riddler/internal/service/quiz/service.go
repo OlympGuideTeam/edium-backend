@@ -173,6 +173,42 @@ func (s *Service) DeleteQuestion(ctx context.Context, quizID, questionID, author
 	return nil
 }
 
+func (s *Service) CopyQuiz(ctx context.Context, quizID, authorID uuid.UUID) (uuid.UUID, error) {
+	quiz, err := s.quizzes.GetByID(ctx, quizID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("get quiz: %w", err)
+	}
+	if quiz == nil {
+		return uuid.Nil, apperr.ErrQuizNotFound
+	}
+	if quiz.IsDraft {
+		return uuid.Nil, apperr.ErrQuizNotPublished
+	}
+
+	newID, err := s.quizzes.Copy(ctx, quizID, authorID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("copy quiz: %w", err)
+	}
+	return newID, nil
+}
+
+func (s *Service) ListMyQuizzes(ctx context.Context, authorID uuid.UUID) ([]domain.QuizListItem, error) {
+	items, err := s.quizzes.ListByAuthor(ctx, authorID)
+	if err != nil {
+		return nil, fmt.Errorf("list my quizzes: %w", err)
+	}
+	return items, nil
+}
+
+func (s *Service) ListQuizzes(ctx context.Context, role domain.Role) ([]domain.QuizListItem, error) {
+	studentOnly := role == domain.RoleStudent
+	items, err := s.quizzes.ListPublished(ctx, studentOnly)
+	if err != nil {
+		return nil, fmt.Errorf("list quizzes: %w", err)
+	}
+	return items, nil
+}
+
 func validateQuestion(qType domain.QuestionType, metadata map[string]any, options []domain.AddOptionParams) error {
 	switch qType {
 	case domain.QuestionTypeSingleChoice:

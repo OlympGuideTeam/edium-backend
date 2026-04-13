@@ -6,6 +6,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type Role string
+
+const (
+	RoleTeacher Role = "teacher"
+	RoleStudent Role = "student"
+)
+
 type QuestionType string
 
 const (
@@ -64,6 +71,17 @@ type QuestionWithOptions struct {
 type QuizDetail struct {
 	QuizTemplate
 	Questions []QuestionWithOptions
+}
+
+type QuizListItem struct {
+	ID              uuid.UUID
+	Title           string
+	Description     *string
+	DefaultSettings QuizDefaultSettings
+	IsPublic        bool
+	IsDraft         bool
+	NeedEvaluation  bool
+	QuestionCount   int
 }
 
 type AddOptionParams struct {

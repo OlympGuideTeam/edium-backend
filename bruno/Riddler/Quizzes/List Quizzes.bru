@@ -1,11 +1,11 @@
 meta {
-  name: Get Quiz
+  name: List Quizzes
   type: http
-  seq: 10
+  seq: 3
 }
 
 get {
-  url: {{riddlerUrl}}/riddler/v1/quizzes/{{quizId}}
+  url: {{riddlerUrl}}/riddler/v1/quizzes?role=teacher
   body: none
   auth: bearer
 }
