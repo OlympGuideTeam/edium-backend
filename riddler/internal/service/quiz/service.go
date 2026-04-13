@@ -1,8 +1,9 @@
 package quiz
 
 type Service struct {
+	quizzes quizRepository
 }
 
-func NewService() *Service {
-	return &Service{}
+func NewService(quizzes quizRepository) *Service {
+	return &Service{quizzes: quizzes}
 }

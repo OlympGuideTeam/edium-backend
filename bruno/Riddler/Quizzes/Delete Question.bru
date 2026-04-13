@@ -1,0 +1,15 @@
+meta {
+  name: Delete Question
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{riddlerUrl}}/riddler/v1/quizzes/{{quizId}}/questions/{{questionId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

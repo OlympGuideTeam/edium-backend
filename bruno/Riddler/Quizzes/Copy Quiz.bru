@@ -1,0 +1,22 @@
+meta {
+  name: Copy Quiz
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/quizzes/{{quizId}}/copy
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  const body = res.getBody();
+  if (body.id) {
+    bru.setEnvVar("quizId", body.id);
+  }
+}

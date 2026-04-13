@@ -7,6 +7,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+
 	"riddler/internal/config"
 	quizhandler "riddler/internal/handler/quiz"
 	"riddler/internal/infra/db"
@@ -14,15 +18,12 @@ import (
 	natsinf "riddler/internal/infra/nats"
 	"riddler/internal/middleware"
 	"riddler/internal/pkg/metrics"
+	"riddler/internal/repository"
 	quizsvc "riddler/internal/service/quiz"
-
-	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 type App struct {
-	QuizHandler *quizhandler.Handler
+	quizHandler *quizhandler.Handler
 
 	jwksClient  *jwks.Client
 	httpAddr    string
@@ -30,7 +31,7 @@ type App struct {
 }
 
 func New(ctx context.Context, cfg *config.Config) (*App, error) {
-	_, err := db.NewDB(cfg.Postgres)
+	pgdb, err := db.NewDB(cfg.Postgres)
 	if err != nil {
 		return nil, err
 	}
@@ -46,11 +47,12 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 	jwksClient.StartRefresh(ctx)
 
-	quizService := quizsvc.NewService()
+	quizRepo := repository.NewPgQuizRepository(pgdb)
+	quizService := quizsvc.NewService(quizRepo)
 	quizHandler := quizhandler.NewHandler(quizService)
 
 	return &App{
-		QuizHandler: quizHandler,
+		quizHandler: quizHandler,
 		jwksClient:  jwksClient,
 		httpAddr:    fmt.Sprintf(":%d", cfg.App.Port),
 		serviceName: cfg.OTel.ServiceName,
@@ -68,7 +70,19 @@ func (a *App) Router() *gin.Engine {
 	api := r.Group("/riddler/v1")
 	api.Use(auth)
 
-	// TODO: добавить маршруты
+	quizzes := api.Group("/quizzes")
+	{
+		quizzes.GET("", a.quizHandler.ListQuizzes)
+		quizzes.POST("", a.quizHandler.CreateQuiz)
+		quizzes.GET("/my", a.quizHandler.ListMyQuizzes)
+		quizzes.GET("/:id", a.quizHandler.GetQuiz)
+		quizzes.PATCH("/:id", a.quizHandler.UpdateQuiz)
+		quizzes.POST("/:id/publish", a.quizHandler.PublishQuiz)
+		quizzes.POST("/:id/copy", a.quizHandler.CopyQuiz)
+		quizzes.PATCH("/:id/questions/order", a.quizHandler.ReorderQuestions)
+		quizzes.POST("/:id/questions", a.quizHandler.AddQuestion)
+		quizzes.DELETE("/:id/questions/:question_id", a.quizHandler.DeleteQuestion)
+	}
 
 	return r
 }

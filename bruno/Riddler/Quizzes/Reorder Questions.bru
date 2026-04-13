@@ -1,0 +1,21 @@
+meta {
+  name: Reorder Questions
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{riddlerUrl}}/riddler/v1/quizzes/{{quizId}}/questions/order
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "question_ids": ["{{questionId}}"]
+  }
+}
