@@ -19,4 +19,7 @@ type quizRepository interface {
 	GetQuestionsWithOptions(ctx context.Context, quizID uuid.UUID) ([]domain.QuestionWithOptions, error)
 	SetNeedEvaluation(ctx context.Context, quizID uuid.UUID, value bool) error
 	HasFreeAnswerQuestions(ctx context.Context, quizID uuid.UUID) (bool, error)
+	ListPublished(ctx context.Context, needEvaluationFalseOnly bool) ([]domain.QuizListItem, error)
+	ListByAuthor(ctx context.Context, authorID uuid.UUID) ([]domain.QuizListItem, error)
+	Copy(ctx context.Context, sourceID, newAuthorID uuid.UUID) (uuid.UUID, error)
 }

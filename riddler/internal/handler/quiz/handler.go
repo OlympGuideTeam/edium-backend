@@ -229,6 +229,92 @@ func (h *Handler) UpdateQuiz(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func (h *Handler) ListQuizzes(c *gin.Context) {
+	role := domain.Role(c.Query("role"))
+	if role != domain.RoleTeacher && role != domain.RoleStudent {
+		httpx.WriteError(c, apperr.ErrInvalidRole)
+		return
+	}
+
+	items, err := h.service.ListQuizzes(c.Request.Context(), role)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	result := make([]dto.QuizListItemResponse, len(items))
+	for i, item := range items {
+		result[i] = dto.QuizListItemResponse{
+			ID:          item.ID.String(),
+			Title:       item.Title,
+			Description: item.Description,
+			DefaultSettings: dto.QuizDefaultSettings{
+				TotalTimeLimitSec:    item.DefaultSettings.TotalTimeLimitSec,
+				QuestionTimeLimitSec: item.DefaultSettings.QuestionTimeLimitSec,
+			},
+			IsPublic:       item.IsPublic,
+			IsDraft:        item.IsDraft,
+			NeedEvaluation: item.NeedEvaluation,
+			QuestionCount:  item.QuestionCount,
+		}
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *Handler) CopyQuiz(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	quizID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	newID, err := h.service.CopyQuiz(c.Request.Context(), quizID, userID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.CreateQuizResponse{ID: newID.String()})
+}
+
+func (h *Handler) ListMyQuizzes(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	items, err := h.service.ListMyQuizzes(c.Request.Context(), userID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	result := make([]dto.QuizListItemResponse, len(items))
+	for i, item := range items {
+		result[i] = dto.QuizListItemResponse{
+			ID:          item.ID.String(),
+			Title:       item.Title,
+			Description: item.Description,
+			DefaultSettings: dto.QuizDefaultSettings{
+				TotalTimeLimitSec:    item.DefaultSettings.TotalTimeLimitSec,
+				QuestionTimeLimitSec: item.DefaultSettings.QuestionTimeLimitSec,
+			},
+			IsPublic:       item.IsPublic,
+			IsDraft:        item.IsDraft,
+			NeedEvaluation: item.NeedEvaluation,
+			QuestionCount:  item.QuestionCount,
+		}
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 func (h *Handler) AddQuestion(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
 	if !ok {

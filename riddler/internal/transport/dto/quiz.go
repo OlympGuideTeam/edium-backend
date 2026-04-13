@@ -74,3 +74,14 @@ type QuizDetailResponse struct {
 	NeedEvaluation  bool                `json:"need_evaluation"`
 	Questions       []QuestionResponse  `json:"questions"`
 }
+
+type QuizListItemResponse struct {
+	ID              string              `json:"id"`
+	Title           string              `json:"title"`
+	Description     *string             `json:"description"`
+	DefaultSettings QuizDefaultSettings `json:"default_settings"`
+	IsPublic        bool                `json:"is_public"`
+	IsDraft         bool                `json:"is_draft"`
+	NeedEvaluation  bool                `json:"need_evaluation"`
+	QuestionCount   int                 `json:"question_count"`
+}
