@@ -72,10 +72,13 @@ func (a *App) Router() *gin.Engine {
 
 	quizzes := api.Group("/quizzes")
 	{
+		quizzes.GET("", a.quizHandler.ListQuizzes)
 		quizzes.POST("", a.quizHandler.CreateQuiz)
+		quizzes.GET("/my", a.quizHandler.ListMyQuizzes)
 		quizzes.GET("/:id", a.quizHandler.GetQuiz)
 		quizzes.PATCH("/:id", a.quizHandler.UpdateQuiz)
 		quizzes.POST("/:id/publish", a.quizHandler.PublishQuiz)
+		quizzes.POST("/:id/copy", a.quizHandler.CopyQuiz)
 		quizzes.PATCH("/:id/questions/order", a.quizHandler.ReorderQuestions)
 		quizzes.POST("/:id/questions", a.quizHandler.AddQuestion)
 		quizzes.DELETE("/:id/questions/:question_id", a.quizHandler.DeleteQuestion)
