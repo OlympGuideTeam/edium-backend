@@ -11,6 +11,7 @@ import (
 
 	"riddler/internal/domain"
 	"riddler/internal/infra/db"
+	"riddler/internal/pkg/apperr"
 )
 
 type PgQuizRepository struct {
@@ -135,6 +136,22 @@ func (r *PgQuizRepository) Update(ctx context.Context, id uuid.UUID, title, desc
 	)
 	if err != nil {
 		return fmt.Errorf("update quiz_template: %w", err)
+	}
+	return nil
+}
+
+func (r *PgQuizRepository) DeleteQuestion(ctx context.Context, quizID, questionID uuid.UUID) error {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	res, err := exec.ExecContext(ctx,
+		`DELETE FROM question WHERE id = $1 AND quiz_template_id = $2`,
+		questionID, quizID,
+	)
+	if err != nil {
+		return fmt.Errorf("delete question: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return apperr.ErrQuestionNotFound
 	}
 	return nil
 }

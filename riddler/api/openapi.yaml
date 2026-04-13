@@ -180,6 +180,30 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
 
+  /quizzes/{id}/questions/{question_id}:
+    delete:
+      summary: Удалить вопрос из квиза
+      operationId: deleteQuestion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: question_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Вопрос удалён
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
   /quizzes/{id}/questions:
     post:
       summary: Добавить вопрос в квиз
