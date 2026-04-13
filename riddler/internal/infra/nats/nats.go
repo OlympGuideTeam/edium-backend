@@ -1,10 +1,11 @@
 package nats
 
 import (
-	"riddler/internal/config"
 	"fmt"
 
 	"github.com/nats-io/nats.go"
+
+	"riddler/internal/config"
 )
 
 func New(cfg config.NATSConfig) (*nats.Conn, error) {

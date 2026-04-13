@@ -1,9 +1,6 @@
 package middleware
 
 import (
-	"riddler/internal/infra/jwks"
-	"riddler/internal/pkg/apperr"
-	"riddler/internal/pkg/httpx"
 	"context"
 	"fmt"
 	"strings"
@@ -11,6 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+
+	"riddler/internal/infra/jwks"
+	"riddler/internal/pkg/apperr"
+	"riddler/internal/pkg/httpx"
 )
 
 type userIDKeyType struct{}
