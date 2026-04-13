@@ -308,6 +308,64 @@ services:
       timeout: 3s
       retries: 20
 
+  riddler:
+    build:
+      context: ./riddler
+      dockerfile: Dockerfile
+    restart: on-failure
+    environment:
+      POSTGRES_DSN: postgres://${RIDDLER_PG_USER}:${RIDDLER_PG_PWD}@riddler-db:5432/${RIDDLER_PG_DB}?sslmode=disable
+      NATS_URL: nats://riddler:${NATS_PASSWORD_RIDDLER}@nats:4222
+      DOORMAN_JWKS_URL: ${DOORMAN_JWKS_URL}
+      OTEL_ENDPOINT: jaeger:4317
+    ports:
+      - "8085:80"
+    depends_on:
+      riddler-db:
+        condition: service_healthy
+      riddler-flyway:
+        condition: service_completed_successfully
+      doorman:
+        condition: service_started
+      nats:
+        condition: service_started
+      jaeger:
+        condition: service_started
+
+  riddler-db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${RIDDLER_PG_USER}
+      POSTGRES_PASSWORD: ${RIDDLER_PG_PWD}
+      POSTGRES_DB: ${RIDDLER_PG_DB}
+    ports:
+      - "5437:5432"
+    volumes:
+      - riddler_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  riddler-flyway:
+    image: flyway/flyway:latest
+    restart: "no"
+    command: ["migrate"]
+    environment:
+      - FLYWAY_URL=jdbc:postgresql://riddler-db:5432/${RIDDLER_PG_DB}
+      - FLYWAY_USER=${RIDDLER_PG_USER}
+      - FLYWAY_PASSWORD=${RIDDLER_PG_PWD}
+      - FLYWAY_LOCATIONS=filesystem:/app/migrations
+      - FLYWAY_VALIDATE_MIGRATION_NAMING=true
+      - FLYWAY_BASELINE_ON_MIGRATE=true
+    volumes:
+      - ./riddler/migrations:/app/migrations
+    depends_on:
+      riddler-db:
+        condition: service_healthy
+
   prometheus:
     image: prom/prometheus:v3.3.0
     restart: unless-stopped
@@ -342,5 +400,6 @@ volumes:
   charon_db_data:
   charon_redis_data:
   caesar_db_data:
+  riddler_db_data:
   prometheus_data:
   grafana_data:
