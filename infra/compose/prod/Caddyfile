@@ -1,7 +1,13 @@
 edium.online, www.edium.online {
-	root * /srv/landing
-	file_server
-	encode gzip
+    handle /.well-known/apple-app-site-association {
+        header Content-Type application/json
+        respond `{"webcredentials":{"apps":["FV7B395QF2.online.edium.app"]}}`
+    }
+    handle {
+        root * /srv/landing
+        file_server
+        encode gzip
+    }
 }
 
 api.edium.online {
@@ -34,6 +40,10 @@ links.edium.online {
     handle /.well-known/apple-app-site-association {
         header Content-Type application/json
         respond `{"applinks":{"details":[{"appIDs":["FV7B395QF2.online.edium.app"],"components":[{"/":"/invite/*"}]}]}}`
+    }
+    handle /.well-known/assetlinks.json {
+        header Content-Type application/json
+        respond `[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"android_app","package_name":"online.edium.app","sha256_cert_fingerprints":["22:73:2D:8A:A4:34:4D:10:89:AD:A0:3D:FB:E9:4A:8F:A8:BF:3F:DD:E8:31:99:70:20:A1:44:8E:D1:9F:BB:8B","54:B4:C0:F2:7B:66:05:A1:87:D1:E8:65:30:7D:93:36:8C:BB:D8:02:B3:7A:75:D1:D2:DA:F2:3F:77:A3:EA:DC"]}}]`
     }
     handle {
         respond "Not Found" 404
