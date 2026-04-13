@@ -33,3 +33,8 @@ type AddQuestionResponse struct {
 	ID         string `json:"id"`
 	OrderIndex int    `json:"order_index"`
 }
+
+type UpdateQuizRequest struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+}

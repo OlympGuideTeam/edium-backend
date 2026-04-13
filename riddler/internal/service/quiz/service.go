@@ -64,6 +64,28 @@ func (s *Service) AddQuestion(ctx context.Context, quizID, authorID uuid.UUID, p
 	return id, orderIndex, nil
 }
 
+func (s *Service) UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title, description *string) error {
+	if title != nil && strings.TrimSpace(*title) == "" {
+		return apperr.ErrQuizEmptyTitle
+	}
+
+	quiz, err := s.quizzes.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get quiz: %w", err)
+	}
+	if quiz == nil {
+		return apperr.ErrQuizNotFound
+	}
+	if quiz.AuthorID != authorID {
+		return apperr.ErrQuizForbidden
+	}
+
+	if err := s.quizzes.Update(ctx, id, title, description); err != nil {
+		return fmt.Errorf("update quiz: %w", err)
+	}
+	return nil
+}
+
 func validateQuestion(qType domain.QuestionType, metadata map[string]any, options []domain.AddOptionParams) error {
 	switch qType {
 	case domain.QuestionTypeSingleChoice:

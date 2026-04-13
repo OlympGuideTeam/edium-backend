@@ -100,6 +100,21 @@ func (r *PgQuizRepository) AddQuestion(ctx context.Context, params domain.AddQue
 	return questionID, orderIndex, nil
 }
 
+func (r *PgQuizRepository) Update(ctx context.Context, id uuid.UUID, title, description *string) error {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	_, err := exec.ExecContext(ctx,
+		`UPDATE quiz_template
+		 SET title       = COALESCE($1, title),
+		     description = COALESCE($2, description)
+		 WHERE id = $3`,
+		title, description, id,
+	)
+	if err != nil {
+		return fmt.Errorf("update quiz_template: %w", err)
+	}
+	return nil
+}
+
 func (r *PgQuizRepository) SetNeedEvaluation(ctx context.Context, quizID uuid.UUID, value bool) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,
