@@ -55,6 +55,12 @@ func (s *Service) AddQuestion(ctx context.Context, quizID, authorID uuid.UUID, p
 		return uuid.Nil, 0, fmt.Errorf("add question: %w", err)
 	}
 
+	if params.Type == domain.QuestionTypeWithFreeAnswer && !quiz.NeedEvaluation {
+		if err := s.quizzes.SetNeedEvaluation(ctx, quizID, true); err != nil {
+			return uuid.Nil, 0, fmt.Errorf("set need_evaluation: %w", err)
+		}
+	}
+
 	return id, orderIndex, nil
 }
 
