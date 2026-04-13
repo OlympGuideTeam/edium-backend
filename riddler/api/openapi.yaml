@@ -112,6 +112,40 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
 
+  /quizzes/{id}:
+    patch:
+      summary: Обновить квиз
+      operationId: updateQuiz
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  nullable: true
+                  example: Новое название
+                description:
+                  type: string
+                  nullable: true
+      responses:
+        "200":
+          description: Квиз обновлён
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
   /quizzes/{id}/questions:
     post:
       summary: Добавить вопрос в квиз
