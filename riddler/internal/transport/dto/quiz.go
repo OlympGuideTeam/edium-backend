@@ -38,3 +38,7 @@ type UpdateQuizRequest struct {
 	Title       *string `json:"title"`
 	Description *string `json:"description"`
 }
+
+type ReorderQuestionsRequest struct {
+	QuestionIDs []string `json:"question_ids" binding:"required,min=1"`
+}
