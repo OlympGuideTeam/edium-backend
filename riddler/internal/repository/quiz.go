@@ -100,6 +100,28 @@ func (r *PgQuizRepository) AddQuestion(ctx context.Context, params domain.AddQue
 	return questionID, orderIndex, nil
 }
 
+func (r *PgQuizRepository) SetNeedEvaluation(ctx context.Context, quizID uuid.UUID, value bool) error {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	_, err := exec.ExecContext(ctx,
+		`UPDATE quiz_template SET need_evaluation = $1 WHERE id = $2`,
+		value, quizID,
+	)
+	return err
+}
+
+func (r *PgQuizRepository) HasFreeAnswerQuestions(ctx context.Context, quizID uuid.UUID) (bool, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	var count int
+	err := exec.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM question WHERE quiz_template_id = $1 AND type = 'with_free_answer'`,
+		quizID,
+	).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("count free_answer questions: %w", err)
+	}
+	return count > 0, nil
+}
+
 func nullableBytes(b []byte) interface{} {
 	if len(b) == 0 {
 		return nil
