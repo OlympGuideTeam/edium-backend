@@ -1,0 +1,505 @@
+openapi: "3.0.3"
+info:
+  title: Edium Riddler
+  version: "1.0.0"
+servers:
+  - url: /riddler/v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Quizzes
+    description: Управление квизами
+  - name: Questions
+    description: Управление вопросами квиза
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: QUIZ_NOT_FOUND
+        description:
+          type: string
+          example: Квиз не найден
+        details:
+          type: object
+          additionalProperties: true
+
+    QuizDefaultSettings:
+      type: object
+      properties:
+        total_time_limit_sec:
+          type: integer
+          nullable: true
+          example: 600
+        question_time_limit_sec:
+          type: integer
+          nullable: true
+          example: 30
+
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Требуется авторизация
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Нет прав
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnprocessableEntity:
+      description: Ошибка валидации
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+paths:
+  /quizzes:
+    get:
+      tags: [Quizzes]
+      summary: Получить список опубликованных квизов
+      operationId: listQuizzes
+      parameters:
+        - name: role
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [teacher, student]
+          description: |
+            teacher — все опубликованные квизы;
+            student — опубликованные квизы без ручной проверки
+      responses:
+        "200":
+          description: Список квизов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    title:
+                      type: string
+                    description:
+                      type: string
+                      nullable: true
+                    default_settings:
+                      $ref: "#/components/schemas/QuizDefaultSettings"
+                    is_public:
+                      type: boolean
+                    need_evaluation:
+                      type: boolean
+                    question_count:
+                      type: integer
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+    post:
+      tags: [Quizzes]
+      summary: Создать квиз
+      operationId: createQuiz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                  example: Квиз по биологии
+                description:
+                  type: string
+                  nullable: true
+                  example: Проверочная работа за 3-ю четверть
+                default_settings:
+                  $ref: "#/components/schemas/QuizDefaultSettings"
+      responses:
+        "200":
+          description: Квиз создан
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    example: 3f6a1b2c-d4e5-6789-abcd-ef0123456789
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
+  /quizzes/my:
+    get:
+      tags: [Quizzes]
+      summary: Получить квизы, созданные пользователем
+      operationId: listMyQuizzes
+      responses:
+        "200":
+          description: Список квизов, созданных текущим пользователем
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    title:
+                      type: string
+                    description:
+                      type: string
+                      nullable: true
+                    default_settings:
+                      $ref: "#/components/schemas/QuizDefaultSettings"
+                    is_public:
+                      type: boolean
+                    is_draft:
+                      type: boolean
+                    need_evaluation:
+                      type: boolean
+                    question_count:
+                      type: integer
+        "401": {$ref: "#/components/responses/Unauthorized"}
+
+  /quizzes/{id}:
+    get:
+      tags: [Quizzes]
+      summary: Получить квиз с вопросами
+      operationId: getQuiz
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Квиз с вопросами
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  title:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+                  default_settings:
+                    $ref: "#/components/schemas/QuizDefaultSettings"
+                  is_public:
+                    type: boolean
+                  is_draft:
+                    type: boolean
+                  need_evaluation:
+                    type: boolean
+                  questions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        type:
+                          type: string
+                          enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
+                        text:
+                          type: string
+                        image_link:
+                          type: string
+                          nullable: true
+                        order_index:
+                          type: integer
+                        max_score:
+                          type: integer
+                        metadata:
+                          type: object
+                          nullable: true
+                        options:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                format: uuid
+                              text:
+                                type: string
+                              is_correct:
+                                type: boolean
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    patch:
+      tags: [Quizzes]
+      summary: Обновить квиз
+      operationId: updateQuiz
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  nullable: true
+                  example: Новое название
+                description:
+                  type: string
+                  nullable: true
+      responses:
+        "200":
+          description: Квиз обновлён
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
+  /quizzes/{id}/publish:
+    post:
+      tags: [Quizzes]
+      summary: Опубликовать квиз
+      operationId: publishQuiz
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_public
+              properties:
+                is_public:
+                  type: boolean
+                  description: Доступен ли квиз другим учителям как шаблон
+      responses:
+        "200":
+          description: Квиз опубликован
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /quizzes/{id}/copy:
+    post:
+      tags: [Quizzes]
+      summary: Скопировать опубликованный квиз
+      operationId: copyQuiz
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Квиз скопирован, возвращается ID новой копии
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
+  /quizzes/{id}/questions/order:
+    patch:
+      tags: [Questions]
+      summary: Изменить порядок вопросов
+      operationId: reorderQuestions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - question_ids
+              properties:
+                question_ids:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        "200":
+          description: Порядок обновлён
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /quizzes/{id}/questions/{question_id}:
+    delete:
+      tags: [Questions]
+      summary: Удалить вопрос из квиза
+      operationId: deleteQuestion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: question_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Вопрос удалён
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /quizzes/{id}/questions:
+    post:
+      tags: [Questions]
+      summary: Добавить вопрос в квиз
+      operationId: addQuestion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - text
+                - answer_options
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - single_choice
+                    - multiple_choice
+                    - with_given_answer
+                    - with_free_answer
+                    - drag
+                    - connection
+                  example: single_choice
+                text:
+                  type: string
+                  example: Какая столица Франции?
+                image_link:
+                  type: string
+                  nullable: true
+                max_score:
+                  type: integer
+                  default: 10
+                metadata:
+                  type: object
+                  nullable: true
+                  description: |
+                    Структура зависит от типа вопроса:
+                    - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
+                    - drag: `{"correct_order": ["B", "A", "C"]}`
+                    - connection: `{"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}`
+                answer_options:
+                  type: array
+                  description: Обязательно для single_choice и multiple_choice
+                  items:
+                    type: object
+                    required:
+                      - text
+                    properties:
+                      text:
+                        type: string
+                      is_correct:
+                        type: boolean
+      responses:
+        "200":
+          description: Вопрос добавлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  order_index:
+                    type: integer
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}

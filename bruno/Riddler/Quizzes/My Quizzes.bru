@@ -1,0 +1,15 @@
+meta {
+  name: My Quizzes
+  seq: 2
+  type: http
+}
+
+get {
+  url: {{riddlerUrl}}/riddler/v1/quizzes/my
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
