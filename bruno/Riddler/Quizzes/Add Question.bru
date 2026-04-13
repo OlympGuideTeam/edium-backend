@@ -1,0 +1,35 @@
+meta {
+  name: Add Question
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/quizzes/{{quizId}}/questions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "type": "single_choice",
+    "text": "Какая столица Франции?",
+    "max_score": 10,
+    "answer_options": [
+      {"text": "Париж", "is_correct": true},
+      {"text": "Лондон", "is_correct": false},
+      {"text": "Берлин", "is_correct": false}
+    ]
+  }
+}
+
+tests {
+  const body = res.getBody();
+  if (body.id) {
+    bru.setEnvVar("questionId", body.id);
+  }
+}
