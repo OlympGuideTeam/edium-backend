@@ -58,3 +58,49 @@ func (h *Handler) CreateQuiz(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dto.CreateQuizResponse{ID: id.String()})
 }
+
+func (h *Handler) AddQuestion(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	quizID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	var req dto.AddQuestionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.WriteError(c, apperr.ErrBadRequest)
+		return
+	}
+
+	maxScore := 10
+	if req.MaxScore != nil {
+		maxScore = *req.MaxScore
+	}
+
+	options := make([]domain.AddOptionParams, len(req.AnswerOptions))
+	for i, o := range req.AnswerOptions {
+		options[i] = domain.AddOptionParams{Text: o.Text, IsCorrect: o.IsCorrect}
+	}
+
+	params := domain.AddQuestionParams{
+		Type:      domain.QuestionType(req.Type),
+		Text:      req.Text,
+		ImageLink: req.ImageLink,
+		Metadata:  req.Metadata,
+		MaxScore:  maxScore,
+		Options:   options,
+	}
+
+	id, orderIndex, err := h.service.AddQuestion(c.Request.Context(), quizID, userID, params)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.AddQuestionResponse{ID: id.String(), OrderIndex: orderIndex})
+}
