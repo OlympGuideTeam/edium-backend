@@ -27,6 +27,10 @@ repos:
         name: golangci-lint (herald)
         files: ^herald/
         entry: bash -c 'cd herald && golangci-lint run'
+      - id: golangci-lint
+        name: golangci-lint (riddler)
+        files: ^riddler/
+        entry: bash -c 'cd riddler && golangci-lint run'
 
   # Python — ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit

@@ -17,6 +17,7 @@ on:
           - herald
           - charon
           - caesar
+          - riddler
 
 permissions:
   contents: read
@@ -43,7 +44,7 @@ jobs:
           host: ${{ secrets.PROD_VM_HOST }}
           username: deploy
           key: ${{ secrets.PROD_VM_SSH_KEY }}
-          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/prometheus.yml,infra/compose/prod/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/"
+          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/prometheus.yml,infra/compose/prod/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/,riddler/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -72,11 +73,12 @@ jobs:
             cp /tmp/edium-deploy/infra/alertmanager/alertmanager.yml /opt/edium/alertmanager/alertmanager.yml
             mkdir -p /opt/edium/prometheus
             cp /tmp/edium-deploy/infra/prometheus/alerts.yml /opt/edium/prometheus/alerts.yml
-            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar
+            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar /opt/edium/migrations/riddler
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
             cp -r /tmp/edium-deploy/charon/migrations/* /opt/edium/migrations/charon/
             cp -r /tmp/edium-deploy/caesar/migrations/* /opt/edium/migrations/caesar/
+            cp -r /tmp/edium-deploy/riddler/migrations/* /opt/edium/migrations/riddler/
             mkdir -p /opt/edium/nats
             cp /tmp/edium-deploy/infra/compose/prod/nats/nats-server.conf /opt/edium/nats/nats-server.conf
 
@@ -104,6 +106,9 @@ jobs:
             CAESAR_PG_USER=${{ secrets.CAESAR_PG_USER }}
             CAESAR_PG_PWD=${{ secrets.CAESAR_PG_PWD }}
             CAESAR_PG_DB=${{ secrets.CAESAR_PG_DB }}
+            RIDDLER_PG_USER=${{ secrets.RIDDLER_PG_USER }}
+            RIDDLER_PG_PWD=${{ secrets.RIDDLER_PG_PWD }}
+            RIDDLER_PG_DB=${{ secrets.RIDDLER_PG_DB }}
             CHARON_PG_USER=${{ secrets.CHARON_PG_USER }}
             CHARON_PG_PWD=${{ secrets.CHARON_PG_PWD }}
             CHARON_PG_DB=${{ secrets.CHARON_PG_DB }}
