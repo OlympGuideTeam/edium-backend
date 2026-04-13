@@ -1,0 +1,33 @@
+meta {
+  name: Create Quiz
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/quizzes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "title": "Квиз по биологии",
+    "description": "Проверочная работа за 3-ю четверть",
+    "default_settings": {
+      "total_time_limit_sec": 600,
+      "question_time_limit_sec": null
+    }
+  }
+}
+
+tests {
+  const body = res.getBody();
+  if (body.id) {
+    bru.setEnvVar("quizId", body.id);
+  }
+}
