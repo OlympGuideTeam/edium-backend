@@ -45,11 +45,11 @@ scp ${SSH_OPTS} "${REPO_ROOT}/infra/compose/${ENV}/clickhouse/"*.sql "deploy@${V
 # Vector
 scp ${SSH_OPTS} "${REPO_ROOT}/infra/compose/${ENV}/vector.yaml" "deploy@${VM_HOST}:${REMOTE_DIR}/vector.yaml"
 
-# Grafana
+# Grafana (конфиги общие для всех окружений — infra/grafana/)
 ssh ${SSH_OPTS} "deploy@${VM_HOST}" "mkdir -p ${REMOTE_DIR}/grafana/datasources ${REMOTE_DIR}/grafana/provisioning ${REMOTE_DIR}/grafana/dashboards"
-scp ${SSH_OPTS} -r "${REPO_ROOT}/infra/compose/${ENV}/grafana/datasources/"* "deploy@${VM_HOST}:${REMOTE_DIR}/grafana/datasources/"
-scp ${SSH_OPTS} -r "${REPO_ROOT}/infra/compose/${ENV}/grafana/provisioning/"* "deploy@${VM_HOST}:${REMOTE_DIR}/grafana/provisioning/"
-scp ${SSH_OPTS} -r "${REPO_ROOT}/infra/compose/${ENV}/grafana/dashboards/"* "deploy@${VM_HOST}:${REMOTE_DIR}/grafana/dashboards/"
+scp ${SSH_OPTS} -r "${REPO_ROOT}/infra/grafana/datasources/"* "deploy@${VM_HOST}:${REMOTE_DIR}/grafana/datasources/"
+scp ${SSH_OPTS} -r "${REPO_ROOT}/infra/grafana/provisioning/"* "deploy@${VM_HOST}:${REMOTE_DIR}/grafana/provisioning/"
+scp ${SSH_OPTS} -r "${REPO_ROOT}/infra/grafana/dashboards/"* "deploy@${VM_HOST}:${REMOTE_DIR}/grafana/dashboards/"
 
 echo "--- Запуск обновления ---"
 
