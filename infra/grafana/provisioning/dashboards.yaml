@@ -1,9 +1,37 @@
 apiVersion: 1
 providers:
-  - name: edium
+  - name: infrastructure
+    folder: Инфраструктура
     type: file
     disableDeletion: false
     updateIntervalSeconds: 30
     allowUiUpdates: true
     options:
-      path: /etc/grafana/dashboards
+      path: /etc/grafana/dashboards/infrastructure
+
+  - name: http
+    folder: HTTP
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards/http
+
+  - name: logs
+    folder: Логи и трейсы
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards/logs
+
+  - name: llm
+    folder: AI / LLM
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards/llm
