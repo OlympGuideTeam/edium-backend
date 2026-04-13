@@ -74,6 +74,7 @@ func (a *App) Router() *gin.Engine {
 	{
 		quizzes.POST("", a.quizHandler.CreateQuiz)
 		quizzes.PATCH("/:id", a.quizHandler.UpdateQuiz)
+		quizzes.PATCH("/:id/questions/order", a.quizHandler.ReorderQuestions)
 		quizzes.POST("/:id/questions", a.quizHandler.AddQuestion)
 	}
 

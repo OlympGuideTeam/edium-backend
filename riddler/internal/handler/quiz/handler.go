@@ -59,6 +59,42 @@ func (h *Handler) CreateQuiz(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.CreateQuizResponse{ID: id.String()})
 }
 
+func (h *Handler) ReorderQuestions(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	quizID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	var req dto.ReorderQuestionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.WriteError(c, apperr.ErrBadRequest)
+		return
+	}
+
+	questionIDs := make([]uuid.UUID, 0, len(req.QuestionIDs))
+	for _, raw := range req.QuestionIDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			httpx.WriteError(c, apperr.ErrBadID)
+			return
+		}
+		questionIDs = append(questionIDs, id)
+	}
+
+	if err := h.service.ReorderQuestions(c.Request.Context(), quizID, userID, questionIDs); err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
 func (h *Handler) UpdateQuiz(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
 	if !ok {

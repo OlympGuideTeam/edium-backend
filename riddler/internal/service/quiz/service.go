@@ -86,6 +86,24 @@ func (s *Service) UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title,
 	return nil
 }
 
+func (s *Service) ReorderQuestions(ctx context.Context, quizID, authorID uuid.UUID, questionIDs []uuid.UUID) error {
+	quiz, err := s.quizzes.GetByID(ctx, quizID)
+	if err != nil {
+		return fmt.Errorf("get quiz: %w", err)
+	}
+	if quiz == nil {
+		return apperr.ErrQuizNotFound
+	}
+	if quiz.AuthorID != authorID {
+		return apperr.ErrQuizForbidden
+	}
+
+	if err := s.quizzes.ReorderQuestions(ctx, quizID, questionIDs); err != nil {
+		return fmt.Errorf("reorder questions: %w", err)
+	}
+	return nil
+}
+
 func validateQuestion(qType domain.QuestionType, metadata map[string]any, options []domain.AddOptionParams) error {
 	switch qType {
 	case domain.QuestionTypeSingleChoice:

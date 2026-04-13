@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -98,6 +99,29 @@ func (r *PgQuizRepository) AddQuestion(ctx context.Context, params domain.AddQue
 	}
 
 	return questionID, orderIndex, nil
+}
+
+func (r *PgQuizRepository) ReorderQuestions(ctx context.Context, quizID uuid.UUID, questionIDs []uuid.UUID) error {
+	ids := make([]string, len(questionIDs))
+	for i, id := range questionIDs {
+		ids[i] = id.String()
+	}
+
+	exec := db.ExecutorFromContext(ctx, r.db)
+	_, err := exec.ExecContext(ctx,
+		`UPDATE question
+		 SET order_index = idx.pos
+		 FROM (
+		     SELECT u.id, u.pos
+		     FROM unnest($1::uuid[]) WITH ORDINALITY AS u(id, pos)
+		 ) AS idx
+		 WHERE question.id = idx.id AND question.quiz_template_id = $2`,
+		"{"+strings.Join(ids, ",")+"}", quizID,
+	)
+	if err != nil {
+		return fmt.Errorf("reorder questions: %w", err)
+	}
+	return nil
 }
 
 func (r *PgQuizRepository) Update(ctx context.Context, id uuid.UUID, title, description *string) error {
