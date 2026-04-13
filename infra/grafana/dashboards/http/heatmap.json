@@ -1,0 +1,239 @@
+{
+  "title": "HTTP — Traffic Heatmap",
+  "uid": "edium-heatmap",
+  "version": 1,
+  "schemaVersion": 39,
+  "tags": ["edium", "http", "heatmap"],
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "1m",
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [],
+  "annotations": { "list": [] },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "weekStart": "",
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Сервис",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+        "query": { "query": "label_values(http_requests_total, service)", "refId": "A" },
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "hide": 0,
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Запросов за период",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(increase(http_requests_total{service=~\"$service\"}[$__range]))", "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Пиковый RPS",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(http_requests_total{service=~\"$service\"}[1m]))", "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["max"] }, "colorMode": "background", "graphMode": "area", "textMode": "auto", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Доля ошибок 5xx",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(increase(http_requests_total{service=~\"$service\",status=~\"5..\"}[$__range])) / sum(increase(http_requests_total{service=~\"$service\"}[$__range]))", "legendFormat": "" }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Уникальных эндпоинтов",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "count(count by (path) (http_requests_total{service=~\"$service\"}))", "legendFormat": "", "instant": true }],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background", "graphMode": "none", "textMode": "auto", "orientation": "auto" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "heatmap",
+      "title": "Интенсивность трафика (RPS по времени)",
+      "description": "Тепловая карта: цвет = частота попадания RPS в данный диапазон значений. Красный = высокая нагрузка, синий = низкая.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(http_requests_total{service=~\"$service\"}[5m]))", "legendFormat": "RPS" }],
+      "options": {
+        "calculate": true,
+        "calculation": {
+          "xBuckets": { "mode": "auto" },
+          "yBuckets": { "mode": "count", "value": "10" }
+        },
+        "color": {
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 64,
+          "reverse": false,
+          "min": 0
+        },
+        "cellGap": 1,
+        "cellRadius": 0,
+        "yAxis": { "unit": "reqps", "decimals": 2, "reverse": false },
+        "legend": { "show": true },
+        "tooltip": { "show": true, "yHistogram": true },
+        "exemplars": { "color": "rgba(255,0,255,0.7)" }
+      },
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "type": "heatmap",
+      "title": "Интенсивность ошибок 5xx",
+      "description": "Тепловая карта ошибочных запросов. Чем ярче — тем больше ошибок в данный момент.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [{ "refId": "A", "expr": "sum(rate(http_requests_total{service=~\"$service\",status=~\"5..\"}[5m]))", "legendFormat": "5xx RPS" }],
+      "options": {
+        "calculate": true,
+        "calculation": {
+          "xBuckets": { "mode": "auto" },
+          "yBuckets": { "mode": "count", "value": "8" }
+        },
+        "color": {
+          "mode": "scheme",
+          "scheme": "Reds",
+          "steps": 64,
+          "reverse": false,
+          "min": 0
+        },
+        "cellGap": 1,
+        "cellRadius": 0,
+        "yAxis": { "unit": "reqps", "decimals": 3, "reverse": false },
+        "legend": { "show": true },
+        "tooltip": { "show": true, "yHistogram": false }
+      },
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "id": 7,
+      "type": "barchart",
+      "title": "Топ-10 эндпоинтов по запросам",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 22 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (service, method, path) (increase(http_requests_total{service=~\"$service\"}[$__range])))",
+          "legendFormat": "{{method}} {{service}}{{path}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "xTickLabelMaxLength": 50,
+        "barWidth": 0.8,
+        "groupWidth": 0.75,
+        "fillOpacity": 80,
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 80, "lineWidth": 0 }
+        },
+        "overrides": []
+      },
+      "transformations": [
+        { "id": "sortBy", "options": { "fields": [{ "displayName": "Value", "desc": true }] } }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "barchart",
+      "title": "Топ-10 эндпоинтов по 5xx",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 22 },
+      "datasource": { "type": "prometheus", "uid": "edium-prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (service, method, path) (increase(http_requests_total{service=~\"$service\",status=~\"5..\"}[$__range])))",
+          "legendFormat": "{{method}} {{service}}{{path}}",
+          "instant": true
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "xTickLabelMaxLength": 50,
+        "barWidth": 0.8,
+        "groupWidth": 0.75,
+        "fillOpacity": 80,
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "custom": { "fillOpacity": 80, "lineWidth": 0 }
+        },
+        "overrides": []
+      },
+      "transformations": [
+        { "id": "sortBy", "options": { "fields": [{ "displayName": "Value", "desc": true }] } }
+      ]
+    }
+  ]
+}
