@@ -59,6 +59,32 @@ func (h *Handler) CreateQuiz(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.CreateQuizResponse{ID: id.String()})
 }
 
+func (h *Handler) UpdateQuiz(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	quizID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	var req dto.UpdateQuizRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.WriteError(c, apperr.ErrBadRequest)
+		return
+	}
+
+	if err := h.service.UpdateQuiz(c.Request.Context(), quizID, userID, req.Title, req.Description); err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
 func (h *Handler) AddQuestion(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
 	if !ok {
