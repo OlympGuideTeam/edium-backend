@@ -111,3 +111,83 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
+  /quizzes/{id}/questions:
+    post:
+      summary: Добавить вопрос в квиз
+      operationId: addQuestion
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - text
+                - answer_options
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - single_choice
+                    - multiple_choice
+                    - with_given_answer
+                    - with_free_answer
+                    - drag
+                    - connection
+                  example: single_choice
+                text:
+                  type: string
+                  example: Какая столица Франции?
+                image_link:
+                  type: string
+                  nullable: true
+                max_score:
+                  type: integer
+                  default: 10
+                metadata:
+                  type: object
+                  nullable: true
+                  description: |
+                    Структура зависит от типа вопроса:
+                    - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
+                    - drag: `{"correct_order": ["B", "A", "C"]}`
+                    - connection: `{"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}`
+                answer_options:
+                  type: array
+                  description: Обязательно для single_choice и multiple_choice
+                  items:
+                    type: object
+                    required:
+                      - text
+                    properties:
+                      text:
+                        type: string
+                      is_correct:
+                        type: boolean
+      responses:
+        "200":
+          description: Вопрос добавлен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  order_index:
+                    type: integer
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}

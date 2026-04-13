@@ -65,3 +65,18 @@ type QuizDetail struct {
 	QuizTemplate
 	Questions []QuestionWithOptions
 }
+
+type AddOptionParams struct {
+	Text      string
+	IsCorrect bool
+}
+
+type AddQuestionParams struct {
+	QuizTemplateID uuid.UUID
+	Type           QuestionType
+	Text           string
+	ImageLink      *string
+	Metadata       map[string]any
+	MaxScore       int
+	Options        []AddOptionParams
+}

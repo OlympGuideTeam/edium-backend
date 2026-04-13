@@ -14,3 +14,22 @@ type CreateQuizRequest struct {
 type CreateQuizResponse struct {
 	ID string `json:"id"`
 }
+
+type AnswerOptionRequest struct {
+	Text      string `json:"text" binding:"required"`
+	IsCorrect bool   `json:"is_correct"`
+}
+
+type AddQuestionRequest struct {
+	Type          string                `json:"type" binding:"required"`
+	Text          string                `json:"text" binding:"required"`
+	ImageLink     *string               `json:"image_link"`
+	Metadata      map[string]any        `json:"metadata"`
+	MaxScore      *int                  `json:"max_score"`
+	AnswerOptions []AnswerOptionRequest `json:"answer_options" binding:"required"`
+}
+
+type AddQuestionResponse struct {
+	ID         string `json:"id"`
+	OrderIndex int    `json:"order_index"`
+}
