@@ -46,3 +46,31 @@ type ReorderQuestionsRequest struct {
 type PublishQuizRequest struct {
 	IsPublic bool `json:"is_public"`
 }
+
+type AnswerOptionResponse struct {
+	ID        string `json:"id"`
+	Text      string `json:"text"`
+	IsCorrect bool   `json:"is_correct"`
+}
+
+type QuestionResponse struct {
+	ID         string                 `json:"id"`
+	Type       string                 `json:"type"`
+	Text       string                 `json:"text"`
+	ImageLink  *string                `json:"image_link"`
+	OrderIndex int                    `json:"order_index"`
+	MaxScore   int                    `json:"max_score"`
+	Metadata   map[string]any         `json:"metadata,omitempty"`
+	Options    []AnswerOptionResponse `json:"options"`
+}
+
+type QuizDetailResponse struct {
+	ID              string              `json:"id"`
+	Title           string              `json:"title"`
+	Description     *string             `json:"description"`
+	DefaultSettings QuizDefaultSettings `json:"default_settings"`
+	IsPublic        bool                `json:"is_public"`
+	IsDraft         bool                `json:"is_draft"`
+	NeedEvaluation  bool                `json:"need_evaluation"`
+	Questions       []QuestionResponse  `json:"questions"`
+}
