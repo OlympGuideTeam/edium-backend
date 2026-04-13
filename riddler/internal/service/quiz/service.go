@@ -104,6 +104,37 @@ func (s *Service) ReorderQuestions(ctx context.Context, quizID, authorID uuid.UU
 	return nil
 }
 
+func (s *Service) DeleteQuestion(ctx context.Context, quizID, questionID, authorID uuid.UUID) error {
+	quiz, err := s.quizzes.GetByID(ctx, quizID)
+	if err != nil {
+		return fmt.Errorf("get quiz: %w", err)
+	}
+	if quiz == nil {
+		return apperr.ErrQuizNotFound
+	}
+	if quiz.AuthorID != authorID {
+		return apperr.ErrQuizForbidden
+	}
+
+	if err := s.quizzes.DeleteQuestion(ctx, quizID, questionID); err != nil {
+		return fmt.Errorf("delete question: %w", err)
+	}
+
+	if quiz.NeedEvaluation {
+		has, err := s.quizzes.HasFreeAnswerQuestions(ctx, quizID)
+		if err != nil {
+			return fmt.Errorf("check free_answer questions: %w", err)
+		}
+		if !has {
+			if err := s.quizzes.SetNeedEvaluation(ctx, quizID, false); err != nil {
+				return fmt.Errorf("set need_evaluation: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
 func validateQuestion(qType domain.QuestionType, metadata map[string]any, options []domain.AddOptionParams) error {
 	switch qType {
 	case domain.QuestionTypeSingleChoice:
