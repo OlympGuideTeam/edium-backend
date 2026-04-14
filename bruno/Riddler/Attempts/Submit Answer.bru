@@ -1,0 +1,24 @@
+meta {
+  name: Submit Answer
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/attempts/{{attemptId}}/answers
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "question_id": "{{questionId}}",
+    "answer_data": {
+      "selected_option_id": "uuid-варианта"
+    }
+  }
+}

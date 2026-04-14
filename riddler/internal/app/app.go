@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"riddler/internal/config"
+	attempthandler "riddler/internal/handler/attempt"
 	quizhandler "riddler/internal/handler/quiz"
 	"riddler/internal/infra/db"
 	"riddler/internal/infra/jwks"
@@ -19,11 +20,15 @@ import (
 	"riddler/internal/middleware"
 	"riddler/internal/pkg/metrics"
 	"riddler/internal/repository"
+	attemptsvc "riddler/internal/service/attempt"
 	quizsvc "riddler/internal/service/quiz"
+	sessionsvc "riddler/internal/service/session"
 )
 
 type App struct {
-	quizHandler *quizhandler.Handler
+	quizHandler    *quizhandler.Handler
+	attemptHandler *attempthandler.Handler
+	attemptService *attemptsvc.Service
 
 	jwksClient  *jwks.Client
 	httpAddr    string
@@ -47,15 +52,26 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 	jwksClient.StartRefresh(ctx)
 
+	txManager := db.NewTxManager(pgdb)
+
 	quizRepo := repository.NewPgQuizRepository(pgdb)
-	quizService := quizsvc.NewService(quizRepo)
+	sessionRepo := repository.NewPgSessionRepository(pgdb)
+	attemptRepo := repository.NewPgAttemptRepository(pgdb)
+
+	sessionService := sessionsvc.NewService(sessionRepo)
+	quizService := quizsvc.NewService(quizRepo, sessionService, txManager)
+	attemptService := attemptsvc.NewService(attemptRepo, sessionService, quizRepo, txManager)
+
 	quizHandler := quizhandler.NewHandler(quizService)
+	attemptHandler := attempthandler.NewHandler(attemptService)
 
 	return &App{
-		quizHandler: quizHandler,
-		jwksClient:  jwksClient,
-		httpAddr:    fmt.Sprintf(":%d", cfg.App.Port),
-		serviceName: cfg.OTel.ServiceName,
+		quizHandler:    quizHandler,
+		attemptHandler: attemptHandler,
+		attemptService: attemptService,
+		jwksClient:     jwksClient,
+		httpAddr:       fmt.Sprintf(":%d", cfg.App.Port),
+		serviceName:    cfg.OTel.ServiceName,
 	}, nil
 }
 
@@ -84,10 +100,24 @@ func (a *App) Router() *gin.Engine {
 		quizzes.DELETE("/:id/questions/:question_id", a.quizHandler.DeleteQuestion)
 	}
 
+	sessions := api.Group("/sessions")
+	{
+		sessions.POST("/:session_id/attempts", a.attemptHandler.CreateAttempt)
+	}
+
+	attempts := api.Group("/attempts")
+	{
+		attempts.POST("/:attempt_id/answers", a.attemptHandler.SubmitAnswer)
+		attempts.POST("/:attempt_id/finish", a.attemptHandler.Finish)
+		attempts.GET("/:attempt_id/result", a.attemptHandler.GetResult)
+	}
+
 	return r
 }
 
 func (a *App) Run(ctx context.Context) error {
+	go a.attemptService.RunExpiryWorker(ctx)
+
 	srv := &http.Server{Addr: a.httpAddr, Handler: a.Router()}
 	go func() {
 		<-ctx.Done()

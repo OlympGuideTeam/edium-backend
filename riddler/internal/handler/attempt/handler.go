@@ -1,4 +1,4 @@
-package quiz
+package attempt
 
 import (
 	"github.com/gin-gonic/gin"
@@ -10,10 +10,10 @@ import (
 )
 
 type Handler struct {
-	service quizService
+	service attemptService
 }
 
-func NewHandler(service quizService) *Handler {
+func NewHandler(service attemptService) *Handler {
 	return &Handler{service: service}
 }
 

@@ -15,10 +15,22 @@ var (
 	ErrInvalidRole = New("BAD_REQUEST", "Некорректная роль, допустимые значения: teacher, student", http.StatusBadRequest)
 
 	// Квизы
-	ErrQuizNotFound     = New("QUIZ_NOT_FOUND", "Квиз не найден", http.StatusNotFound)
-	ErrQuizForbidden    = New("FORBIDDEN", "Нет прав для выполнения этого действия", http.StatusForbidden)
-	ErrQuizEmptyTitle   = New("VALIDATION_ERROR", "Название квиза не может быть пустым", http.StatusUnprocessableEntity)
-	ErrQuizNotPublished = New("QUIZ_NOT_PUBLISHED", "Копировать можно только опубликованный квиз", http.StatusUnprocessableEntity)
+	ErrQuizNotFound         = New("QUIZ_NOT_FOUND", "Квиз не найден", http.StatusNotFound)
+	ErrQuizForbidden        = New("FORBIDDEN", "Нет прав для выполнения этого действия", http.StatusForbidden)
+	ErrQuizEmptyTitle       = New("VALIDATION_ERROR", "Название квиза не может быть пустым", http.StatusUnprocessableEntity)
+	ErrQuizNotPublished     = New("QUIZ_NOT_PUBLISHED", "Копировать можно только опубликованный квиз", http.StatusUnprocessableEntity)
+	ErrQuizAlreadyPublished = New("QUIZ_ALREADY_PUBLISHED", "Квиз уже опубликован", http.StatusConflict)
+	ErrQuizNotAvailable     = New("QUIZ_NOT_AVAILABLE", "Квиз недоступен", http.StatusForbidden)
+
+	// Сессии
+	ErrSessionNotFound  = New("SESSION_NOT_FOUND", "Сессия не найдена", http.StatusNotFound)
+	ErrSessionNotActive = New("SESSION_NOT_ACTIVE", "Сессия неактивна", http.StatusConflict)
+
+	// Попытки
+	ErrAttemptNotFound  = New("ATTEMPT_NOT_FOUND", "Попытка не найдена", http.StatusNotFound)
+	ErrAttemptForbidden = New("FORBIDDEN", "Нет доступа к попытке", http.StatusForbidden)
+	ErrAttemptNotActive = New("ATTEMPT_NOT_ACTIVE", "Попытка уже завершена", http.StatusConflict)
+	ErrAttemptExpired   = New("ATTEMPT_EXPIRED", "Время попытки истекло", http.StatusConflict)
 
 	// Вопросы
 	ErrQuestionNotFound        = New("QUESTION_NOT_FOUND", "Вопрос не найден", http.StatusNotFound)
