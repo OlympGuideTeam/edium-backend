@@ -23,3 +23,8 @@ type quizRepository interface {
 	ListByAuthor(ctx context.Context, authorID uuid.UUID) ([]domain.QuizListItem, error)
 	Copy(ctx context.Context, sourceID, newAuthorID uuid.UUID) (uuid.UUID, error)
 }
+
+type sessionService interface {
+	Create(ctx context.Context, p domain.CreateSessionParams) (uuid.UUID, error)
+	GetActiveTestSession(ctx context.Context, quizTemplateID uuid.UUID) (*domain.QuizSession, error)
+}

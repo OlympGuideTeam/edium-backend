@@ -48,11 +48,11 @@ func (r *PgQuizRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Q
 	var q domain.QuizTemplate
 	var settingsJSON []byte
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, author_id, title, description, default_settings, is_public, is_draft, need_evaluation, created_at, updated_at
+		`SELECT id, author_id, title, description, default_settings, is_public, is_draft, need_evaluation, question_count, created_at, updated_at
 		 FROM quiz_template WHERE id = $1`,
 		id,
 	).Scan(&q.ID, &q.AuthorID, &q.Title, &q.Description, &settingsJSON,
-		&q.IsPublic, &q.IsDraft, &q.NeedEvaluation, &q.CreatedAt, &q.UpdatedAt)
+		&q.IsPublic, &q.IsDraft, &q.NeedEvaluation, &q.QuestionCount, &q.CreatedAt, &q.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
