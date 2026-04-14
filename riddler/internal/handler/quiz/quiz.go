@@ -53,6 +53,18 @@ func (h *Handler) GetQuiz(c *gin.Context) {
 		return
 	}
 
+	role := c.Query("role")
+	switch domain.Role(role) {
+	case domain.RoleTeacher:
+		h.getQuizAsTeacher(c, quizID, userID)
+	case domain.RoleStudent:
+		h.getQuizAsStudent(c, quizID)
+	default:
+		httpx.WriteError(c, apperr.ErrInvalidRole)
+	}
+}
+
+func (h *Handler) getQuizAsTeacher(c *gin.Context, quizID, userID uuid.UUID) {
 	detail, err := h.service.GetQuiz(c.Request.Context(), quizID, userID)
 	if err != nil {
 		httpx.WriteError(c, err)
@@ -89,11 +101,38 @@ func (h *Handler) GetQuiz(c *gin.Context) {
 		DefaultSettings: dto.QuizDefaultSettings{
 			TotalTimeLimitSec:    detail.DefaultSettings.TotalTimeLimitSec,
 			QuestionTimeLimitSec: detail.DefaultSettings.QuestionTimeLimitSec,
+			ShuffleQuestions:     detail.DefaultSettings.ShuffleQuestions,
 		},
 		IsPublic:       detail.IsPublic,
 		IsDraft:        detail.IsDraft,
 		NeedEvaluation: detail.NeedEvaluation,
 		Questions:      questions,
+	})
+}
+
+func (h *Handler) getQuizAsStudent(c *gin.Context, quizID uuid.UUID) {
+	view, err := h.service.GetQuizForStudent(c.Request.Context(), quizID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	var sessionID *string
+	if view.LibraryTestSessionID != nil {
+		s := view.LibraryTestSessionID.String()
+		sessionID = &s
+	}
+
+	c.JSON(http.StatusOK, dto.QuizStudentViewResponse{
+		ID:          view.ID.String(),
+		Title:       view.Title,
+		Description: view.Description,
+		DefaultSettings: dto.QuizStudentDefaultSettings{
+			TotalTimeLimitSec:    view.TotalTimeLimitSec,
+			QuestionTimeLimitSec: view.QuestionTimeLimitSec,
+		},
+		QuestionCount:        view.QuestionCount,
+		LibraryTestSessionID: sessionID,
 	})
 }
 
