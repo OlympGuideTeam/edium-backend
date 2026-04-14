@@ -5,15 +5,16 @@ CREATE TYPE final_source AS ENUM ('llm', 'teacher', 'auto');
 -- Попытка прохождения квиза конкретным пользователем
 
 CREATE TABLE attempt (
-    id          UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
-    session_id  UUID           NOT NULL REFERENCES quiz_session (id),
-    user_id     UUID           NOT NULL,
-    status      attempt_status NOT NULL DEFAULT 'in_progress',
-    score       NUMERIC(10, 2),
-    started_at  TIMESTAMPTZ    NOT NULL DEFAULT now(),
-    finished_at TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ    NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ    NOT NULL DEFAULT now()
+    id             UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id     UUID           NOT NULL REFERENCES quiz_session (id),
+    user_id        UUID           NOT NULL,
+    status         attempt_status NOT NULL DEFAULT 'in_progress',
+    score          NUMERIC(10, 2),
+    question_order JSONB,
+    started_at     TIMESTAMPTZ    NOT NULL DEFAULT now(),
+    finished_at    TIMESTAMPTZ,
+    created_at     TIMESTAMPTZ    NOT NULL DEFAULT now(),
+    updated_at     TIMESTAMPTZ    NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_attempt_session ON attempt (session_id);
@@ -38,7 +39,7 @@ CREATE TABLE answer_submission (
     updated_at     TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_answer_submission_attempt  ON answer_submission (attempt_id);
+CREATE UNIQUE INDEX idx_answer_submission_attempt_question ON answer_submission (attempt_id, question_id);
 CREATE INDEX idx_answer_submission_question ON answer_submission (question_id);
 
 CREATE TRIGGER trg_answer_submission_updated_at

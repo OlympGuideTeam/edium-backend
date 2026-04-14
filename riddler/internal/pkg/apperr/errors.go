@@ -22,6 +22,16 @@ var (
 	ErrQuizAlreadyPublished = New("QUIZ_ALREADY_PUBLISHED", "Квиз уже опубликован", http.StatusConflict)
 	ErrQuizNotAvailable     = New("QUIZ_NOT_AVAILABLE", "Квиз недоступен", http.StatusForbidden)
 
+	// Сессии
+	ErrSessionNotFound  = New("SESSION_NOT_FOUND", "Сессия не найдена", http.StatusNotFound)
+	ErrSessionNotActive = New("SESSION_NOT_ACTIVE", "Сессия неактивна", http.StatusConflict)
+
+	// Попытки
+	ErrAttemptNotFound  = New("ATTEMPT_NOT_FOUND", "Попытка не найдена", http.StatusNotFound)
+	ErrAttemptForbidden = New("FORBIDDEN", "Нет доступа к попытке", http.StatusForbidden)
+	ErrAttemptNotActive = New("ATTEMPT_NOT_ACTIVE", "Попытка уже завершена", http.StatusConflict)
+	ErrAttemptExpired   = New("ATTEMPT_EXPIRED", "Время попытки истекло", http.StatusConflict)
+
 	// Вопросы
 	ErrQuestionNotFound        = New("QUESTION_NOT_FOUND", "Вопрос не найден", http.StatusNotFound)
 	ErrQuestionInvalidType     = New("VALIDATION_ERROR", "Неизвестный тип вопроса", http.StatusUnprocessableEntity)

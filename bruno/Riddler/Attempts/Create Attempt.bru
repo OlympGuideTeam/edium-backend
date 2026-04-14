@@ -1,0 +1,22 @@
+meta {
+  name: Create Attempt
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/sessions/{{sessionId}}/attempts
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  const body = res.getBody();
+  if (body.attempt_id) {
+    bru.setEnvVar("attemptId", body.attempt_id);
+  }
+}
