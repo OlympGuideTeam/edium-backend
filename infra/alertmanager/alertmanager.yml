@@ -3,22 +3,20 @@ global:
 
 route:
   group_by: ['alertname', 'service']
-  group_wait: 10s
-  group_interval: 1m
+  group_wait: 30s
+  group_interval: 5m
   repeat_interval: 4h
   receiver: telegram
   routes:
     - matchers:
-        - alertname = "Http500"
+        - severity = "critical"
       group_wait: 10s
-      group_interval: 1m
-      repeat_interval: 1m
+      repeat_interval: 30m
       receiver: telegram
     - matchers:
-        - alertname = "ServiceDown"
-      group_wait: 30s
-      group_interval: 5m
-      repeat_interval: 30m
+        - severity = "warning"
+      group_wait: 1m
+      repeat_interval: 2h
       receiver: telegram
 
 receivers:
@@ -27,8 +25,20 @@ receivers:
       - bot_token: ${ALERTMANAGER_TG_TOKEN}
         chat_id: ${ALERTMANAGER_TG_CHAT_ID}
         parse_mode: HTML
-        message: |-
-          <b>{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}</b>
-          {{ range .Alerts }}{{ .Annotations.description }}
-          {{ end }}
         send_resolved: true
+        message: |-
+          {{- $alert := index .Alerts 0 -}}
+          {{- if eq .Status "resolved" -}}
+          ✅ <b>ВОССТАНОВЛЕНО: {{ .CommonAnnotations.summary }}</b>
+          {{- else if eq $alert.Labels.severity "critical" -}}
+          🔴 <b>КРИТИЧНО: {{ .CommonAnnotations.summary }}</b>
+          {{- else -}}
+          🟡 <b>ВНИМАНИЕ: {{ .CommonAnnotations.summary }}</b>
+          {{- end }}
+          {{ .CommonAnnotations.description }}
+          {{- with .CommonLabels.service }}
+          🏷 <code>{{ . }}</code>{{- end }}
+          ⏰ {{ $alert.StartsAt.UTC.Format "15:04 02.01.2006 UTC" }}
+          {{- if eq .Status "resolved" }} → {{ $alert.EndsAt.UTC.Format "15:04" }}{{ end }}
+          {{- with .CommonAnnotations.dashboard }}
+          📊 <a href="${GRAFANA_URL}/d/{{ . }}">Дашборд</a>{{- end }}

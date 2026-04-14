@@ -1,20 +1,95 @@
 groups:
-  - name: edium
+  - name: edium.availability
     rules:
       - alert: ServiceDown
-        expr: up == 0
+        expr: up{job=~"doorman|caesar|herald"} == 0
         for: 1m
         labels:
           severity: critical
+          service: "{{ $labels.job }}"
         annotations:
           summary: "Сервис недоступен: {{ $labels.job }}"
           description: "Prometheus не может достучаться до {{ $labels.instance }}"
+          dashboard: "edium-health"
 
-      - alert: Http500
-        expr: increase(http_requests_total{status=~"5.."}[1m]) > 0
-        for: 0m
+  - name: edium.http
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum by (service) (rate(http_requests_total{status=~"5.."}[5m]))
+          / sum by (service) (rate(http_requests_total[5m]))
+          * 100 > 5
+        for: 2m
+        labels:
+          severity: critical
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Высокий процент ошибок: {{ $labels.service }}"
+          description: '{{ $value | printf "%.1f" }}% запросов завершаются 5xx (за 5 мин)'
+          dashboard: "edium-http"
+
+  - name: edium.traffic
+    rules:
+      - alert: RPSSpike
+        expr: |
+          sum by (service) (rate(http_requests_total[5m]))
+          > 3 * sum by (service) (rate(http_requests_total[1h] offset 10m))
+          and sum by (service) (rate(http_requests_total[1h] offset 10m)) > 0.5
+        for: 3m
         labels:
           severity: warning
+          service: "{{ $labels.service }}"
         annotations:
-          summary: "500 ошибка в {{ $labels.service }}"
-          description: "{{ $value | printf \"%.0f\" }} запросов с 5xx за последнюю минуту"
+          summary: "Резкий рост RPS: {{ $labels.service }}"
+          description: '{{ $value | printf "%.1f" }} req/s — в 3× выше часовой нормы'
+          dashboard: "edium-http"
+
+      - alert: RPSDrop
+        expr: |
+          sum by (service) (rate(http_requests_total[5m]))
+          < 0.1 * sum by (service) (rate(http_requests_total[1h] offset 10m))
+          and sum by (service) (rate(http_requests_total[1h] offset 10m)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: "{{ $labels.service }}"
+        annotations:
+          summary: "Резкое падение RPS: {{ $labels.service }}"
+          description: '{{ $value | printf "%.2f" }} req/s — меньше 10% от часовой нормы'
+          dashboard: "edium-http"
+
+  - name: edium.resources
+    rules:
+      - alert: ContainerHighCPU
+        expr: |
+          rate(container_cpu_usage_seconds_total{
+            container_label_com_docker_compose_service=~"doorman|caesar|herald|charon",
+            name!=""
+          }[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: "{{ $labels.container_label_com_docker_compose_service }}"
+        annotations:
+          summary: "Высокая нагрузка CPU: {{ $labels.container_label_com_docker_compose_service }}"
+          description: '{{ $value | printf "%.1f" }}% CPU (порог 80%)'
+          dashboard: "edium-cadvisor"
+
+      - alert: ContainerHighMemory
+        expr: |
+          container_memory_working_set_bytes{
+            container_label_com_docker_compose_service=~"doorman|caesar|herald|charon",
+            name!=""
+          }
+          / container_spec_memory_limit_bytes{
+            container_label_com_docker_compose_service=~"doorman|caesar|herald|charon",
+            name!=""
+          } * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          service: "{{ $labels.container_label_com_docker_compose_service }}"
+        annotations:
+          summary: "Высокое потребление памяти: {{ $labels.container_label_com_docker_compose_service }}"
+          description: '{{ $value | printf "%.1f" }}% памяти от лимита (порог 85%)'
+          dashboard: "edium-cadvisor"
