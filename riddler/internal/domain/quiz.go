@@ -75,6 +75,21 @@ type QuizDetail struct {
 	Questions []QuestionWithOptions
 }
 
+type AnswerOptionForStudent struct {
+	ID   uuid.UUID
+	Text string
+}
+
+type QuestionForStudent struct {
+	ID        uuid.UUID
+	Type      QuestionType
+	Text      string
+	ImageLink *string
+	MaxScore  int
+	Options   []AnswerOptionForStudent
+	Metadata  map[string]any
+}
+
 type QuizStudentView struct {
 	ID                   uuid.UUID
 	Title                string

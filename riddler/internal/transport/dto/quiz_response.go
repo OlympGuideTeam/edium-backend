@@ -6,46 +6,13 @@ type QuizDefaultSettings struct {
 	ShuffleQuestions     *bool `json:"shuffle_questions"`
 }
 
-type CreateQuizRequest struct {
-	Title           string               `json:"title"             binding:"required"`
-	Description     *string              `json:"description"`
-	DefaultSettings *QuizDefaultSettings `json:"default_settings"`
-}
-
 type CreateQuizResponse struct {
 	ID string `json:"id"`
-}
-
-type AnswerOptionRequest struct {
-	Text      string `json:"text" binding:"required"`
-	IsCorrect bool   `json:"is_correct"`
-}
-
-type AddQuestionRequest struct {
-	Type          string                `json:"type" binding:"required"`
-	Text          string                `json:"text" binding:"required"`
-	ImageLink     *string               `json:"image_link"`
-	Metadata      map[string]any        `json:"metadata"`
-	MaxScore      *int                  `json:"max_score"`
-	AnswerOptions []AnswerOptionRequest `json:"answer_options" binding:"required"`
 }
 
 type AddQuestionResponse struct {
 	ID         string `json:"id"`
 	OrderIndex int    `json:"order_index"`
-}
-
-type UpdateQuizRequest struct {
-	Title       *string `json:"title"`
-	Description *string `json:"description"`
-}
-
-type ReorderQuestionsRequest struct {
-	QuestionIDs []string `json:"question_ids" binding:"required,min=1"`
-}
-
-type PublishQuizRequest struct {
-	IsPublic bool `json:"is_public"`
 }
 
 type AnswerOptionResponse struct {

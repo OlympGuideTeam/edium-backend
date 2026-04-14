@@ -1,0 +1,15 @@
+meta {
+  name: Finish Attempt
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/attempts/{{attemptId}}/finish
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
