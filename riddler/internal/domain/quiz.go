@@ -25,8 +25,9 @@ const (
 )
 
 type QuizDefaultSettings struct {
-	TotalTimeLimitSec    *int `json:"total_time_limit_sec"`
-	QuestionTimeLimitSec *int `json:"question_time_limit_sec"`
+	TotalTimeLimitSec    *int  `json:"total_time_limit_sec"`
+	QuestionTimeLimitSec *int  `json:"question_time_limit_sec"`
+	ShuffleQuestions     *bool `json:"shuffle_questions"`
 }
 
 type QuizTemplate struct {
@@ -72,6 +73,16 @@ type QuestionWithOptions struct {
 type QuizDetail struct {
 	QuizTemplate
 	Questions []QuestionWithOptions
+}
+
+type QuizStudentView struct {
+	ID                   uuid.UUID
+	Title                string
+	Description          *string
+	TotalTimeLimitSec    *int
+	QuestionTimeLimitSec *int
+	QuestionCount        int
+	LibraryTestSessionID *uuid.UUID
 }
 
 type QuizListItem struct {
