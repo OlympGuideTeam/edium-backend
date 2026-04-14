@@ -24,7 +24,7 @@ func (s *Service) CreateQuiz(ctx context.Context, authorID uuid.UUID, title stri
 	return id, nil
 }
 
-func (s *Service) GetQuiz(ctx context.Context, id, authorID uuid.UUID) (*domain.QuizDetail, error) {
+func (s *Service) GetQuiz(ctx context.Context, id, userID uuid.UUID) (*domain.QuizDetail, error) {
 	quiz, err := s.quizzes.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get quiz: %w", err)
@@ -32,7 +32,7 @@ func (s *Service) GetQuiz(ctx context.Context, id, authorID uuid.UUID) (*domain.
 	if quiz == nil {
 		return nil, apperr.ErrQuizNotFound
 	}
-	if quiz.AuthorID != authorID {
+	if quiz.AuthorID != userID {
 		return nil, apperr.ErrQuizForbidden
 	}
 
@@ -42,6 +42,37 @@ func (s *Service) GetQuiz(ctx context.Context, id, authorID uuid.UUID) (*domain.
 	}
 
 	return &domain.QuizDetail{QuizTemplate: *quiz, Questions: questions}, nil
+}
+
+func (s *Service) GetQuizForStudent(ctx context.Context, id uuid.UUID) (*domain.QuizStudentView, error) {
+	quiz, err := s.quizzes.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get quiz: %w", err)
+	}
+	if quiz == nil {
+		return nil, apperr.ErrQuizNotFound
+	}
+	if quiz.IsDraft || !quiz.IsPublic {
+		return nil, apperr.ErrQuizNotAvailable
+	}
+
+	session, err := s.sessions.GetActiveTestSession(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get active session: %w", err)
+	}
+
+	view := &domain.QuizStudentView{
+		ID:                   quiz.ID,
+		Title:                quiz.Title,
+		Description:          quiz.Description,
+		TotalTimeLimitSec:    quiz.DefaultSettings.TotalTimeLimitSec,
+		QuestionTimeLimitSec: quiz.DefaultSettings.QuestionTimeLimitSec,
+		QuestionCount:        quiz.QuestionCount,
+	}
+	if session != nil {
+		view.LibraryTestSessionID = &session.ID
+	}
+	return view, nil
 }
 
 func (s *Service) UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title, description *string) error {
@@ -94,6 +125,7 @@ func (s *Service) PublishQuiz(ctx context.Context, id, authorID uuid.UUID, isPub
 				Mode:              domain.SessionModeTest,
 				Status:            domain.SessionStatusActive,
 				TotalTimeLimitSec: &totalTimeLimitSec,
+				ShuffleQuestions:  quiz.DefaultSettings.ShuffleQuestions,
 			}); err != nil {
 				return fmt.Errorf("create session: %w", err)
 			}

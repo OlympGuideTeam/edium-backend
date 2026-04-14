@@ -1,8 +1,9 @@
 package dto
 
 type QuizDefaultSettings struct {
-	TotalTimeLimitSec    *int `json:"total_time_limit_sec"`
-	QuestionTimeLimitSec *int `json:"question_time_limit_sec"`
+	TotalTimeLimitSec    *int  `json:"total_time_limit_sec"`
+	QuestionTimeLimitSec *int  `json:"question_time_limit_sec"`
+	ShuffleQuestions     *bool `json:"shuffle_questions"`
 }
 
 type CreateQuizRequest struct {
@@ -73,6 +74,20 @@ type QuizDetailResponse struct {
 	IsDraft         bool                `json:"is_draft"`
 	NeedEvaluation  bool                `json:"need_evaluation"`
 	Questions       []QuestionResponse  `json:"questions"`
+}
+
+type QuizStudentDefaultSettings struct {
+	TotalTimeLimitSec    *int `json:"total_time_limit_sec"`
+	QuestionTimeLimitSec *int `json:"question_time_limit_sec"`
+}
+
+type QuizStudentViewResponse struct {
+	ID                   string                     `json:"id"`
+	Title                string                     `json:"title"`
+	Description          *string                    `json:"description"`
+	DefaultSettings      QuizStudentDefaultSettings `json:"default_settings"`
+	QuestionCount        int                        `json:"question_count"`
+	LibraryTestSessionID *string                    `json:"library_test_session_id"`
 }
 
 type QuizListItemResponse struct {
