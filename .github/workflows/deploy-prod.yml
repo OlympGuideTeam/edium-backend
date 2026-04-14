@@ -126,6 +126,7 @@ jobs:
             NATS_PASSWORD_SPHINX=${{ secrets.NATS_PASSWORD_SPHINX }}
             ALERTMANAGER_TG_TOKEN=${{ secrets.ALERTMANAGER_TG_TOKEN }}
             ALERTMANAGER_TG_CHAT_ID=${{ secrets.ALERTMANAGER_TG_CHAT_ID }}
+            GRAFANA_URL=${{ secrets.GRAFANA_URL }}
             JAEGER_BASIC_AUTH_HASH=${{ secrets.JAEGER_BASIC_AUTH_HASH }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
@@ -143,7 +144,8 @@ jobs:
 
             # Раскрываем переменные в alertmanager.yml
             export $(grep -E '^ALERTMANAGER_' .env | xargs)
-            envsubst '$ALERTMANAGER_TG_TOKEN $ALERTMANAGER_TG_CHAT_ID' \
+            export GRAFANA_URL="$(grep '^GRAFANA_URL=' .env | cut -d= -f2-)"
+            envsubst '$ALERTMANAGER_TG_TOKEN $ALERTMANAGER_TG_CHAT_ID $GRAFANA_URL' \
               < /opt/edium/alertmanager/alertmanager.yml > /tmp/alertmanager-expanded.yml
             mv /tmp/alertmanager-expanded.yml /opt/edium/alertmanager/alertmanager.yml
 
