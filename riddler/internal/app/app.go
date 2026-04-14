@@ -20,6 +20,7 @@ import (
 	"riddler/internal/pkg/metrics"
 	"riddler/internal/repository"
 	quizsvc "riddler/internal/service/quiz"
+	sessionsvc "riddler/internal/service/session"
 )
 
 type App struct {
@@ -47,8 +48,12 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 	jwksClient.StartRefresh(ctx)
 
+	txManager := db.NewTxManager(pgdb)
+
 	quizRepo := repository.NewPgQuizRepository(pgdb)
-	quizService := quizsvc.NewService(quizRepo)
+	sessionRepo := repository.NewPgSessionRepository(pgdb)
+	sessionService := sessionsvc.NewService(sessionRepo)
+	quizService := quizsvc.NewService(quizRepo, sessionService, txManager)
 	quizHandler := quizhandler.NewHandler(quizService)
 
 	return &App{

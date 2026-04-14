@@ -38,6 +38,7 @@ type QuizTemplate struct {
 	IsPublic        bool
 	IsDraft         bool
 	NeedEvaluation  bool
+	QuestionCount   int
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
