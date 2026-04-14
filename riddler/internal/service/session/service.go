@@ -25,6 +25,14 @@ func (s *Service) Create(ctx context.Context, p domain.CreateSessionParams) (uui
 	return id, nil
 }
 
+func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizSession, error) {
+	session, err := s.sessions.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get session by id: %w", err)
+	}
+	return session, nil
+}
+
 func (s *Service) GetActiveTestSession(ctx context.Context, quizTemplateID uuid.UUID) (*domain.QuizSession, error) {
 	session, err := s.sessions.GetActiveTestSession(ctx, quizTemplateID)
 	if err != nil {

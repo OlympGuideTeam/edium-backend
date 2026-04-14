@@ -20,6 +20,25 @@ func NewPgSessionRepository(database *sql.DB) *PgSessionRepository {
 	return &PgSessionRepository{db: database}
 }
 
+func (r *PgSessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizSession, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+
+	var s domain.QuizSession
+	err := exec.QueryRowContext(ctx,
+		`SELECT id, quiz_template_id, mode, status, total_time_limit_sec, question_time_limit_sec, shuffle_questions
+		 FROM quiz_session WHERE id = $1`,
+		id,
+	).Scan(&s.ID, &s.QuizTemplateID, &s.Mode, &s.Status,
+		&s.TotalTimeLimitSec, &s.QuestionTimeLimitSec, &s.ShuffleQuestions)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get session by id: %w", err)
+	}
+	return &s, nil
+}
+
 func (r *PgSessionRepository) GetActiveTestSession(ctx context.Context, quizTemplateID uuid.UUID) (*domain.QuizSession, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 
