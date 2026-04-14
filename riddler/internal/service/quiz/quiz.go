@@ -77,11 +77,37 @@ func (s *Service) PublishQuiz(ctx context.Context, id, authorID uuid.UUID, isPub
 	if quiz.AuthorID != authorID {
 		return apperr.ErrQuizForbidden
 	}
-
-	if err := s.quizzes.Publish(ctx, id, isPublic); err != nil {
-		return fmt.Errorf("publish quiz: %w", err)
+	if !quiz.IsDraft {
+		return apperr.ErrQuizAlreadyPublished
 	}
-	return nil
+
+	return s.txManager.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.quizzes.Publish(ctx, id, isPublic); err != nil {
+			return fmt.Errorf("publish quiz: %w", err)
+		}
+
+		if isPublic && !quiz.NeedEvaluation {
+			totalTimeLimitSec := s.computeTotalTimeLimit(quiz.DefaultSettings, quiz.QuestionCount)
+
+			if _, err := s.sessions.Create(ctx, domain.CreateSessionParams{
+				QuizTemplateID:    id,
+				Mode:              domain.SessionModeTest,
+				Status:            domain.SessionStatusActive,
+				TotalTimeLimitSec: &totalTimeLimitSec,
+			}); err != nil {
+				return fmt.Errorf("create session: %w", err)
+			}
+		}
+
+		return nil
+	})
+}
+
+func (s *Service) computeTotalTimeLimit(settings domain.QuizDefaultSettings, questionCount int) int {
+	if settings.TotalTimeLimitSec != nil {
+		return *settings.TotalTimeLimitSec
+	}
+	return 60 * questionCount
 }
 
 func (s *Service) CopyQuiz(ctx context.Context, quizID, authorID uuid.UUID) (uuid.UUID, error) {
