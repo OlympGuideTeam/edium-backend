@@ -87,20 +87,6 @@ variable "caesar_pg_password_prod" {
   sensitive   = true
 }
 
-# --- Riddler ---
-
-variable "riddler_pg_password_test" {
-  description = "Пароль PostgreSQL для Riddler (test)"
-  type        = string
-  sensitive   = true
-}
-
-variable "riddler_pg_password_prod" {
-  description = "Пароль PostgreSQL для Riddler (prod)"
-  type        = string
-  sensitive   = true
-}
-
 variable "redis_password" {
   description = "Пароль Redis"
   type        = string
