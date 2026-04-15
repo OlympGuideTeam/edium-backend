@@ -5,7 +5,7 @@
 ```mermaid
 erDiagram
     quiz_template {
-        uuid    id               PK
+        uuid    id                  PK
         uuid    author_id
         text    title
         text    description
@@ -14,6 +14,7 @@ erDiagram
         bool    is_draft
         bool    need_evaluation
         int     question_count
+        uuid    library_session_id  FK "nullable"
         ts      created_at
         ts      updated_at
     }
@@ -27,6 +28,8 @@ erDiagram
         int           order_index
         jsonb         metadata
         int           max_score
+        ts            created_at
+        ts            updated_at
     }
 
     answer_option {
@@ -34,6 +37,7 @@ erDiagram
         uuid question_id FK
         text text
         bool is_correct
+        ts   created_at
     }
 
     quiz_session {
@@ -47,6 +51,8 @@ erDiagram
         jsonb          settings
         ts             started_at
         ts             finished_at
+        ts             created_at
+        ts             updated_at
     }
 
     attempt {
@@ -58,6 +64,8 @@ erDiagram
         jsonb          question_order
         ts             started_at
         ts             finished_at
+        ts             created_at
+        ts             updated_at
     }
 
     answer_submission {
@@ -68,35 +76,55 @@ erDiagram
         numeric      final_score
         final_source final_source
         text         final_feedback
+        ts           created_at
+        ts           updated_at
     }
 
     quiz_template   ||--o{ question         : "содержит"
     question        ||--o{ answer_option    : "варианты"
     quiz_template   ||--o{ quiz_session     : "запускается как"
+    quiz_template   }o--o| quiz_session     : "library_session_id"
     quiz_session    ||--o{ attempt          : "попытки"
     attempt         ||--o{ answer_submission : "ответы"
     question        ||--o{ answer_submission : "на вопрос"
 ```
 
+## Перечисления
+
+| Тип | Значения |
+|-----|----------|
+| `session_mode` | `live`, `test` |
+| `session_status` | `draft`, `waiting`, `active`, `finished` |
+| `attempt_status` | `in_progress`, `grading`, `graded`, `completed` |
+| `final_source` | `auto`, `llm`, `teacher` |
+| `question_type` | `single_choice`, `multiple_choice`, `with_given_answer`, `with_free_answer`, `drag`, `connection` |
+
 ## Типы сессий
 
 | mode | Описание |
 |------|----------|
-| `test` | Студент проходит самостоятельно (библиотека или курс) |
+| `test` | Студент проходит самостоятельно — библиотека или курс |
 | `live` | Учитель ведёт урок в реальном времени |
 
 | status | Описание |
 |--------|----------|
 | `draft` | Создана, не активна |
+| `waiting` | Создана с будущим `started_at`, ещё не началась |
 | `active` | Студенты могут создавать попытки |
 | `finished` | Закрыта, новые попытки невозможны |
+
+## Библиотечная сессия
+
+При публикации квиза (`POST /quizzes/:id/publish`) автоматически создаётся одна сессия `mode=test, status=active` — **библиотечная**. Ссылка хранится в `quiz_template.library_session_id`. Все студенты, открывающие квиз через библиотеку, создают попытки в этой сессии.
+
+Курсовые сессии создаются учителем явно через `POST /sessions/test` или `POST /sessions/live` и не записываются в `library_session_id`.
 
 ## NATS-события (Riddler публикует)
 
 | Subject | Payload | Когда |
 |---------|---------|-------|
 | `riddler.quiz_template.attached` | `{quiz_template_id, module_id}` | POST /quizzes с `attach_to_module` |
-| `riddler.course_session.created` | `{session_id, module_id}` | POST /sessions (курсовая сессия) |
+| `riddler.course_session.created` | `{session_id, module_id}` | POST /sessions/test или /sessions/live |
 | `riddler.attempt.created` | `{attempt_id, session_id, user_id}` | POST /sessions/:id/attempts |
 | `riddler.attempt.scored` | `{attempt_id, session_id, user_id, total_score}` | POST /attempts/:id/finish (после автооценки) |
 
@@ -108,7 +136,7 @@ Caesar подписывается на все четыре события и с�
 Библиотека                          Курс
 ──────────────────────────────────────────────────────
 Одна session на всех студентов      Одна session на весь класс/группу
-Создаётся автоматически             Создаётся учителем явно (POST /sessions)
+Создаётся автоматически             Создаётся учителем явно (POST /sessions/test|live)
   при PublishQuiz (is_public=true)
 Настройки из default_settings       Настройки задаются вручную
   квиза                               (time_limit, shuffle, finished_at)
