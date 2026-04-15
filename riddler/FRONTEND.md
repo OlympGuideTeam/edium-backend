@@ -9,32 +9,29 @@
 
 ## Флоу 1 — Библиотека (самостоятельное прохождение)
 
-Квиз опубликован в публичную библиотеку (`is_public=true`). Студент видит его в каталоге и проходит в своём темпе.
+Квиз опубликован в публичную библиотеку (`is_public=true`). Студент видит его в каталоге и проходит в своём темпе. При публикации автоматически создаётся одна библиотечная тест-сессия на всех — её id возвращается в `library_test_session_id`.
 
 ```
-GET /quizzes/{id}?role=student          ← узнать название, лимиты, кол-во вопросов
+GET /quizzes/{id}?role=student          ← название, лимиты, кол-во вопросов
         │
-        │  в ответе: library_test_session_id (UUID сессии)
+        │  в ответе: library_test_session_id
         ▼
 POST /sessions/{session_id}/attempts    ← создать попытку, получить вопросы
         │
         │  в ответе: attempt_id + список вопросов (без правильных ответов)
         ▼
-POST /attempts/{attempt_id}/answers     ← отправлять ответы по ходу теста
-        │                                  (можно перезаписывать — upsert)
-        │
+POST /attempts/{attempt_id}/answers     ← отправлять ответы (upsert)
         ▼
-POST /attempts/{attempt_id}/finish      ← завершить попытку → автооценка
-        │
+POST /attempts/{attempt_id}/finish      ← завершить → автооценка
         ▼
-GET  /attempts/{attempt_id}/result      ← получить итог с баллами по каждому вопросу
+GET  /attempts/{attempt_id}/result      ← итог с баллами по каждому вопросу
 ```
 
 ---
 
-## Флоу 2 — Курс: шаблон квиза в модуле (quiz_template)
+## Флоу 2 — Курс: шаблон квиза в модуле
 
-Учитель создаёт квиз и сразу прикрепляет его к модулю курса. Квиз виден только учителям — студенты его не видят. Шаблон можно продолжать редактировать (добавлять/менять вопросы).
+Учитель создаёт квиз и сразу прикрепляет к модулю. Шаблон виден только учителям, редактируется до публикации.
 
 ```
 Учитель:
@@ -43,24 +40,20 @@ POST /quizzes
   body: { title, description, default_settings, attach_to_module: { module_id } }
         │
         ├── создаёт quiz_template (is_draft=true)
-        └── публикует событие → Caesar создаёт course_item
-                                  { type: quiz_template, object_id: quiz_template_id }
+        └── событие → Caesar создаёт course_item { type: quiz_template, object_id: quiz_template_id }
 
-POST /quizzes/{id}/questions   ← добавить вопросы (квиз ещё черновик, редактируемый)
+POST /quizzes/{id}/questions   ← добавить вопросы
 
-POST /quizzes/{id}/publish     ← опубликовать шаблон (is_draft → false)
+POST /quizzes/{id}/publish     ← опубликовать (is_draft → false)
 ```
 
-На стороне Caesar:
-- Учитель видит элемент модуля с типом `quiz_template`
-- Может перейти в редактор квиза, изменить вопросы и настройки
-- Студенты этот элемент не видят
+Студенты элемент типа `quiz_template` не видят.
 
 ---
 
-## Флоу 3 — Курс: сессия квиза (quiz, назначение задания)
+## Флоу 3 — Курс: тест-сессия (задание с дедлайном)
 
-Учитель берёт опубликованный (`is_draft=false`) квиз и создаёт для курса сессию с конкретными настройками. Студенты видят задание и могут создать попытку.
+Учитель берёт опубликованный квиз и назначает задание с окном доступа. Студент видит элемент типа `quiz` и проходит в своём темпе.
 
 ```
 Учитель:
@@ -69,96 +62,112 @@ POST /sessions/test
   body: {
     quiz_template_id,
     module_id,
-    total_time_limit_sec,  ← опционально (fallback: default_settings → 60×кол-во вопросов)
+    total_time_limit_sec,  ← опционально (fallback: default_settings → 60×вопросов)
     shuffle_questions,     ← опционально (fallback: default_settings)
-    started_at,            ← опционально
+    started_at,            ← начало окна, опционально
     finished_at            ← дедлайн, опционально
   }
         │
         ├── создаёт quiz_session (mode=test, status=active)
-        └── публикует событие → Caesar создаёт course_item
-                                  { type: quiz, object_id: session_id }
+        └── событие → Caesar создаёт course_item { type: quiz, object_id: session_id }
 
 Ответ: { session_id }
 ```
 
-На стороне Caesar:
-- Студент видит элемент модуля с типом `quiz`
-- `object_id` = session_id — используется для создания попытки
-
 ```
-Студент (через Caesar):
+Студент:
 
-GET /courses/{id}   ← получить курс с модулями
-                      в элементах типа quiz: object_id = session_id
+GET /courses/{id}   ← из Caesar; в элементах quiz: object_id = session_id
 
-POST /sessions/{object_id}/attempts   ← создать попытку (тот же флоу, что в библиотеке)
+POST /sessions/{object_id}/attempts   ← создать попытку
 POST /attempts/{attempt_id}/answers
 POST /attempts/{attempt_id}/finish
 GET  /attempts/{attempt_id}/result
 ```
 
+Статус тест-сессии вычисляется из `started_at`/`finished_at`:
+
+| Статус | Условие | Что показать |
+|--------|---------|--------------|
+| `not_started` | `now < started_at` | «Откроется [дата]» |
+| `active` | в окне доступа | Можно начать |
+| `finished` | `now > finished_at` или закрыта учителем | Недоступно |
+
+Коды ошибок при `POST /sessions/:id/attempts`:
+
+| Код | Причина |
+|-----|---------|
+| `SESSION_NOT_STARTED` | `now < started_at` |
+| `SESSION_DEADLINE_PASSED` | `now > finished_at` |
+| `SESSION_NOT_ACTIVE` | Учитель явно закрыл сессию |
+
 ---
 
-## Прогресс в курсе (события для Caesar)
+## Флоу 4 — Курс: лайв-сессия (урок в реальном времени)
 
-При работе студента с курсовым квизом Riddler публикует события, Caesar обновляет прогресс:
+Учитель ведёт урок — все на одном вопросе, переходы управляет учитель. Все переходы статусов — только учитель.
 
-| Событие | Когда | Что делает Caesar |
-|---------|-------|------------------|
-| `riddler.attempt.created` | Создана попытка | Создаёт запись прогресса (score=null) |
-| `riddler.attempt.scored` | Завершена попытка, получена оценка | Обновляет score в прогрессе |
+```
+Учитель:
 
-Caesar отображает `attempt_id` и `score` по каждому элементу в `GET /courses/{id}`.
+POST /sessions/live
+  body: {
+    quiz_template_id,
+    module_id,
+    question_time_limit_sec  ← опционально (fallback: default_settings → 30с)
+  }
+  → создаёт quiz_session (mode=live, status=not_started)
+
+[открывает лобби]  → status: not_started → waiting
+[запускает квиз]   → status: waiting → running
+[завершает]        → status: running → finished
+```
+
+```
+Студент:
+
+POST /sessions/{session_id}/attempts   ← только когда status=waiting (лобби)
+```
+
+| Статус | Что показать студенту |
+|--------|-----------------------|
+| `not_started` | Сессия запланирована, лобби ещё не открыто |
+| `waiting` | Лобби открыто — можно войти |
+| `running` | Квиз идёт, присоединиться нельзя |
+| `finished` | Завершена |
 
 ---
 
 ## Важные детали прохождения
 
-- **Порядок вопросов фиксирован** на момент создания попытки. Если в сессии включён `shuffle_questions`, порядок перемешивается один раз и сохраняется — при обновлении страницы вопросы не прыгают.
-- **Таймер**: если в сессии задан `total_time_limit_sec`, попытка завершается автоматически по истечении времени. При следующем `POST /answers` придёт `ATTEMPT_EXPIRED`. Фронт должен сам считать таймер и вызывать `/finish` заранее.
-- **Повторная отправка ответа** на уже отвеченный вопрос — это upsert, не ошибка. Последнее значение побеждает.
-- `with_free_answer` **не оценивается автоматически** — оценит учитель или LLM позже. В результате по таким вопросам `final_score` будет `null` до ручной проверки.
+- **Порядок вопросов фиксирован** на момент создания попытки. Если включён `shuffle_questions` — перемешивается один раз и сохраняется.
+- **Таймер**: если задан `total_time_limit_sec`, попытка завершается автоматически. При следующем `POST /answers` придёт `ATTEMPT_EXPIRED`. Фронт должен сам считать таймер и вызывать `/finish` заранее.
+- **Повторная отправка ответа** — upsert, не ошибка. Последнее значение побеждает.
+- `with_free_answer` **не оценивается автоматически** — `final_score: null` до ручной или LLM-проверки.
 - **Одна попытка** на курсовую сессию для каждого студента.
 
 ---
 
 ## Типы вопросов
 
-### Как создаёт учитель
-
 ```
 POST /quizzes/{id}/questions
+body: { type, text, image_link, max_score, answer_options, metadata }
 ```
 
-```json
-{
-  "type": "...",
-  "text": "Текст вопроса",
-  "image_link": null,
-  "max_score": 10,
-  "answer_options": [...],
-  "metadata": {...}
-}
-```
-
-`answer_options` нужны только для `single_choice` и `multiple_choice`.
-`metadata` используется для остальных типов — структура описана в таблице.
-
----
-
-### Таблица типов
+`answer_options` — только для `single_choice` и `multiple_choice`.
+`metadata` — для остальных типов.
 
 | Тип | Что создаёт учитель | Что получает студент | Что присылает студент | Оценка |
 |-----|--------------------|-----------------------|-----------------------|--------|
-| `single_choice` | `answer_options: [{text, is_correct}]` | `options: [{id, text}]` — без `is_correct` | `{"selected_option_id": "uuid"}` | Полный балл если верный вариант, иначе 0 |
-| `multiple_choice` | `answer_options: [{text, is_correct}]` | `options: [{id, text}]` — без `is_correct` | `{"selected_option_ids": ["uuid1", "uuid2"]}` | Частичный: `max(0, (верных − неверных) / всего_верных) × max_score`, округление до 2 знаков |
-| `with_given_answer` | `metadata: {"correct_answers": ["Paris", "paris"]}` | Нет `options`, нет `metadata` | `{"text": "Paris"}` | Полный балл при точном совпадении (регистр важен), иначе 0 |
-| `with_free_answer` | Ничего лишнего | Нет `options`, нет `metadata` | `{"text": "Свободный ответ"}` | Не оценивается автоматически — `final_score: null` |
-| `drag` | `metadata: {"correct_order": ["B", "A", "C"]}` | `metadata: {"items": ["A", "C", "B"]}` — перемешанный | `{"order": ["B", "A", "C"]}` | Полный балл если порядок совпадает точно, иначе 0 |
-| `connection` | `metadata: {"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}` | `metadata: {"left": ["A","B"], "right": ["2","1"]}` — правая колонка перемешана | `{"pairs": {"A": "1", "B": "2"}}` | Полный балл если все пары верны, иначе 0 |
+| `single_choice` | `answer_options: [{text, is_correct}]` | `options: [{id, text}]` | `{"selected_option_id": "uuid"}` | Полный балл если верный, иначе 0 |
+| `multiple_choice` | `answer_options: [{text, is_correct}]` | `options: [{id, text}]` | `{"selected_option_ids": ["uuid1","uuid2"]}` | `max(0, (верных − неверных) / всего_верных) × max_score` |
+| `with_given_answer` | `metadata: {"correct_answers": ["Paris","paris"]}` | нет options/metadata | `{"text": "Paris"}` | Полный балл при точном совпадении, иначе 0 |
+| `with_free_answer` | — | — | `{"text": "Свободный ответ"}` | Не оценивается автоматически |
+| `drag` | `metadata: {"correct_order": ["B","A","C"]}` | `metadata: {"items": ["A","C","B"]}` (перемешан) | `{"order": ["B","A","C"]}` | Полный балл если порядок точный, иначе 0 |
+| `connection` | `metadata: {"left":["A","B"],"right":["1","2"],"correct_pairs":{"A":"1","B":"2"}}` | `metadata: {"left":["A","B"],"right":["2","1"]}` (правая перемешана) | `{"pairs":{"A":"1","B":"2"}}` | Полный балл если все пары верны, иначе 0 |
 
-### Частичная оценка multiple_choice — пример
+### Частичная оценка multiple_choice
 
 Вопрос: 4 варианта, 2 правильных, `max_score = 10`.
 
@@ -173,30 +182,26 @@ POST /quizzes/{id}/questions
 
 ## Интеграция с Charon (оценка свободных ответов)
 
-Riddler публикует батч ответов на вопрос типа `with_free_answer` в очередь, Charon оценивает их через LLM и возвращает результат.
+Riddler публикует батч на `edium.completion.requested`, Charon оценивает через LLM и возвращает результат на `charon.quiz.grade.completed`.
 
-**Запрос** `charon.quiz.grade.requested`:
+**Запрос:**
 ```json
 {
   "request_id": "uuid",
   "question": "Текст вопроса",
-  "answers": [
-    { "student_id": "uuid", "text": "Ответ студента" }
-  ]
+  "answers": [{ "student_id": "uuid", "text": "Ответ студента" }]
 }
 ```
 
-**Ответ** `charon.quiz.grade.completed`:
+**Ответ:**
 ```json
 {
   "request_id": "uuid",
-  "grades": [
-    { "student_id": "uuid", "score": 7, "comment": "Верно, но неполно" }
-  ],
+  "grades": [{ "student_id": "uuid", "score": 7, "comment": "Верно, но неполно" }],
   "error": ""
 }
 ```
 
-- `score` — от 0 до 10, **относительный**: если все ответили слабо, лучший может получить меньше 10
-- `comment` — фидбек на русском, будет показан студенту
+- `score` — от 0 до 10, относительный
+- `comment` — фидбек на русском, показывается студенту
 - При ошибке `error` непустой, `grades` пустой

@@ -16,11 +16,36 @@ const (
 type SessionStatus string
 
 const (
-	SessionStatusDraft    SessionStatus = "draft"
-	SessionStatusWaiting  SessionStatus = "waiting"
-	SessionStatusActive   SessionStatus = "active"
-	SessionStatusFinished SessionStatus = "finished"
+	SessionStatusNotStarted SessionStatus = "not_started"
+	SessionStatusWaiting    SessionStatus = "waiting"
+	SessionStatusActive     SessionStatus = "active"
+	SessionStatusRunning    SessionStatus = "running"
+	SessionStatusFinished   SessionStatus = "finished"
 )
+
+// ComputedStatus возвращает эффективный статус сессии.
+// Для live-сессий статус хранится в БД и возвращается as-is.
+// Для test-сессий статус вычисляется из started_at/finished_at:
+//
+//	now < started_at             → not_started
+//	started_at ≤ now ≤ finished_at → active
+//	now > finished_at или явный finished → finished
+func (s *QuizSession) ComputedStatus() SessionStatus {
+	if s.Mode == SessionModeLive {
+		return s.Status
+	}
+	now := time.Now()
+	if s.Status == SessionStatusFinished {
+		return SessionStatusFinished
+	}
+	if s.FinishedAt != nil && now.After(*s.FinishedAt) {
+		return SessionStatusFinished
+	}
+	if s.StartedAt != nil && now.Before(*s.StartedAt) {
+		return SessionStatusNotStarted
+	}
+	return SessionStatusActive
+}
 
 type QuizSession struct {
 	ID                   uuid.UUID

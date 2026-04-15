@@ -23,8 +23,10 @@ var (
 	ErrQuizNotAvailable     = New("QUIZ_NOT_AVAILABLE", "Квиз недоступен", http.StatusForbidden)
 
 	// Сессии
-	ErrSessionNotFound  = New("SESSION_NOT_FOUND", "Сессия не найдена", http.StatusNotFound)
-	ErrSessionNotActive = New("SESSION_NOT_ACTIVE", "Сессия неактивна", http.StatusConflict)
+	ErrSessionNotFound       = New("SESSION_NOT_FOUND", "Сессия не найдена", http.StatusNotFound)
+	ErrSessionNotActive      = New("SESSION_NOT_ACTIVE", "Сессия недоступна", http.StatusConflict)
+	ErrSessionNotStarted     = New("SESSION_NOT_STARTED", "Сессия ещё не началась", http.StatusConflict)
+	ErrSessionDeadlinePassed = New("SESSION_DEADLINE_PASSED", "Дедлайн сессии истёк", http.StatusConflict)
 
 	// Попытки
 	ErrAttemptNotFound  = New("ATTEMPT_NOT_FOUND", "Попытка не найдена", http.StatusNotFound)

@@ -1,4 +1,4 @@
-# Riddler — схема данных и события
+# Riddler — схема данных
 
 ## База данных
 
@@ -80,11 +80,11 @@ erDiagram
         ts           updated_at
     }
 
-    quiz_template   ||--o{ question         : "содержит"
-    question        ||--o{ answer_option    : "варианты"
-    quiz_template   ||--o{ quiz_session     : "запускается как"
-    quiz_template   }o--o| quiz_session     : "library_session_id"
-    quiz_session    ||--o{ attempt          : "попытки"
+    quiz_template   ||--o{ question          : "содержит"
+    question        ||--o{ answer_option     : "варианты"
+    quiz_template   ||--o{ quiz_session      : "запускается как"
+    quiz_template   }o--o| quiz_session      : "library_session_id"
+    quiz_session    ||--o{ attempt           : "попытки"
     attempt         ||--o{ answer_submission : "ответы"
     question        ||--o{ answer_submission : "на вопрос"
 ```
@@ -94,30 +94,10 @@ erDiagram
 | Тип | Значения |
 |-----|----------|
 | `session_mode` | `live`, `test` |
-| `session_status` | `draft`, `waiting`, `active`, `finished` |
+| `session_status` | `not_started`, `waiting`, `active`, `running`, `finished` |
 | `attempt_status` | `in_progress`, `grading`, `graded`, `completed` |
 | `final_source` | `auto`, `llm`, `teacher` |
 | `question_type` | `single_choice`, `multiple_choice`, `with_given_answer`, `with_free_answer`, `drag`, `connection` |
-
-## Типы сессий
-
-| mode | Описание |
-|------|----------|
-| `test` | Студент проходит самостоятельно — библиотека или курс |
-| `live` | Учитель ведёт урок в реальном времени |
-
-| status | Описание |
-|--------|----------|
-| `draft` | Создана, не активна |
-| `waiting` | Создана с будущим `started_at`, ещё не началась |
-| `active` | Студенты могут создавать попытки |
-| `finished` | Закрыта, новые попытки невозможны |
-
-## Библиотечная сессия
-
-При публикации квиза (`POST /quizzes/:id/publish`) автоматически создаётся одна сессия `mode=test, status=active` — **библиотечная**. Ссылка хранится в `quiz_template.library_session_id`. Все студенты, открывающие квиз через библиотеку, создают попытки в этой сессии.
-
-Курсовые сессии создаются учителем явно через `POST /sessions/test` или `POST /sessions/live` и не записываются в `library_session_id`.
 
 ## NATS-события (Riddler публикует)
 
@@ -129,17 +109,3 @@ erDiagram
 | `riddler.attempt.scored` | `{attempt_id, session_id, user_id, total_score}` | POST /attempts/:id/finish (после автооценки) |
 
 Caesar подписывается на все четыре события и создаёт/обновляет записи в своей БД.
-
-## Сессия библиотеки vs курсовая сессия
-
-```
-Библиотека                          Курс
-──────────────────────────────────────────────────────
-Одна session на всех студентов      Одна session на весь класс/группу
-Создаётся автоматически             Создаётся учителем явно (POST /sessions/test|live)
-  при PublishQuiz (is_public=true)
-Настройки из default_settings       Настройки задаются вручную
-  квиза                               (time_limit, shuffle, finished_at)
-Без дедлайна                        С дедлайном (finished_at)
-course_item — отсутствует           course_item type=quiz, object_id=session_id
-```

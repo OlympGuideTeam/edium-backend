@@ -25,11 +25,13 @@ func (r *PgSessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*domai
 
 	var s domain.QuizSession
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, quiz_template_id, mode, status, total_time_limit_sec, question_time_limit_sec, shuffle_questions
+		`SELECT id, quiz_template_id, mode, status, total_time_limit_sec, question_time_limit_sec,
+		        shuffle_questions, started_at, finished_at
 		 FROM quiz_session WHERE id = $1`,
 		id,
 	).Scan(&s.ID, &s.QuizTemplateID, &s.Mode, &s.Status,
-		&s.TotalTimeLimitSec, &s.QuestionTimeLimitSec, &s.ShuffleQuestions)
+		&s.TotalTimeLimitSec, &s.QuestionTimeLimitSec, &s.ShuffleQuestions,
+		&s.StartedAt, &s.FinishedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
