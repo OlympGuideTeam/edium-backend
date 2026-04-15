@@ -1,9 +1,14 @@
 package dto
 
+type AttachToModuleRequest struct {
+	ModuleID string `json:"module_id" binding:"required"`
+}
+
 type CreateQuizRequest struct {
-	Title           string               `json:"title"             binding:"required"`
-	Description     *string              `json:"description"`
-	DefaultSettings *QuizDefaultSettings `json:"default_settings"`
+	Title           string                 `json:"title"            binding:"required"`
+	Description     *string                `json:"description"`
+	DefaultSettings *QuizDefaultSettings   `json:"default_settings"`
+	AttachToModule  *AttachToModuleRequest `json:"attach_to_module"`
 }
 
 type UpdateQuizRequest struct {
@@ -31,4 +36,23 @@ type AddQuestionRequest struct {
 type AnswerOptionRequest struct {
 	Text      string `json:"text"       binding:"required"`
 	IsCorrect bool   `json:"is_correct"`
+}
+
+type CreateTestSessionRequest struct {
+	QuizTemplateID    string  `json:"quiz_template_id"      binding:"required"`
+	ModuleID          string  `json:"module_id"             binding:"required"`
+	TotalTimeLimitSec *int    `json:"total_time_limit_sec"`
+	ShuffleQuestions  *bool   `json:"shuffle_questions"`
+	StartedAt         *string `json:"started_at"`
+	FinishedAt        *string `json:"finished_at"`
+}
+
+type CreateLiveSessionRequest struct {
+	QuizTemplateID       string `json:"quiz_template_id"         binding:"required"`
+	ModuleID             string `json:"module_id"                binding:"required"`
+	QuestionTimeLimitSec *int   `json:"question_time_limit_sec"`
+}
+
+type CreateSessionResponse struct {
+	SessionID string `json:"session_id"`
 }

@@ -1,0 +1,30 @@
+meta {
+  name: Create Live Session
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/sessions/live
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "quiz_template_id": "{{quizId}}",
+    "module_id": "{{moduleId}}",
+    "question_time_limit_sec": 30
+  }
+}
+
+tests {
+  const body = res.getBody();
+  if (body.session_id) {
+    bru.setEnvVar("sessionId", body.session_id);
+  }
+}

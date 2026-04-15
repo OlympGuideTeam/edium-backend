@@ -94,10 +94,9 @@ func (h *Handler) GetCourse(c *gin.Context) {
 		items := make([]dto.CourseItemDTO, 0, len(m.Items))
 		for _, it := range m.Items {
 			item := dto.CourseItemDTO{
-				ID:         it.ID.String(),
-				RefID:      it.RefID.String(),
-				Type:       string(it.Type),
-				OrderIndex: it.OrderIndex,
+				ID:       it.ID.String(),
+				ObjectID: it.ObjectID.String(),
+				Type:     string(it.Type),
 			}
 			if it.AttemptID != nil {
 				s := it.AttemptID.String()

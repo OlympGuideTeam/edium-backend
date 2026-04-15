@@ -9,7 +9,7 @@ import (
 )
 
 type quizService interface {
-	CreateQuiz(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings) (uuid.UUID, error)
+	CreateQuiz(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings, attachToModule *uuid.UUID) (uuid.UUID, error)
 	AddQuestion(ctx context.Context, quizID, authorID uuid.UUID, params domain.AddQuestionParams) (uuid.UUID, int, error)
 	UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title, description *string) error
 	ReorderQuestions(ctx context.Context, quizID, authorID uuid.UUID, questionIDs []uuid.UUID) error
@@ -20,4 +20,6 @@ type quizService interface {
 	ListQuizzes(ctx context.Context, role domain.Role) ([]domain.QuizListItem, error)
 	ListMyQuizzes(ctx context.Context, authorID uuid.UUID) ([]domain.QuizListItem, error)
 	CopyQuiz(ctx context.Context, quizID, authorID uuid.UUID) (uuid.UUID, error)
+	CreateTestCourseSession(ctx context.Context, quizTemplateID, moduleID uuid.UUID, p domain.CreateTestCourseSessionParams) (uuid.UUID, error)
+	CreateLiveCourseSession(ctx context.Context, quizTemplateID, moduleID uuid.UUID, p domain.CreateLiveCourseSessionParams) (uuid.UUID, error)
 }

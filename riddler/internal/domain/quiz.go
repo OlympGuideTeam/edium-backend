@@ -31,17 +31,18 @@ type QuizDefaultSettings struct {
 }
 
 type QuizTemplate struct {
-	ID              uuid.UUID
-	AuthorID        uuid.UUID
-	Title           string
-	Description     *string
-	DefaultSettings QuizDefaultSettings
-	IsPublic        bool
-	IsDraft         bool
-	NeedEvaluation  bool
-	QuestionCount   int
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID               uuid.UUID
+	AuthorID         uuid.UUID
+	Title            string
+	Description      *string
+	DefaultSettings  QuizDefaultSettings
+	IsPublic         bool
+	IsDraft          bool
+	NeedEvaluation   bool
+	QuestionCount    int
+	LibrarySessionID *uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 type Question struct {
