@@ -18,7 +18,7 @@ type courseService interface {
 	CreateModule(ctx context.Context, courseID, userID uuid.UUID, title string) (uuid.UUID, error)
 	UpdateModule(ctx context.Context, moduleID, userID uuid.UUID, title string) error
 	DeleteModule(ctx context.Context, moduleID, userID uuid.UUID) error
+	ReorderModules(ctx context.Context, courseID, userID uuid.UUID, moduleIDs []uuid.UUID) error
 
-	CreateCourseItem(ctx context.Context, moduleID, userID, refID uuid.UUID, t domain.CourseItemType, orderIndex int) (uuid.UUID, error)
 	DeleteCourseItem(ctx context.Context, itemID, userID uuid.UUID) error
 }

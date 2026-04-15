@@ -50,13 +50,17 @@ func (s *Service) finishAttempt(ctx context.Context, attempt *domain.Attempt) er
 				continue
 			}
 			score := gradeAnswer(q, ans.AnswerData)
-			src := domain.FinalSourceAuto
-			if err := s.attempts.EvaluateSubmission(ctx, ans.ID, score, src, nil); err != nil {
+			if err := s.attempts.EvaluateSubmission(ctx, ans.ID, score, domain.FinalSourceAuto, nil); err != nil {
 				return fmt.Errorf("evaluate submission: %w", err)
 			}
 			totalScore += score
 		}
 
-		return s.attempts.Complete(ctx, attempt.ID, totalScore)
+		if err := s.attempts.Complete(ctx, attempt.ID, totalScore); err != nil {
+			return err
+		}
+
+		s.scheduleAttemptScored(ctx, attempt, totalScore)
+		return nil
 	})
 }

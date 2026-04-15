@@ -25,3 +25,7 @@ type sessionReader interface {
 type quizReader interface {
 	GetQuestionsWithOptions(ctx context.Context, quizID uuid.UUID) ([]domain.QuestionWithOptions, error)
 }
+
+type taskScheduler interface {
+	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
+}

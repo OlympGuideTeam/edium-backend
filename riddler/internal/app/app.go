@@ -23,12 +23,18 @@ import (
 	attemptsvc "riddler/internal/service/attempt"
 	quizsvc "riddler/internal/service/quiz"
 	sessionsvc "riddler/internal/service/session"
+	"riddler/internal/worker"
 )
 
 type App struct {
 	quizHandler    *quizhandler.Handler
 	attemptHandler *attempthandler.Handler
 	attemptService *attemptsvc.Service
+
+	quizTemplateAttachedPublisher *worker.QuizTemplateAttachedPublisher
+	courseSessionCreatedPublisher *worker.CourseSessionCreatedPublisher
+	attemptCreatedPublisher       *worker.AttemptCreatedPublisher
+	attemptScoredPublisher        *worker.AttemptScoredPublisher
 
 	jwksClient  *jwks.Client
 	httpAddr    string
@@ -41,7 +47,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	_, err = natsinf.New(cfg.NATS)
+	natsConn, err := natsinf.New(cfg.NATS)
 	if err != nil {
 		return nil, err
 	}
@@ -57,22 +63,40 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	quizRepo := repository.NewPgQuizRepository(pgdb)
 	sessionRepo := repository.NewPgSessionRepository(pgdb)
 	attemptRepo := repository.NewPgAttemptRepository(pgdb)
+	taskRepo := repository.NewPgTaskRepository(pgdb)
 
 	sessionService := sessionsvc.NewService(sessionRepo)
-	quizService := quizsvc.NewService(quizRepo, sessionService, txManager)
-	attemptService := attemptsvc.NewService(attemptRepo, sessionService, quizRepo, txManager)
+	quizService := quizsvc.NewService(quizRepo, sessionService, txManager, taskRepo)
+	attemptService := attemptsvc.NewService(attemptRepo, sessionService, quizRepo, txManager, taskRepo)
 
 	quizHandler := quizhandler.NewHandler(quizService)
 	attemptHandler := attempthandler.NewHandler(attemptService)
+
+	natsPublisher := natsinf.NewPublisher(natsConn)
 
 	return &App{
 		quizHandler:    quizHandler,
 		attemptHandler: attemptHandler,
 		attemptService: attemptService,
-		jwksClient:     jwksClient,
-		httpAddr:       fmt.Sprintf(":%d", cfg.App.Port),
-		serviceName:    cfg.OTel.ServiceName,
+
+		quizTemplateAttachedPublisher: worker.NewQuizTemplateAttachedPublisher(taskRepo, natsPublisher),
+		courseSessionCreatedPublisher: worker.NewCourseSessionCreatedPublisher(taskRepo, natsPublisher),
+		attemptCreatedPublisher:       worker.NewAttemptCreatedPublisher(taskRepo, natsPublisher),
+		attemptScoredPublisher:        worker.NewAttemptScoredPublisher(taskRepo, natsPublisher),
+
+		jwksClient:  jwksClient,
+		httpAddr:    fmt.Sprintf(":%d", cfg.App.Port),
+		serviceName: cfg.OTel.ServiceName,
 	}, nil
+}
+
+func (a *App) workers() map[string]func(context.Context) error {
+	return map[string]func(context.Context) error{
+		"quiz-template-attached-publisher": a.quizTemplateAttachedPublisher.Run,
+		"course-session-created-publisher": a.courseSessionCreatedPublisher.Run,
+		"attempt-created-publisher":        a.attemptCreatedPublisher.Run,
+		"attempt-scored-publisher":         a.attemptScoredPublisher.Run,
+	}
 }
 
 func (a *App) Router() *gin.Engine {
@@ -102,6 +126,8 @@ func (a *App) Router() *gin.Engine {
 
 	sessions := api.Group("/sessions")
 	{
+		sessions.POST("/test", a.quizHandler.CreateTestCourseSession)
+		sessions.POST("/live", a.quizHandler.CreateLiveCourseSession)
 		sessions.POST("/:session_id/attempts", a.attemptHandler.CreateAttempt)
 	}
 
@@ -116,6 +142,14 @@ func (a *App) Router() *gin.Engine {
 }
 
 func (a *App) Run(ctx context.Context) error {
+	for name, run := range a.workers() {
+		go func() {
+			if err := run(ctx); err != nil {
+				slog.Error("воркер завершился с ошибкой", "worker", name, "err", err)
+			}
+		}()
+	}
+
 	go a.attemptService.RunExpiryWorker(ctx)
 
 	srv := &http.Server{Addr: a.httpAddr, Handler: a.Router()}
