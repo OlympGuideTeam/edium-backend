@@ -107,7 +107,7 @@ func (s *Service) buildTestCourseSessionParams(quizTemplateID uuid.UUID, quiz *d
 		Mode:              domain.SessionModeTest,
 		TotalTimeLimitSec: totalLimit,
 		ShuffleQuestions:  shuffle,
-		Status:            domain.SessionStatusDraft,
+		Status:            domain.SessionStatusActive,
 		StartedAt:         p.StartedAt,
 		FinishedAt:        p.FinishedAt,
 	}
@@ -127,7 +127,7 @@ func (s *Service) buildLiveCourseSessionParams(quizTemplateID uuid.UUID, quiz *d
 		QuizTemplateID:       quizTemplateID,
 		Mode:                 domain.SessionModeLive,
 		QuestionTimeLimitSec: questionLimit,
-		Status:               domain.SessionStatusDraft,
+		Status:               domain.SessionStatusNotStarted,
 	}
 }
 
