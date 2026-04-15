@@ -40,8 +40,8 @@ func (s *Service) Create(ctx context.Context, sessionID, userID uuid.UUID) (*dom
 	if session == nil {
 		return nil, nil, apperr.ErrSessionNotFound
 	}
-	if session.Status != domain.SessionStatusActive {
-		return nil, nil, apperr.ErrSessionNotActive
+	if err := validateSessionForAttempt(session); err != nil {
+		return nil, nil, err
 	}
 
 	questions, err := s.quizzes.GetQuestionsWithOptions(ctx, session.QuizTemplateID)
@@ -161,6 +161,23 @@ func (s *Service) GetResult(ctx context.Context, attemptID, userID uuid.UUID) (*
 	}
 
 	return &domain.AttemptResult{Attempt: *attempt, Answers: answers}, nil
+}
+
+func validateSessionForAttempt(session *domain.QuizSession) error {
+	switch session.Mode {
+	case domain.SessionModeTest:
+		switch session.ComputedStatus() {
+		case domain.SessionStatusNotStarted:
+			return apperr.ErrSessionNotStarted
+		case domain.SessionStatusFinished:
+			return apperr.ErrSessionDeadlinePassed
+		}
+	case domain.SessionModeLive:
+		if session.Status != domain.SessionStatusWaiting {
+			return apperr.ErrSessionNotActive
+		}
+	}
+	return nil
 }
 
 func (s *Service) scheduleAttemptScored(ctx context.Context, attempt *domain.Attempt, totalScore float64) {
