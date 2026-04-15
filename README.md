@@ -9,16 +9,16 @@ flowchart TD
     Client(["Клиент\n(iOS / Android)"])
 
     subgraph ingress ["Ingress"]
-        Caddy["Caddy\nTLS · роутинг"]
+        Caddy["Caddy"]
     end
 
     subgraph services ["Go-сервисы"]
-        Doorman["Doorman\nOTP · JWT · Auth"]
-        Caesar["Caesar\nКурсы · Классы · Пользователи"]
-        Riddler["Riddler\nКвизы · Сессии · Попытки"]
-        Herald["Herald\nУведомления"]
-        Charon["Charon\nLLM Proxy"]
-        Sphinx["Sphinx\nГенерация квизов (Python)"]
+        Doorman["Doorman"]
+        Caesar["Caesar"]
+        Riddler["Riddler"]
+        Herald["Herald"]
+        Charon["Charon"]
+        Sphinx["Sphinx"]
     end
 
     subgraph infra ["Инфраструктура"]
@@ -27,30 +27,20 @@ flowchart TD
         Redis[("Redis")]
     end
 
-    subgraph external ["Внешние"]
-        TG["Telegram Bot API"]
-        VK["VK Bot API"]
-        DS["DeepSeek API"]
-    end
+    TG["Telegram Bot API"]
+    DS["DeepSeek API"]
 
     Client --> Caddy
-    Caddy -->|"/doorman/v1"| Doorman
-    Caddy -->|"/caesar/v1"| Caesar
-    Caddy -->|"/riddler/v1"| Riddler
+    Caddy --> Doorman & Caesar & Riddler
 
-    Caesar & Riddler -.->|"JWKS (HTTP)"| Doorman
+    Caesar & Riddler -.-> Doorman
 
     Doorman & Caesar & Riddler & Herald & Charon --> PG
     Doorman & Charon --> Redis
 
-    Doorman <-.->|"otp · user"| NATS
-    Herald  <-.->|"otp"| NATS
-    Caesar  <-.->|"user · quiz progress"| NATS
-    Riddler <-.->|"sessions · attempts · grading"| NATS
-    Charon  <-.->|"grading"| NATS
-    Sphinx  <-.->|"generation"| NATS
+    Doorman & Herald & Caesar & Riddler & Charon & Sphinx <-.-> NATS
 
-    Herald --> TG & VK
+    Herald --> TG
     Charon --> DS
 ```
 
