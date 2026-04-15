@@ -1,6 +1,6 @@
 # edium-backend
 
-Серверная часть образовательной платформы Edium — Go-микросервисы + Python ML-пайплайн.
+Серверная часть Edium - Go-микросервисы + Python ML-пайплайн.
 
 ## Архитектура
 
@@ -8,12 +8,11 @@
 flowchart TD
     Client(["Клиент\n(iOS / Android)"])
     NATS(["NATS JetStream"])
-    TG["Telegram Bot API"]
+    TG["Telegram API"]
     DS["DeepSeek API"]
+    Firebase["Firebase API"]
 
-    subgraph ingress ["Ingress"]
-        Caddy["Caddy"]
-    end
+    Caddy["Caddy"]
 
     subgraph services ["Go-сервисы"]
         Doorman["Doorman\nPG · Redis"]
@@ -21,7 +20,7 @@ flowchart TD
         Riddler["Riddler\nPG · Redis"]
         Herald["Herald\nPG"]
         Charon["Charon\nPG · Redis"]
-        Sphinx["Sphinx"]
+        Sphinx["Sphinx\nPG"]
     end
 
     Client --> Caddy
@@ -33,9 +32,10 @@ flowchart TD
 
     Herald --> TG
     Charon --> DS
+    Charon --> Firebase
 ```
 
-> Пунктир — асинхронные события через NATS. Детали топиков — в `<service>/SCHEMA.md`.
+> Пунктир — асинхронные события через NATS
 
 ## Сервисы
 
