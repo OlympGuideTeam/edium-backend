@@ -56,10 +56,31 @@ func (h *Handler) AcceptInvitation(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.AcceptInvitation(c.Request.Context(), invitationID, userID); err != nil {
+	classID, err := h.service.AcceptInvitation(c.Request.Context(), invitationID, userID)
+	if err != nil {
 		httpx.WriteError(c, err)
 		return
 	}
 
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, dto.AcceptInvitationResponse{ClassID: classID.String()})
+}
+
+func (h *Handler) GetInvitation(c *gin.Context) {
+	invitationID, err := uuid.Parse(c.Param("invitationId"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	detail, err := h.service.GetInvitationDetail(c.Request.Context(), invitationID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.InvitationDetailResponse{
+		ClassTitle:        detail.ClassTitle,
+		ClassStudentCount: detail.ClassStudentCount,
+		Role:              string(detail.Role),
+	})
 }

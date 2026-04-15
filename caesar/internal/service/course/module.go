@@ -57,6 +57,20 @@ func (s *Service) UpdateModule(ctx context.Context, moduleID, userID uuid.UUID, 
 	return nil
 }
 
+func (s *Service) ReorderModules(ctx context.Context, courseID, userID uuid.UUID, moduleIDs []uuid.UUID) error {
+	c, err := s.getCourse(ctx, courseID)
+	if err != nil {
+		return err
+	}
+	if err := s.requireCanModify(ctx, c, userID); err != nil {
+		return err
+	}
+	if err := s.courses.ReorderModules(ctx, courseID, moduleIDs); err != nil {
+		return fmt.Errorf("reorderModules: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) DeleteModule(ctx context.Context, moduleID, userID uuid.UUID) error {
 	m, err := s.courses.GetModuleByID(ctx, moduleID)
 	if err != nil {

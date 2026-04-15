@@ -1,0 +1,33 @@
+meta {
+  name: Create Test Session
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/sessions/test
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "quiz_template_id": "{{quizId}}",
+    "module_id": "{{moduleId}}",
+    "total_time_limit_sec": 600,
+    "shuffle_questions": true,
+    "started_at": null,
+    "finished_at": null
+  }
+}
+
+tests {
+  const body = res.getBody();
+  if (body.session_id) {
+    bru.setEnvVar("sessionId", body.session_id);
+  }
+}

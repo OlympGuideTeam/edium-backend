@@ -26,7 +26,6 @@ type QuizSession struct {
 	ID                   uuid.UUID
 	QuizTemplateID       uuid.UUID
 	Mode                 SessionMode
-	CourseItemID         *uuid.UUID
 	TotalTimeLimitSec    *int
 	QuestionTimeLimitSec *int
 	ShuffleQuestions     *bool
@@ -41,11 +40,22 @@ type QuizSession struct {
 type CreateSessionParams struct {
 	QuizTemplateID       uuid.UUID
 	Mode                 SessionMode
-	CourseItemID         *uuid.UUID
 	TotalTimeLimitSec    *int
 	QuestionTimeLimitSec *int
 	ShuffleQuestions     *bool
 	Status               SessionStatus
 	Settings             map[string]any
+	StartedAt            *time.Time
 	FinishedAt           *time.Time
+}
+
+type CreateTestCourseSessionParams struct {
+	TotalTimeLimitSec *int
+	ShuffleQuestions  *bool
+	StartedAt         *time.Time
+	FinishedAt        *time.Time
+}
+
+type CreateLiveCourseSessionParams struct {
+	QuestionTimeLimitSec *int
 }
