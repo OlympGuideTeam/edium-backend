@@ -8,7 +8,10 @@ import (
 
 type CourseItemType string
 
-const CourseItemTypeQuiz CourseItemType = "quiz"
+const (
+	CourseItemTypeQuiz         CourseItemType = "quiz"
+	CourseItemTypeQuizTemplate CourseItemType = "quiz_template"
+)
 
 type Course struct {
 	ID           uuid.UUID
@@ -39,27 +42,26 @@ type CourseModule struct {
 	CourseID     uuid.UUID
 	Title        string
 	ElementCount int
+	OrderIndex   int
 	Items        []CourseModuleItem
 }
 
 type CourseItem struct {
-	ID         uuid.UUID
-	ModuleID   uuid.UUID
-	RefID      uuid.UUID
-	Type       CourseItemType
-	OrderIndex int
-	Settings   json.RawMessage
+	ID       uuid.UUID
+	ModuleID uuid.UUID
+	ObjectID uuid.UUID
+	Type     CourseItemType
+	Settings json.RawMessage
 }
 
 // CourseModuleItem — элемент модуля с прогрессом текущего пользователя.
 type CourseModuleItem struct {
-	ID         uuid.UUID
-	ModuleID   uuid.UUID
-	RefID      uuid.UUID
-	Type       CourseItemType
-	OrderIndex int
-	AttemptID  *uuid.UUID
-	Score      *float64
+	ID        uuid.UUID
+	ModuleID  uuid.UUID
+	ObjectID  uuid.UUID
+	Type      CourseItemType
+	AttemptID *uuid.UUID
+	Score     *float64
 }
 
 type CourseUserItemProgress struct {

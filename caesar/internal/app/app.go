@@ -36,6 +36,15 @@ type App struct {
 	UserCreatedProcessor *worker.UserCreatedProcessor
 	UserDeletedPublisher *worker.UserDeletedPublisher
 
+	QuizTemplateAttachedConsumer  *worker.QuizTemplateAttachedConsumer
+	QuizTemplateAttachedProcessor *worker.QuizTemplateAttachedProcessor
+	CourseSessionCreatedConsumer  *worker.CourseSessionCreatedConsumer
+	CourseSessionCreatedProcessor *worker.CourseSessionCreatedProcessor
+	AttemptCreatedConsumer        *worker.AttemptCreatedConsumer
+	AttemptCreatedProcessor       *worker.AttemptCreatedProcessor
+	AttemptScoredConsumer         *worker.AttemptScoredConsumer
+	AttemptScoredProcessor        *worker.AttemptScoredProcessor
+
 	jwksClient  *jwks.Client
 	httpAddr    string
 	serviceName string
@@ -84,17 +93,35 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		UserCreatedConsumer:  worker.NewUserCreatedConsumer(natsSubscriber, taskRepo),
 		UserCreatedProcessor: worker.NewUserCreatedProcessor(taskRepo, userStore),
 		UserDeletedPublisher: worker.NewUserDeletedPublisher(taskRepo, publisher),
-		jwksClient:           jwksClient,
-		httpAddr:             fmt.Sprintf(":%d", cfg.App.Port),
-		serviceName:          cfg.OTel.ServiceName,
+
+		QuizTemplateAttachedConsumer:  worker.NewQuizTemplateAttachedConsumer(natsSubscriber, taskRepo),
+		QuizTemplateAttachedProcessor: worker.NewQuizTemplateAttachedProcessor(taskRepo, courseStore),
+		CourseSessionCreatedConsumer:  worker.NewCourseSessionCreatedConsumer(natsSubscriber, taskRepo),
+		CourseSessionCreatedProcessor: worker.NewCourseSessionCreatedProcessor(taskRepo, courseStore),
+		AttemptCreatedConsumer:        worker.NewAttemptCreatedConsumer(natsSubscriber, taskRepo),
+		AttemptCreatedProcessor:       worker.NewAttemptCreatedProcessor(taskRepo, courseStore),
+		AttemptScoredConsumer:         worker.NewAttemptScoredConsumer(natsSubscriber, taskRepo),
+		AttemptScoredProcessor:        worker.NewAttemptScoredProcessor(taskRepo, courseStore),
+
+		jwksClient:  jwksClient,
+		httpAddr:    fmt.Sprintf(":%d", cfg.App.Port),
+		serviceName: cfg.OTel.ServiceName,
 	}, nil
 }
 
 func (a *App) Workers() map[string]func(context.Context) error {
 	return map[string]func(context.Context) error{
-		"UserCreatedConsumer":  a.UserCreatedConsumer.Run,
-		"UserCreatedProcessor": a.UserCreatedProcessor.Run,
-		"UserDeletedPublisher": a.UserDeletedPublisher.Run,
+		"UserCreatedConsumer":           a.UserCreatedConsumer.Run,
+		"UserCreatedProcessor":          a.UserCreatedProcessor.Run,
+		"UserDeletedPublisher":          a.UserDeletedPublisher.Run,
+		"QuizTemplateAttachedConsumer":  a.QuizTemplateAttachedConsumer.Run,
+		"QuizTemplateAttachedProcessor": a.QuizTemplateAttachedProcessor.Run,
+		"CourseSessionCreatedConsumer":  a.CourseSessionCreatedConsumer.Run,
+		"CourseSessionCreatedProcessor": a.CourseSessionCreatedProcessor.Run,
+		"AttemptCreatedConsumer":        a.AttemptCreatedConsumer.Run,
+		"AttemptCreatedProcessor":       a.AttemptCreatedProcessor.Run,
+		"AttemptScoredConsumer":         a.AttemptScoredConsumer.Run,
+		"AttemptScoredProcessor":        a.AttemptScoredProcessor.Run,
 	}
 }
 
@@ -128,10 +155,10 @@ func (a *App) Router() *gin.Engine {
 	api.DELETE("/courses/:courseId", a.CourseHandler.DeleteCourse)
 	api.GET("/classes/:classId/courses", a.CourseHandler.GetClassCourses)
 	api.POST("/courses/:courseId/modules", a.CourseHandler.CreateModule)
+	api.PATCH("/courses/:courseId/modules/order", a.CourseHandler.ReorderModules)
 	api.PATCH("/modules/:moduleId", a.CourseHandler.UpdateModule)
 	api.DELETE("/modules/:moduleId", a.CourseHandler.DeleteModule)
 
-	api.POST("/modules/:moduleId/items", a.CourseHandler.CreateCourseItem)
 	api.DELETE("/items/:itemId", a.CourseHandler.DeleteCourseItem)
 
 	return r
