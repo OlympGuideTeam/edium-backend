@@ -16,5 +16,6 @@ type classService interface {
 	DeleteClass(ctx context.Context, classID, userID uuid.UUID) error
 	RemoveMember(ctx context.Context, classID, userID, targetUserID uuid.UUID) error
 	GetInviteLink(ctx context.Context, classID, userID uuid.UUID, role domain.ClassMemberRole) (uuid.UUID, error)
-	AcceptInvitation(ctx context.Context, invitationID, userID uuid.UUID) error
+	AcceptInvitation(ctx context.Context, invitationID, userID uuid.UUID) (uuid.UUID, error)
+	GetInvitationDetail(ctx context.Context, invitationID uuid.UUID) (*domain.InvitationDetail, error)
 }

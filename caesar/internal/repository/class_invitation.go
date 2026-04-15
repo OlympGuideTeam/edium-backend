@@ -34,3 +34,17 @@ func (s *PgClassStore) GetInvitation(ctx context.Context, invitationID uuid.UUID
 	}
 	return &inv, err
 }
+
+func (s *PgClassStore) GetInvitationWithClass(ctx context.Context, invitationID uuid.UUID) (*domain.InvitationDetail, error) {
+	var detail domain.InvitationDetail
+	err := s.db.QueryRowContext(ctx, `
+		SELECT c.title, c.student_count, ci.role
+		FROM class_invitation ci
+		JOIN class c ON c.id = ci.class_id
+		WHERE ci.id = $1
+	`, invitationID).Scan(&detail.ClassTitle, &detail.ClassStudentCount, &detail.Role)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return &detail, err
+}
