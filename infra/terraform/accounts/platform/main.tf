@@ -99,8 +99,6 @@ module "postgres" {
     "charon_prod"  = { owner = "charon_prod" }
     "caesar_test"  = { owner = "caesar_test" }
     "caesar_prod"  = { owner = "caesar_prod" }
-    "riddler_test" = { owner = "riddler_test" }
-    "riddler_prod" = { owner = "riddler_prod" }
     "sphinx"       = { owner = "sphinx" }
   }
 
@@ -113,8 +111,6 @@ module "postgres" {
     "charon_prod"  = { password = var.charon_pg_password_prod }
     "caesar_test"  = { password = var.caesar_pg_password_test }
     "caesar_prod"  = { password = var.caesar_pg_password_prod }
-    "riddler_test" = { password = var.riddler_pg_password_test }
-    "riddler_prod" = { password = var.riddler_pg_password_prod }
     "sphinx"       = { password = var.sphinx_pg_password }
   }
 }
