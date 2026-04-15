@@ -1,6 +1,6 @@
 # edium-backend
 
-Серверная часть Edium - Go-микросервисы + Python ML-пайплайн.
+Серверная часть Edium - Микросервисы + ML-пайплайн.
 
 ## Архитектура
 
@@ -14,14 +14,19 @@ flowchart TD
 
     Caddy["Caddy"]
 
-    subgraph services ["Go-сервисы"]
-        Doorman["Doorman\nPG · Redis"]
+    subgraph services ["Microservices"]
         Caesar["Caesar\nPG"]
         Riddler["Riddler\nPG · Redis"]
+        Doorman["Doorman\nPG · Redis"]
         Herald["Herald\nPG"]
-        Charon["Charon\nPG · Redis"]
-        Sphinx["Sphinx\nPG"]
     end
+
+    subgraph ml ["ML"]
+        Sphinx["Sphinx\nPG"]
+        Charon["Charon\nPG · Redis"]
+    end
+
+    
 
     Client --> Caddy
     Caddy --> Doorman & Caesar & Riddler
@@ -32,7 +37,7 @@ flowchart TD
 
     Herald --> TG
     Charon --> DS
-    Charon --> Firebase
+    Herald --> Firebase
 ```
 
 > Пунктир — асинхронные события через NATS
