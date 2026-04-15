@@ -53,3 +53,13 @@ type ClassDetailResponse struct {
 type InviteResponse struct {
 	InvitationID string `json:"invitation_id"`
 }
+
+type AcceptInvitationResponse struct {
+	ClassID string `json:"class_id"`
+}
+
+type InvitationDetailResponse struct {
+	ClassTitle        string `json:"class_title"`
+	ClassStudentCount int    `json:"class_student_count"`
+	Role              string `json:"role"`
+}
