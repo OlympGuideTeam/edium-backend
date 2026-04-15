@@ -1,0 +1,23 @@
+meta {
+  name: Reorder Modules
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{caesarUrl}}/caesar/v1/courses/{{courseId}}/modules/order
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "module_ids": [
+      "{{moduleId}}"
+    ]
+  }
+}

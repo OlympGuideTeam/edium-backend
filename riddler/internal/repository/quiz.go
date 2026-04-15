@@ -48,11 +48,11 @@ func (r *PgQuizRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Q
 	var q domain.QuizTemplate
 	var settingsJSON []byte
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, author_id, title, description, default_settings, is_public, is_draft, need_evaluation, question_count, created_at, updated_at
+		`SELECT id, author_id, title, description, default_settings, is_public, is_draft, need_evaluation, question_count, library_session_id, created_at, updated_at
 		 FROM quiz_template WHERE id = $1`,
 		id,
 	).Scan(&q.ID, &q.AuthorID, &q.Title, &q.Description, &settingsJSON,
-		&q.IsPublic, &q.IsDraft, &q.NeedEvaluation, &q.QuestionCount, &q.CreatedAt, &q.UpdatedAt)
+		&q.IsPublic, &q.IsDraft, &q.NeedEvaluation, &q.QuestionCount, &q.LibrarySessionID, &q.CreatedAt, &q.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -63,6 +63,18 @@ func (r *PgQuizRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Q
 		return nil, fmt.Errorf("unmarshal settings: %w", err)
 	}
 	return &q, nil
+}
+
+func (r *PgQuizRepository) SetLibrarySession(ctx context.Context, quizID, sessionID uuid.UUID) error {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	_, err := exec.ExecContext(ctx,
+		`UPDATE quiz_template SET library_session_id = $1 WHERE id = $2`,
+		sessionID, quizID,
+	)
+	if err != nil {
+		return fmt.Errorf("set library_session_id: %w", err)
+	}
+	return nil
 }
 
 func (r *PgQuizRepository) Update(ctx context.Context, id uuid.UUID, title, description *string) error {

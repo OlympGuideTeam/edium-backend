@@ -2,6 +2,7 @@ package course
 
 import (
 	"context"
+	"encoding/json"
 
 	"caesar/internal/domain"
 
@@ -21,14 +22,18 @@ type courseStore interface {
 	ListModules(ctx context.Context, courseID uuid.UUID) ([]domain.CourseModule, error)
 	UpdateModule(ctx context.Context, id uuid.UUID, title string) error
 	DeleteModule(ctx context.Context, id uuid.UUID) error
+	ReorderModules(ctx context.Context, courseID uuid.UUID, moduleIDs []uuid.UUID) error
 
-	CreateItem(ctx context.Context, moduleID, refID uuid.UUID, t domain.CourseItemType, orderIndex int) (uuid.UUID, error)
+	CreateItem(ctx context.Context, moduleID, objectID uuid.UUID, t domain.CourseItemType) (uuid.UUID, error)
 	GetItemByID(ctx context.Context, id uuid.UUID) (*domain.CourseItem, error)
+	FindItemByObjectID(ctx context.Context, objectID uuid.UUID) (*domain.CourseItem, error)
 	DeleteItem(ctx context.Context, id uuid.UUID) error
 	ListItemsByModuleIDs(ctx context.Context, moduleIDs []uuid.UUID, userID uuid.UUID) ([]domain.CourseModuleItem, error)
+	UpsertProgress(ctx context.Context, courseItemID, userID, attemptID uuid.UUID) error
+	UpdateProgressScore(ctx context.Context, courseItemID, userID uuid.UUID, score float64) error
+	UpdateItemSettings(ctx context.Context, id uuid.UUID, settings json.RawMessage) error
 }
 
-// classAccessor — минимальный доступ к классам для проверки прав.
 type classAccessor interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.ClassListItem, error)
 	GetMemberRole(ctx context.Context, classID, userID uuid.UUID) (domain.ClassMemberRole, bool, error)

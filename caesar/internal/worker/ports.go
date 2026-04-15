@@ -17,3 +17,10 @@ type taskRepository interface {
 	MarkDone(ctx context.Context, id uuid.UUID) error
 	MarkFailed(ctx context.Context, id uuid.UUID, reason string, retryAfter time.Duration) error
 }
+
+type courseItemStore interface {
+	CreateItem(ctx context.Context, moduleID, objectID uuid.UUID, t domain.CourseItemType) (uuid.UUID, error)
+	FindItemByObjectID(ctx context.Context, objectID uuid.UUID) (*domain.CourseItem, error)
+	UpsertProgress(ctx context.Context, courseItemID, userID, attemptID uuid.UUID) error
+	UpdateProgressScore(ctx context.Context, courseItemID, userID uuid.UUID, score float64) error
+}

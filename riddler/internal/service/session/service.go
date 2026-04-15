@@ -32,11 +32,3 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizSessio
 	}
 	return session, nil
 }
-
-func (s *Service) GetActiveTestSession(ctx context.Context, quizTemplateID uuid.UUID) (*domain.QuizSession, error) {
-	session, err := s.sessions.GetActiveTestSession(ctx, quizTemplateID)
-	if err != nil {
-		return nil, fmt.Errorf("get active test session: %w", err)
-	}
-	return session, nil
-}

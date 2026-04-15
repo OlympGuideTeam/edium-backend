@@ -20,6 +20,11 @@ type TaskType string
 var (
 	UserCreated TaskType = "user_created"
 	UserDeleted TaskType = "user_deleted"
+
+	QuizTemplateAttached TaskType = "quiz_template_attached"
+	CourseSessionCreated TaskType = "course_session_created"
+	AttemptCreated       TaskType = "attempt_created"
+	AttemptScored        TaskType = "attempt_scored"
 )
 
 type Task struct {
