@@ -47,3 +47,9 @@ type ClassInvitation struct {
 	ClassID uuid.UUID
 	Role    ClassMemberRole
 }
+
+type InvitationDetail struct {
+	ClassTitle        string
+	ClassStudentCount int
+	Role              ClassMemberRole
+}

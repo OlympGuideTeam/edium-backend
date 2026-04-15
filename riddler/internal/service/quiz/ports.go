@@ -16,6 +16,7 @@ type quizRepository interface {
 	ReorderQuestions(ctx context.Context, quizID uuid.UUID, questionIDs []uuid.UUID) error
 	DeleteQuestion(ctx context.Context, quizID, questionID uuid.UUID) error
 	Publish(ctx context.Context, id uuid.UUID, isPublic bool) error
+	SetLibrarySession(ctx context.Context, quizID, sessionID uuid.UUID) error
 	GetQuestionsWithOptions(ctx context.Context, quizID uuid.UUID) ([]domain.QuestionWithOptions, error)
 	SetNeedEvaluation(ctx context.Context, quizID uuid.UUID, value bool) error
 	HasFreeAnswerQuestions(ctx context.Context, quizID uuid.UUID) (bool, error)
@@ -26,5 +27,8 @@ type quizRepository interface {
 
 type sessionService interface {
 	Create(ctx context.Context, p domain.CreateSessionParams) (uuid.UUID, error)
-	GetActiveTestSession(ctx context.Context, quizTemplateID uuid.UUID) (*domain.QuizSession, error)
+}
+
+type taskScheduler interface {
+	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
 }

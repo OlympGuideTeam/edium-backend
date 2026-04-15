@@ -17,6 +17,13 @@ var (
 
 type TaskType string
 
+const (
+	TaskTypeQuizTemplateAttachedPublisher TaskType = "quiz_template_attached_publisher"
+	TaskTypeCourseSessionCreatedPublisher TaskType = "course_session_created_publisher"
+	TaskTypeAttemptCreatedPublisher       TaskType = "attempt_created_publisher"
+	TaskTypeAttemptScoredPublisher        TaskType = "attempt_scored_publisher"
+)
+
 type Task struct {
 	ID       uuid.UUID
 	Type     TaskType

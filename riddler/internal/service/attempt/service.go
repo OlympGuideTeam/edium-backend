@@ -2,7 +2,9 @@ package attempt
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math/rand/v2"
 
 	"github.com/google/uuid"
@@ -12,15 +14,22 @@ import (
 	"riddler/internal/pkg/apperr"
 )
 
+type attemptCreatedPayload struct {
+	AttemptID uuid.UUID `json:"attempt_id"`
+	SessionID uuid.UUID `json:"session_id"`
+	UserID    uuid.UUID `json:"user_id"`
+}
+
 type Service struct {
 	attempts  attemptRepository
 	sessions  sessionReader
 	quizzes   quizReader
+	tasks     taskScheduler
 	txManager *db.TxManager
 }
 
-func NewService(attempts attemptRepository, sessions sessionReader, quizzes quizReader, txManager *db.TxManager) *Service {
-	return &Service{attempts: attempts, sessions: sessions, quizzes: quizzes, txManager: txManager}
+func NewService(attempts attemptRepository, sessions sessionReader, quizzes quizReader, txManager *db.TxManager, tasks taskScheduler) *Service {
+	return &Service{attempts: attempts, sessions: sessions, quizzes: quizzes, tasks: tasks, txManager: txManager}
 }
 
 func (s *Service) Create(ctx context.Context, sessionID, userID uuid.UUID) (*domain.Attempt, []domain.QuestionForStudent, error) {
@@ -48,9 +57,21 @@ func (s *Service) Create(ctx context.Context, sessionID, userID uuid.UUID) (*dom
 		rand.Shuffle(len(order), func(i, j int) { order[i], order[j] = order[j], order[i] })
 	}
 
-	attemptID, err := s.attempts.Create(ctx, sessionID, userID, order)
+	var attemptID uuid.UUID
+	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
+		var innerErr error
+		attemptID, innerErr = s.attempts.Create(ctx, sessionID, userID, order)
+		if innerErr != nil {
+			return fmt.Errorf("create attempt: %w", innerErr)
+		}
+		payload, _ := json.Marshal(attemptCreatedPayload{AttemptID: attemptID, SessionID: sessionID, UserID: userID})
+		if err := s.tasks.Schedule(ctx, domain.TaskTypeAttemptCreatedPublisher, payload); err != nil {
+			return fmt.Errorf("schedule attempt.created: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("create attempt: %w", err)
+		return nil, nil, err
 	}
 
 	indexByID := make(map[uuid.UUID]domain.QuestionWithOptions, len(questions))
@@ -140,4 +161,22 @@ func (s *Service) GetResult(ctx context.Context, attemptID, userID uuid.UUID) (*
 	}
 
 	return &domain.AttemptResult{Attempt: *attempt, Answers: answers}, nil
+}
+
+func (s *Service) scheduleAttemptScored(ctx context.Context, attempt *domain.Attempt, totalScore float64) {
+	type payload struct {
+		AttemptID  uuid.UUID `json:"attempt_id"`
+		SessionID  uuid.UUID `json:"session_id"`
+		UserID     uuid.UUID `json:"user_id"`
+		TotalScore float64   `json:"total_score"`
+	}
+	data, _ := json.Marshal(payload{
+		AttemptID:  attempt.ID,
+		SessionID:  attempt.SessionID,
+		UserID:     attempt.UserID,
+		TotalScore: totalScore,
+	})
+	if err := s.tasks.Schedule(ctx, domain.TaskTypeAttemptScoredPublisher, data); err != nil {
+		slog.ErrorContext(ctx, "schedule attempt.scored", "attempt_id", attempt.ID, "err", err)
+	}
 }

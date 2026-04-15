@@ -35,12 +35,11 @@ type UpdateCourseRequest struct {
 // ─── Detail ───────────────────────────────────────────────────────────────────
 
 type CourseItemDTO struct {
-	ID         string   `json:"id"`
-	RefID      string   `json:"ref_id"`
-	Type       string   `json:"type"`
-	OrderIndex int      `json:"order_index"`
-	AttemptID  *string  `json:"attempt_id,omitempty"`
-	Score      *float64 `json:"score,omitempty"`
+	ID        string   `json:"id"`
+	ObjectID  string   `json:"object_id"`
+	Type      string   `json:"type"`
+	AttemptID *string  `json:"attempt_id,omitempty"`
+	Score     *float64 `json:"score,omitempty"`
 }
 
 type ModuleItem struct {
@@ -74,12 +73,15 @@ type UpdateModuleRequest struct {
 	Title string `json:"title"`
 }
 
+type ReorderModulesRequest struct {
+	ModuleIDs []string `json:"module_ids" binding:"required,min=1"`
+}
+
 // ─── Course item ──────────────────────────────────────────────────────────────
 
 type CreateCourseItemRequest struct {
-	RefID      string `json:"ref_id"`
-	Type       string `json:"type"`
-	OrderIndex int    `json:"order_index"`
+	ObjectID string `json:"object_id"`
+	Type     string `json:"type"`
 }
 
 type CreateCourseItemResponse struct {

@@ -13,6 +13,8 @@ tags:
     description: Управление квизами
   - name: Questions
     description: Управление вопросами квиза
+  - name: Sessions
+    description: Создание сессий прохождения (тест/лайв)
   - name: Attempts
     description: Прохождение квиза студентом
 
@@ -281,6 +283,18 @@ paths:
                   nullable: true
                 default_settings:
                   $ref: "#/components/schemas/QuizDefaultSettings"
+                attach_to_module:
+                  type: object
+                  nullable: true
+                  description: |
+                    Если передан — после создания публикует событие `riddler.quiz_template.attached`,
+                    по которому Caesar добавит шаблон в модуль курса.
+                  required: [module_id]
+                  properties:
+                    module_id:
+                      type: string
+                      format: uuid
+                      example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
       responses:
         "200":
           description: Квиз создан
@@ -630,6 +644,114 @@ paths:
       responses:
         "200":
           description: Вопрос удалён
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /sessions/test:
+    post:
+      tags: [Sessions]
+      summary: Создать тестовую сессию (для курса)
+      operationId: createTestCourseSession
+      description: |
+        Основной таймер — `total_time_limit_sec` (время на весь квиз).
+        Если не передан — берётся из `quiz.default_settings`, иначе `60 × количество_вопросов`.
+        Публикует событие `riddler.course_session.created` → Caesar создаёт элемент курса.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quiz_template_id, module_id]
+              properties:
+                quiz_template_id:
+                  type: string
+                  format: uuid
+                  example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                module_id:
+                  type: string
+                  format: uuid
+                  example: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                total_time_limit_sec:
+                  type: integer
+                  nullable: true
+                  description: Переопределяет настройку квиза
+                  example: 600
+                shuffle_questions:
+                  type: boolean
+                  nullable: true
+                  description: Переопределяет настройку квиза
+                  example: true
+                started_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Дата открытия доступа (RFC3339)
+                finished_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Дедлайн сдачи (RFC3339)
+      responses:
+        "200":
+          description: Сессия создана
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /sessions/live:
+    post:
+      tags: [Sessions]
+      summary: Создать live-сессию (для курса)
+      operationId: createLiveCourseSession
+      description: |
+        Основной таймер — `question_time_limit_sec` (автопереход после N секунд на вопросе).
+        Если не передан — берётся из `quiz.default_settings`, иначе 30 секунд.
+        Shuffle и дедлайны не применимы — учитель управляет сессией вручную.
+        Публикует событие `riddler.course_session.created` → Caesar создаёт элемент курса.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quiz_template_id, module_id]
+              properties:
+                quiz_template_id:
+                  type: string
+                  format: uuid
+                  example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                module_id:
+                  type: string
+                  format: uuid
+                  example: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                question_time_limit_sec:
+                  type: integer
+                  nullable: true
+                  description: Переопределяет настройку квиза; дефолт 30 с
+                  example: 45
+      responses:
+        "200":
+          description: Сессия создана
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+        "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
