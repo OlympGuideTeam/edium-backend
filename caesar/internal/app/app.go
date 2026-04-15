@@ -119,6 +119,7 @@ func (a *App) Router() *gin.Engine {
 	api.DELETE("/classes/:classId", a.ClassHandler.DeleteClass)
 	api.DELETE("/classes/:classId/members/:userId", a.ClassHandler.RemoveMember)
 	api.GET("/classes/:classId/invite", a.ClassHandler.GetInviteLink)
+	api.GET("/invitations/:invitationId", a.ClassHandler.GetInvitation)
 	api.POST("/invitations/:invitationId/accept", a.ClassHandler.AcceptInvitation)
 
 	api.POST("/courses", a.CourseHandler.CreateCourse)
