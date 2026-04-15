@@ -7,36 +7,27 @@
 ```mermaid
 flowchart TD
     Client(["Клиент\n(iOS / Android)"])
+    NATS(["NATS JetStream"])
+    TG["Telegram Bot API"]
+    DS["DeepSeek API"]
 
     subgraph ingress ["Ingress"]
         Caddy["Caddy"]
     end
 
     subgraph services ["Go-сервисы"]
-        Doorman["Doorman"]
-        Caesar["Caesar"]
-        Riddler["Riddler"]
-        Herald["Herald"]
-        Charon["Charon"]
+        Doorman["Doorman\nPG · Redis"]
+        Caesar["Caesar\nPG"]
+        Riddler["Riddler\nPG · Redis"]
+        Herald["Herald\nPG"]
+        Charon["Charon\nPG · Redis"]
         Sphinx["Sphinx"]
     end
-
-    subgraph infra ["Инфраструктура"]
-        NATS(["NATS JetStream"])
-        PG[("PostgreSQL")]
-        Redis[("Redis")]
-    end
-
-    TG["Telegram Bot API"]
-    DS["DeepSeek API"]
 
     Client --> Caddy
     Caddy --> Doorman & Caesar & Riddler
 
     Caesar & Riddler -.-> Doorman
-
-    Doorman & Caesar & Riddler & Herald & Charon --> PG
-    Doorman & Charon --> Redis
 
     Doorman & Herald & Caesar & Riddler & Charon & Sphinx <-.-> NATS
 
