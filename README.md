@@ -14,7 +14,7 @@ flowchart TD
 
     Caddy["Caddy"]
 
-    subgraph services ["Microservices"]
+    subgraph services ["Core"]
         Caesar["Caesar\nPG"]
         Riddler["Riddler\nPG · Redis"]
         Doorman["Doorman\nPG · Redis"]
@@ -31,7 +31,7 @@ flowchart TD
     Client --> Caddy
     Caddy --> Doorman & Caesar & Riddler
 
-    Caesar & Riddler -.-> Doorman
+    Caesar & Riddler --> Doorman
 
     Doorman & Herald & Caesar & Riddler & Charon & Sphinx <-.-> NATS
 
@@ -41,6 +41,7 @@ flowchart TD
 ```
 
 > Пунктир — асинхронные события через NATS
+> Сплошная - синхронные запросы
 
 ## Сервисы
 
