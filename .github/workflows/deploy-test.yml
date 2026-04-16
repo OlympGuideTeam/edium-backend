@@ -305,6 +305,60 @@ jobs:
           path: caesar/coverage.out
 
   # ========================
+  # Go — Riddler
+  # ========================
+
+  lint-riddler:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: riddler
+          version: v2.11.4
+
+  test-riddler:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
+    needs: lint-riddler
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: riddler_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Запуск тестов
+        working-directory: riddler
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_DSN: "postgres://test:test@localhost:5432/riddler_test?sslmode=disable"
+      - name: Загрузка покрытия
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-riddler
+          path: riddler/coverage.out
+
+  # ========================
   # Build и push образов
   # ========================
 
@@ -615,7 +669,7 @@ jobs:
           host: ${{ secrets.PROD_VM_HOST }}
           username: deploy
           key: ${{ secrets.PROD_VM_SSH_KEY }}
-          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/prometheus.yml,infra/compose/prod/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/"
+          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/prometheus.yml,infra/compose/prod/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/,riddler/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -643,11 +697,12 @@ jobs:
             cp /tmp/edium-deploy/infra/alertmanager/alertmanager.yml /opt/edium/alertmanager/alertmanager.yml
             mkdir -p /opt/edium/prometheus
             cp /tmp/edium-deploy/infra/prometheus/alerts.yml /opt/edium/prometheus/alerts.yml
-            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar
+            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar /opt/edium/migrations/riddler
             cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
             cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
             cp -r /tmp/edium-deploy/charon/migrations/* /opt/edium/migrations/charon/
             cp -r /tmp/edium-deploy/caesar/migrations/* /opt/edium/migrations/caesar/
+            cp -r /tmp/edium-deploy/riddler/migrations/* /opt/edium/migrations/riddler/
             mkdir -p /opt/edium/nats
             cp /tmp/edium-deploy/infra/compose/prod/nats/nats-server.conf /opt/edium/nats/nats-server.conf
 

@@ -23,6 +23,10 @@ charon_pg_password_prod = "CHANGE_ME"
 caesar_pg_password_test = "CHANGE_ME"
 caesar_pg_password_prod = "CHANGE_ME"
 
+# Riddler
+riddler_pg_password_test = "CHANGE_ME"
+riddler_pg_password_prod = "CHANGE_ME"
+
 # Redis
 redis_password = "CHANGE_ME"
 
