@@ -18,11 +18,13 @@ class Settings(BaseSettings):
     top_p: float = 0.9
     max_retries: int = 2
 
-    # NATS (transactional outbox/inbox с Riddler)
+    # NATS prod (transactional outbox/inbox с Riddler)
     nats_url: str = "nats://sphinx:password@nats:4222"
-    # Путь к CA-сертификату для TLS (stunnel на платформенной VM).
-    # Оставить пустым, если TLS не используется (dev / прямое подключение).
     nats_tls_ca_path: str = ""
+
+    # NATS test — отдельный брокер; оставить пустым, чтобы не подключаться
+    nats_url_test: str = ""
+    nats_tls_ca_path_test: str = ""
 
     # PostgreSQL для outbox/inbox таблиц
     postgres_dsn: str = "postgresql://sphinx:sphinx@sphinx-db:5432/sphinx"

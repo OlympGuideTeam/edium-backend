@@ -1,0 +1,15 @@
+meta {
+  name: List Session Attempts
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{riddlerUrl}}/riddler/v1/sessions/{{sessionId}}/attempts
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

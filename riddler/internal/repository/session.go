@@ -75,3 +75,78 @@ func (r *PgSessionRepository) Create(ctx context.Context, p domain.CreateSession
 	}
 	return id, nil
 }
+
+func (r *PgSessionRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	_, err := exec.ExecContext(ctx, `DELETE FROM quiz_session WHERE id = $1`, id)
+	return err
+}
+
+func (r *PgSessionRepository) FindFinishedNeedingGrading(ctx context.Context) ([]domain.QuizSession, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT qs.id, qs.quiz_template_id, qs.mode, qs.status,
+		        qs.total_time_limit_sec, qs.question_time_limit_sec,
+		        qs.shuffle_questions, qs.started_at, qs.finished_at
+		 FROM quiz_session qs
+		 JOIN quiz_template qt ON qt.id = qs.quiz_template_id
+		 WHERE qt.need_evaluation = true
+		   AND qs.grading_sent_at IS NULL
+		   AND qs.status = 'finished'`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("find finished needing grading: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.QuizSession
+	for rows.Next() {
+		var s domain.QuizSession
+		if err := rows.Scan(&s.ID, &s.QuizTemplateID, &s.Mode, &s.Status,
+			&s.TotalTimeLimitSec, &s.QuestionTimeLimitSec,
+			&s.ShuffleQuestions, &s.StartedAt, &s.FinishedAt); err != nil {
+			return nil, fmt.Errorf("scan session: %w", err)
+		}
+		result = append(result, s)
+	}
+	return result, rows.Err()
+}
+
+func (r *PgSessionRepository) SetGradingSent(ctx context.Context, id uuid.UUID) error {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	_, err := exec.ExecContext(ctx,
+		`UPDATE quiz_session SET grading_sent_at = now() WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("set grading sent: %w", err)
+	}
+	return nil
+}
+
+func (r *PgSessionRepository) GetFreeAnswerSubmissionsForSession(ctx context.Context, sessionID uuid.UUID) ([]domain.FreeAnswerSubmission, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	rows, err := exec.QueryContext(ctx,
+		`SELECT s.id, s.attempt_id, q.id, q.text, s.answer_data->>'text'
+		 FROM answer_submission s
+		 JOIN attempt a ON a.id = s.attempt_id
+		 JOIN question q ON q.id = s.question_id
+		 WHERE a.session_id = $1
+		   AND a.status = 'grading'
+		   AND q.type = 'with_free_answer'`,
+		sessionID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get free answer submissions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.FreeAnswerSubmission
+	for rows.Next() {
+		var f domain.FreeAnswerSubmission
+		if err := rows.Scan(&f.SubmissionID, &f.AttemptID, &f.QuestionID, &f.QuestionText, &f.AnswerText); err != nil {
+			return nil, fmt.Errorf("scan free answer submission: %w", err)
+		}
+		result = append(result, f)
+	}
+	return result, rows.Err()
+}

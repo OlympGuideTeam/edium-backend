@@ -33,6 +33,11 @@ var (
 	ErrAttemptForbidden = New("FORBIDDEN", "Нет доступа к попытке", http.StatusForbidden)
 	ErrAttemptNotActive = New("ATTEMPT_NOT_ACTIVE", "Попытка уже завершена", http.StatusConflict)
 	ErrAttemptExpired   = New("ATTEMPT_EXPIRED", "Время попытки истекло", http.StatusConflict)
+	ErrAttemptNotGraded = New("ATTEMPT_NOT_GRADED", "Попытка ещё не проверена", http.StatusConflict)
+
+	// Ответы
+	ErrSubmissionNotFound = New("SUBMISSION_NOT_FOUND", "Ответ не найден", http.StatusNotFound)
+	ErrScoreInvalid       = New("VALIDATION_ERROR", "Оценка должна быть неотрицательной", http.StatusUnprocessableEntity)
 
 	// Вопросы
 	ErrQuestionNotFound        = New("QUESTION_NOT_FOUND", "Вопрос не найден", http.StatusNotFound)
