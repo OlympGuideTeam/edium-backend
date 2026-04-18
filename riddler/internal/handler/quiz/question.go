@@ -84,6 +84,33 @@ func (h *Handler) DeleteQuestion(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func (h *Handler) GenerateQuestions(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	quizID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	var req dto.GenerateQuestionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.WriteError(c, apperr.ErrBadRequest)
+		return
+	}
+
+	jobID, err := h.service.GenerateQuestions(c.Request.Context(), quizID, userID, req.Text)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.GenerateQuestionsResponse{JobID: jobID.String()})
+}
+
 func (h *Handler) ReorderQuestions(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
 	if !ok {

@@ -21,4 +21,5 @@ type courseService interface {
 	ReorderModules(ctx context.Context, courseID, userID uuid.UUID, moduleIDs []uuid.UUID) error
 
 	DeleteCourseItem(ctx context.Context, itemID, userID uuid.UUID) error
+	DeleteCourseDraft(ctx context.Context, draftID, userID uuid.UUID) error
 }

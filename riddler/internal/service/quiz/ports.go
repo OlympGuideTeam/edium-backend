@@ -9,20 +9,21 @@ import (
 )
 
 type quizRepository interface {
-	Create(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings) (uuid.UUID, error)
+	Create(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings, source domain.QuizSource) (uuid.UUID, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizTemplate, error)
 	AddQuestion(ctx context.Context, params domain.AddQuestionParams) (uuid.UUID, int, error)
 	Update(ctx context.Context, id uuid.UUID, title, description *string) error
 	ReorderQuestions(ctx context.Context, quizID uuid.UUID, questionIDs []uuid.UUID) error
 	DeleteQuestion(ctx context.Context, quizID, questionID uuid.UUID) error
-	Publish(ctx context.Context, id uuid.UUID, isPublic bool) error
+	Publish(ctx context.Context, id uuid.UUID) error
+	HasSession(ctx context.Context, quizID uuid.UUID) (bool, error)
 	SetLibrarySession(ctx context.Context, quizID, sessionID uuid.UUID) error
 	GetQuestionsWithOptions(ctx context.Context, quizID uuid.UUID) ([]domain.QuestionWithOptions, error)
 	SetNeedEvaluation(ctx context.Context, quizID uuid.UUID, value bool) error
 	HasFreeAnswerQuestions(ctx context.Context, quizID uuid.UUID) (bool, error)
 	ListPublished(ctx context.Context, needEvaluationFalseOnly bool) ([]domain.QuizListItem, error)
 	ListByAuthor(ctx context.Context, authorID uuid.UUID) ([]domain.QuizListItem, error)
-	Copy(ctx context.Context, sourceID, newAuthorID uuid.UUID) (uuid.UUID, error)
+	Copy(ctx context.Context, sourceID, newAuthorID uuid.UUID, source domain.QuizSource) (uuid.UUID, error)
 }
 
 type sessionService interface {

@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 
 	"caesar/internal/domain"
@@ -27,9 +26,9 @@ func (s *PgCourseStore) GetItemByID(ctx context.Context, id uuid.UUID) (*domain.
 	exec := db.ExecutorFromContext(ctx, s.db)
 	var item domain.CourseItem
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, module_id, object_id, type, settings FROM course_item WHERE id = $1`,
+		`SELECT id, module_id, object_id, type FROM course_item WHERE id = $1`,
 		id,
-	).Scan(&item.ID, &item.ModuleID, &item.ObjectID, &item.Type, &item.Settings)
+	).Scan(&item.ID, &item.ModuleID, &item.ObjectID, &item.Type)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -40,13 +39,63 @@ func (s *PgCourseStore) FindItemByObjectID(ctx context.Context, objectID uuid.UU
 	exec := db.ExecutorFromContext(ctx, s.db)
 	var item domain.CourseItem
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, module_id, object_id, type, settings FROM course_item WHERE object_id = $1 LIMIT 1`,
+		`SELECT id, module_id, object_id, type FROM course_item WHERE object_id = $1 LIMIT 1`,
 		objectID,
-	).Scan(&item.ID, &item.ModuleID, &item.ObjectID, &item.Type, &item.Settings)
+	).Scan(&item.ID, &item.ModuleID, &item.ObjectID, &item.Type)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	return &item, err
+}
+
+func (s *PgCourseStore) CreateCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID) (uuid.UUID, error) {
+	exec := db.ExecutorFromContext(ctx, s.db)
+	var id uuid.UUID
+	err := exec.QueryRowContext(ctx,
+		`INSERT INTO course_draft (quiz_template_id, course_id) VALUES ($1, $2) RETURNING id`,
+		quizTemplateID, courseID,
+	).Scan(&id)
+	return id, err
+}
+
+func (s *PgCourseStore) GetDraftByID(ctx context.Context, id uuid.UUID) (*domain.CourseDraft, error) {
+	exec := db.ExecutorFromContext(ctx, s.db)
+	var d domain.CourseDraft
+	err := exec.QueryRowContext(ctx,
+		`SELECT id, quiz_template_id, course_id FROM course_draft WHERE id = $1`,
+		id,
+	).Scan(&d.ID, &d.QuizTemplateID, &d.CourseID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return &d, err
+}
+
+func (s *PgCourseStore) DeleteDraft(ctx context.Context, id uuid.UUID) error {
+	exec := db.ExecutorFromContext(ctx, s.db)
+	_, err := exec.ExecContext(ctx, `DELETE FROM course_draft WHERE id = $1`, id)
+	return err
+}
+
+func (s *PgCourseStore) ListDraftsByCourseID(ctx context.Context, courseID uuid.UUID) ([]domain.CourseDraft, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, quiz_template_id, course_id FROM course_draft WHERE course_id = $1 ORDER BY created_at`,
+		courseID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var drafts []domain.CourseDraft
+	for rows.Next() {
+		var d domain.CourseDraft
+		if err := rows.Scan(&d.ID, &d.QuizTemplateID, &d.CourseID); err != nil {
+			return nil, err
+		}
+		drafts = append(drafts, d)
+	}
+	return drafts, rows.Err()
 }
 
 func (s *PgCourseStore) DeleteItem(ctx context.Context, id uuid.UUID) error {
@@ -156,15 +205,6 @@ func (s *PgCourseStore) UpdateProgressScore(ctx context.Context, courseItemID, u
 	_, err := exec.ExecContext(ctx,
 		`UPDATE course_user_item_progress SET score = $1 WHERE course_item_id = $2 AND user_id = $3`,
 		score, courseItemID, userID,
-	)
-	return err
-}
-
-func (s *PgCourseStore) UpdateItemSettings(ctx context.Context, id uuid.UUID, settings json.RawMessage) error {
-	exec := db.ExecutorFromContext(ctx, s.db)
-	_, err := exec.ExecContext(ctx,
-		`UPDATE course_item SET settings = $1 WHERE id = $2`,
-		settings, id,
 	)
 	return err
 }

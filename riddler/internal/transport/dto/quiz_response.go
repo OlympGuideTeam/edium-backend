@@ -38,7 +38,7 @@ type QuizDetailResponse struct {
 	Description     *string             `json:"description"`
 	DefaultSettings QuizDefaultSettings `json:"default_settings"`
 	IsPublic        bool                `json:"is_public"`
-	IsDraft         bool                `json:"is_draft"`
+	Source          string              `json:"source"`
 	NeedEvaluation  bool                `json:"need_evaluation"`
 	Questions       []QuestionResponse  `json:"questions"`
 }
@@ -63,7 +63,7 @@ type QuizListItemResponse struct {
 	Description     *string             `json:"description"`
 	DefaultSettings QuizDefaultSettings `json:"default_settings"`
 	IsPublic        bool                `json:"is_public"`
-	IsDraft         bool                `json:"is_draft"`
+	Source          string              `json:"source"`
 	NeedEvaluation  bool                `json:"need_evaluation"`
 	QuestionCount   int                 `json:"question_count"`
 }

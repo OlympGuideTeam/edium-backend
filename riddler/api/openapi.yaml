@@ -17,6 +17,8 @@ tags:
     description: Создание сессий прохождения (тест/лайв)
   - name: Attempts
     description: Прохождение квиза студентом
+  - name: Teachers
+    description: Проверка попыток учителем
 
 components:
   securitySchemes:
@@ -149,6 +151,97 @@ components:
           type: object
           nullable: true
 
+    AttemptSummary:
+      type: object
+      properties:
+        attempt_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [in_progress, grading, graded, completed]
+        score:
+          type: number
+          format: float
+          nullable: true
+
+    AnswerReview:
+      type: object
+      properties:
+        submission_id:
+          type: string
+          format: uuid
+        question_id:
+          type: string
+          format: uuid
+        question_type:
+          type: string
+          enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
+        question_text:
+          type: string
+        answer_data:
+          type: object
+          description: Ответ студента, формат зависит от типа вопроса
+        final_score:
+          type: number
+          format: float
+          nullable: true
+        final_source:
+          type: string
+          nullable: true
+          enum: [auto, llm, teacher]
+        final_feedback:
+          type: string
+          nullable: true
+        options:
+          type: array
+          description: Только для учителя — варианты ответа с правильными отметками
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              text:
+                type: string
+              is_correct:
+                type: boolean
+        metadata:
+          type: object
+          nullable: true
+          description: Только для учителя — correct_answers / correct_order / correct_pairs
+
+    AttemptReview:
+      type: object
+      properties:
+        attempt_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [in_progress, grading, graded, completed]
+        score:
+          type: number
+          format: float
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnswerReview"
+
     AnswerSubmissionResult:
       type: object
       properties:
@@ -253,8 +346,10 @@ paths:
                       $ref: "#/components/schemas/QuizDefaultSettings"
                     is_public:
                       type: boolean
-                    is_draft:
-                      type: boolean
+                    source:
+                      type: string
+                      enum: [library, course]
+                      description: library — создан из публичной библиотеки; course — создан для курса
                     need_evaluation:
                       type: boolean
                     question_count:
@@ -283,15 +378,15 @@ paths:
                   nullable: true
                 default_settings:
                   $ref: "#/components/schemas/QuizDefaultSettings"
-                attach_to_module:
+                attach_to_course:
                   type: object
                   nullable: true
                   description: |
                     Если передан — после создания публикует событие `riddler.quiz_template.attached`,
-                    по которому Caesar добавит шаблон в модуль курса.
-                  required: [module_id]
+                    по которому Caesar добавит шаблон в курс.
+                  required: [course_id]
                   properties:
-                    module_id:
+                    course_id:
                       type: string
                       format: uuid
                       example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -337,8 +432,9 @@ paths:
                       $ref: "#/components/schemas/QuizDefaultSettings"
                     is_public:
                       type: boolean
-                    is_draft:
-                      type: boolean
+                    source:
+                      type: string
+                      enum: [library, course]
                     need_evaluation:
                       type: boolean
                     question_count:
@@ -390,8 +486,9 @@ paths:
                         $ref: "#/components/schemas/QuizDefaultSettings"
                       is_public:
                         type: boolean
-                      is_draft:
-                        type: boolean
+                      source:
+                        type: string
+                        enum: [library, course]
                       need_evaluation:
                         type: boolean
                       questions:
@@ -466,20 +563,7 @@ paths:
           schema:
             type: string
             format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - is_public
-              properties:
-                is_public:
-                  type: boolean
-                  description: |
-                    true — квиз попадёт в публичную библиотеку (доступен студентам и другим учителям);
-                    false — квиз опубликован, но виден только автору
+      description: Публикует квиз (is_draft → false). Квиз становится доступен для назначения в курс.
       responses:
         "200":
           description: Квиз опубликован
@@ -501,6 +585,22 @@ paths:
           schema:
             type: string
             format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                attach_to_course:
+                  type: object
+                  nullable: true
+                  description: Если передан — копия сразу привязывается к курсу
+                  required: [course_id]
+                  properties:
+                    course_id:
+                      type: string
+                      format: uuid
       responses:
         "200":
           description: Копия создана
@@ -644,6 +744,48 @@ paths:
       responses:
         "200":
           description: Вопрос удалён
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /quizzes/{id}/generate:
+    post:
+      tags: [Questions]
+      summary: Запустить генерацию вопросов по тексту
+      operationId: generateQuestions
+      description: |
+        Отправляет текст в Sphinx (ML-сервис). Вопросы добавляются в квиз асинхронно.
+        Вернёт `job_id` для отслеживания статуса (если нужно).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  description: Текст (параграф, статья), по которому Sphinx сгенерирует вопросы
+      responses:
+        "200":
+          description: Задача принята
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job_id:
+                    type: string
+                    format: uuid
+        "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -841,8 +983,11 @@ paths:
       summary: Завершить попытку
       operationId: finishAttempt
       description: |
-        Запускает автооценку всех ответов.
-        `with_free_answer` не оценивается автоматически — `final_score` останется `null`.
+        Завершает попытку и запускает оценку.
+
+        Поведение зависит от настройки квиза `need_evaluation`:
+        - **false** — автооценка сразу, попытка переходит в `completed`. `with_free_answer` не оценивается автоматически.
+        - **true** — автооценка вопросов с вариантами ответов, попытка переходит в `grading`. Свободные ответы уходят в Charon (LLM). После завершения всех LLM-оценок попытка переходит в `graded`. Учитель затем проверяет и завершает (`completed`).
       parameters:
         - name: attempt_id
           in: path
@@ -857,13 +1002,44 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
-
-  /attempts/{attempt_id}/result:
     get:
-      tags: [Attempts]
-      summary: Результат попытки
-      operationId: getAttemptResult
-      description: Доступен только после завершения попытки (status = completed).
+      tags: [Teachers]
+      summary: Список попыток сессии
+      operationId: listSessionAttempts
+      description: Только для учителя — автора квиза, к которому привязана сессия.
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Список попыток
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttemptSummary"
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /attempts/{attempt_id}/review:
+    get:
+      tags: [Teachers]
+      summary: Детали попытки с ответами и оценками
+      operationId: getAttemptReview
+      description: |
+        Универсальный endpoint просмотра попытки.
+
+        **Студент** (владелец попытки) — доступен при `status != in_progress`.
+        Возвращает свои ответы, баллы и фидбек. Без правильных ответов (`options`, `metadata` отсутствуют).
+
+        **Учитель** (автор квиза) — доступен в любой момент.
+        Дополнительно возвращает `options` с `is_correct` и `metadata` с правильными ответами.
       parameters:
         - name: attempt_id
           in: path
@@ -873,34 +1049,81 @@ paths:
             format: uuid
       responses:
         "200":
-          description: Результат попытки
+          description: Детали попытки
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  attempt_id:
-                    type: string
-                    format: uuid
-                  status:
-                    type: string
-                    enum: [in_progress, grading, graded, completed]
-                  score:
-                    type: number
-                    format: float
-                    nullable: true
-                    description: Суммарный балл за попытку
-                  started_at:
-                    type: string
-                    format: date-time
-                  finished_at:
-                    type: string
-                    format: date-time
-                    nullable: true
-                  answers:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/AnswerSubmissionResult"
+                $ref: "#/components/schemas/AttemptReview"
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /attempts/{attempt_id}/submissions/{submission_id}/grade:
+    post:
+      tags: [Teachers]
+      summary: Выставить оценку за ответ
+      operationId: gradeSubmission
+      description: |
+        Учитель выставляет оценку за конкретный ответ студента.
+        Перезаписывает auto/llm-оценку. Не отправляет итог в Caesar — для этого нужен `/complete`.
+      parameters:
+        - name: attempt_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: submission_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [score]
+              properties:
+                score:
+                  type: number
+                  format: float
+                  minimum: 0
+                  description: Балл от 0 до max_score вопроса
+                feedback:
+                  type: string
+                  nullable: true
+                  description: Текстовый комментарий к оценке
+      responses:
+        "200":
+          description: Оценка сохранена
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
+  /attempts/{attempt_id}/complete:
+    post:
+      tags: [Teachers]
+      summary: Завершить проверку попытки
+      operationId: completeAttempt
+      description: |
+        Переводит попытку из `graded` в `completed`. Пересчитывает итоговый балл.
+        Отправляет событие `riddler.attempt.scored` → Caesar обновляет оценку в курсе.
+        Требует: попытка в статусе `graded`.
+      parameters:
+        - name: attempt_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Проверка завершена
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}

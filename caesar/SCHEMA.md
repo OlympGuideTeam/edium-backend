@@ -63,7 +63,6 @@ erDiagram
         uuid             module_id FK
         uuid             object_id "ссылка на объект в другом сервисе"
         course_item_type type
-        jsonb            settings
         ts               created_at
         ts               updated_at
     }
@@ -78,6 +77,14 @@ erDiagram
         ts      updated_at
     }
 
+    course_draft {
+        uuid  id               PK
+        uuid  quiz_template_id "ссылка на Riddler"
+        uuid  course_id        FK
+        ts    created_at
+        ts    updated_at
+    }
+
     user             ||--o{ class            : "владеет"
     user             ||--o{ class_member     : "участник"
     class            ||--o{ class_member     : "состав"
@@ -88,6 +95,7 @@ erDiagram
     course_module    ||--o{ course_item      : "элементы"
     course_item      ||--o{ course_user_item_progress : "прогресс"
     user             ||--o{ course_user_item_progress : "прогресс"
+    course           ||--o{ course_draft     : "черновики"
 ```
 
 ## Перечисления
@@ -96,4 +104,4 @@ erDiagram
 |-----|----------|
 | `user_status` | `active`, `blocked`, `deleted` |
 | `class_member_role` | `teacher`, `student` |
-| `course_item_type` | `quiz`, `quiz_template` |
+| `course_item_type` | `quiz` |

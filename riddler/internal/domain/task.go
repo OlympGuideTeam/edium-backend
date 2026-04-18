@@ -22,6 +22,14 @@ const (
 	TaskTypeCourseSessionCreatedPublisher TaskType = "course_session_created_publisher"
 	TaskTypeAttemptCreatedPublisher       TaskType = "attempt_created_publisher"
 	TaskTypeAttemptScoredPublisher        TaskType = "attempt_scored_publisher"
+
+	TaskTypeGenerationRequestedPublisher TaskType = "generation_requested_publisher"
+	TaskTypeGenerationCompleted          TaskType = "generation_completed"
+
+	TaskTypeCourseSessionDeleted TaskType = "course_session_deleted"
+
+	TaskTypeGradingRequestedPublisher TaskType = "grading_requested_publisher"
+	TaskTypeGradingCompleted          TaskType = "grading_completed"
 )
 
 type Task struct {
