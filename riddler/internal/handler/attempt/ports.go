@@ -12,5 +12,8 @@ type attemptService interface {
 	Create(ctx context.Context, sessionID, userID uuid.UUID) (*domain.Attempt, []domain.QuestionForStudent, error)
 	SubmitAnswer(ctx context.Context, attemptID, userID, questionID uuid.UUID, answerData map[string]any) error
 	Finish(ctx context.Context, attemptID, userID uuid.UUID) error
-	GetResult(ctx context.Context, attemptID, userID uuid.UUID) (*domain.AttemptResult, error)
+	ListSessionAttempts(ctx context.Context, sessionID, teacherID uuid.UUID) ([]domain.AttemptSummary, error)
+	GetAttemptReview(ctx context.Context, attemptID, userID uuid.UUID) (*domain.Attempt, []domain.AnswerWithQuestion, error)
+	GradeSubmission(ctx context.Context, attemptID, submissionID, teacherID uuid.UUID, score float64, feedback *string) error
+	CompleteAttempt(ctx context.Context, attemptID, teacherID uuid.UUID) error
 }

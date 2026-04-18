@@ -37,3 +37,23 @@ func (h *Handler) DeleteCourseItem(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+func (h *Handler) DeleteCourseDraft(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	draftID, err := uuid.Parse(c.Param("draftId"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	if err := h.service.DeleteCourseDraft(c.Request.Context(), draftID, userID); err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

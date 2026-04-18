@@ -81,6 +81,14 @@ func (h *Handler) GetCourse(c *gin.Context) {
 		return
 	}
 
+	drafts := make([]dto.CourseDraftDTO, 0, len(detail.Drafts))
+	for _, d := range detail.Drafts {
+		drafts = append(drafts, dto.CourseDraftDTO{
+			ID:             d.ID.String(),
+			QuizTemplateID: d.QuizTemplateID.String(),
+		})
+	}
+
 	resp := dto.CourseDetailResponse{
 		ID:           detail.ID.String(),
 		Title:        detail.Title,
@@ -88,6 +96,7 @@ func (h *Handler) GetCourse(c *gin.Context) {
 		ModuleCount:  detail.ModuleCount,
 		ElementCount: detail.ElementCount,
 		IsTeacher:    detail.IsTeacher,
+		Drafts:       drafts,
 		Modules:      make([]dto.ModuleItem, 0, len(detail.Modules)),
 	}
 	for _, m := range detail.Modules {

@@ -1,11 +1,11 @@
 meta {
-  name: Get Result
+  name: Get Review
   type: http
-  seq: 4
+  seq: 5
 }
 
 get {
-  url: {{riddlerUrl}}/riddler/v1/attempts/{{attemptId}}/result
+  url: {{riddlerUrl}}/riddler/v1/attempts/{{attemptId}}/review
   body: none
   auth: bearer
 }

@@ -15,7 +15,7 @@ func toListItemResponse(item domain.QuizListItem) dto.QuizListItemResponse {
 			QuestionTimeLimitSec: item.DefaultSettings.QuestionTimeLimitSec,
 		},
 		IsPublic:       item.IsPublic,
-		IsDraft:        item.IsDraft,
+		Source:         string(item.Source),
 		NeedEvaluation: item.NeedEvaluation,
 		QuestionCount:  item.QuestionCount,
 	}

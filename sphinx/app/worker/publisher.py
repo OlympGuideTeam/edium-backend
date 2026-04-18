@@ -6,6 +6,7 @@ GenerationPublisher — опрашивает generation_result, публикуе
 import asyncio
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
 import asyncpg
 import nats.aio.client
@@ -18,8 +19,13 @@ SUBJECT = "sphinx.generation.completed"
 
 
 class GenerationPublisher:
-    def __init__(self, nc: nats.aio.client.Client, pool: asyncpg.Pool):
-        self._nc   = nc
+    def __init__(
+        self,
+        nc_prod: nats.aio.client.Client,
+        pool: asyncpg.Pool,
+        nc_test: Optional[nats.aio.client.Client] = None,
+    ):
+        self._nc   = {"prod": nc_prod, "test": nc_test}
         self._pool = pool
 
     async def run(self) -> None:
@@ -36,7 +42,7 @@ class GenerationPublisher:
             async with conn.transaction():
                 row = await conn.fetchrow(
                     """
-                    SELECT id, job_id, payload
+                    SELECT id, job_id, payload, env
                     FROM generation_result
                     WHERE published_at IS NULL
                     ORDER BY created_at
@@ -49,12 +55,21 @@ class GenerationPublisher:
 
                 result_id = row["id"]
                 job_id    = row["job_id"]
-                payload   = row["payload"]  # уже JSONB → строка
+                payload   = row["payload"]
+                env       = row["env"]
+
+                nc = self._nc.get(env)
+                if nc is None:
+                    logger.error(
+                        "GenerationPublisher: no NATS connection for env=%s job_id=%s, skipping",
+                        env, job_id,
+                    )
+                    return
 
                 try:
-                    await self._nc.publish(SUBJECT, payload.encode())
+                    await nc.publish(SUBJECT, payload.encode())
                 except Exception as e:
-                    logger.error("GenerationPublisher: publish failed job_id=%s: %s", job_id, e)
+                    logger.error("GenerationPublisher: publish failed job_id=%s env=%s: %s", job_id, env, e)
                     return
 
                 await conn.execute(
@@ -62,4 +77,4 @@ class GenerationPublisher:
                     datetime.now(timezone.utc), result_id,
                 )
 
-        logger.info("GenerationPublisher: published job_id=%s → %s", job_id, SUBJECT)
+        logger.info("GenerationPublisher: published job_id=%s env=%s → %s", job_id, env, SUBJECT)

@@ -14,10 +14,12 @@ import (
 type Service struct {
 	courses courseStore
 	classes classAccessor
+	tasks   taskScheduler
+	tx      txRunner
 }
 
-func NewService(courses courseStore, classes classAccessor) *Service {
-	return &Service{courses: courses, classes: classes}
+func NewService(courses courseStore, classes classAccessor, tasks taskScheduler, tx txRunner) *Service {
+	return &Service{courses: courses, classes: classes, tasks: tasks, tx: tx}
 }
 
 func (s *Service) CreateCourse(ctx context.Context, classID, userID uuid.UUID, title string) (uuid.UUID, error) {
@@ -83,6 +85,12 @@ func (s *Service) GetCourse(ctx context.Context, courseID, userID uuid.UUID) (*d
 		modules[i].Items = itemsByModule[modules[i].ID]
 	}
 
+	drafts, err := s.courses.ListDraftsByCourseID(ctx, courseID)
+	if err != nil {
+		return nil, fmt.Errorf("listDrafts: %w", err)
+	}
+
+	detail.Drafts = drafts
 	detail.Modules = modules
 	detail.IsTeacher = role != domain.ClassMemberRoleStudent
 

@@ -24,3 +24,7 @@ type courseItemStore interface {
 	UpsertProgress(ctx context.Context, courseItemID, userID, attemptID uuid.UUID) error
 	UpdateProgressScore(ctx context.Context, courseItemID, userID uuid.UUID, score float64) error
 }
+
+type courseDraftStore interface {
+	CreateCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID) (uuid.UUID, error)
+}

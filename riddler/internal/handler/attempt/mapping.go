@@ -1,8 +1,6 @@
 package attempt
 
 import (
-	"time"
-
 	"riddler/internal/domain"
 	"riddler/internal/transport/dto"
 )
@@ -31,37 +29,4 @@ func toQuestionsResponse(questions []domain.QuestionForStudent) []dto.QuestionFo
 		}
 	}
 	return out
-}
-
-func toAttemptResultResponse(r *domain.AttemptResult) dto.AttemptResultResponse {
-	answers := make([]dto.AnswerSubmissionResponse, len(r.Answers))
-	for i, a := range r.Answers {
-		var src *string
-		if a.FinalSource != nil {
-			s := string(*a.FinalSource)
-			src = &s
-		}
-		answers[i] = dto.AnswerSubmissionResponse{
-			QuestionID:    a.QuestionID.String(),
-			AnswerData:    a.AnswerData,
-			FinalScore:    a.FinalScore,
-			FinalSource:   src,
-			FinalFeedback: a.FinalFeedback,
-		}
-	}
-
-	var finishedAt *string
-	if r.FinishedAt != nil {
-		s := r.FinishedAt.Format(time.RFC3339)
-		finishedAt = &s
-	}
-
-	return dto.AttemptResultResponse{
-		AttemptID:  r.ID.String(),
-		Status:     string(r.Status),
-		Score:      r.Score,
-		StartedAt:  r.StartedAt.Format(time.RFC3339),
-		FinishedAt: finishedAt,
-		Answers:    answers,
-	}
 }

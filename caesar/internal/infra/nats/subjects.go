@@ -6,6 +6,7 @@ const (
 
 	SubjectQuizTemplateAttached = "riddler.quiz_template.attached"
 	SubjectCourseSessionCreated = "riddler.course_session.created"
+	SubjectCourseSessionDeleted = "caesar.course_session.deleted"
 	SubjectAttemptCreated       = "riddler.attempt.created"
 	SubjectAttemptScored        = "riddler.attempt.scored"
 

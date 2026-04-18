@@ -5,4 +5,12 @@ const (
 	SubjectCourseSessionCreated = "riddler.course_session.created"
 	SubjectAttemptCreated       = "riddler.attempt.created"
 	SubjectAttemptScored        = "riddler.attempt.scored"
+
+	SubjectGenerationRequested = "riddler.generation.requested"
+	SubjectGenerationCompleted = "sphinx.generation.completed"
+
+	SubjectCourseSessionDeleted = "caesar.course_session.deleted"
+
+	SubjectQuizGradeRequested = "riddler.quiz.grade.requested"
+	SubjectQuizGradeCompleted = "charon.quiz.grade.completed"
 )
