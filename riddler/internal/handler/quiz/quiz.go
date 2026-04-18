@@ -34,17 +34,17 @@ func (h *Handler) CreateQuiz(c *gin.Context) {
 		}
 	}
 
-	var attachToModule *uuid.UUID
-	if req.AttachToModule != nil {
-		mid, err := uuid.Parse(req.AttachToModule.ModuleID)
+	var attachToCourse *uuid.UUID
+	if req.AttachToCourse != nil {
+		cid, err := uuid.Parse(req.AttachToCourse.CourseID)
 		if err != nil {
 			httpx.WriteError(c, apperr.ErrBadID)
 			return
 		}
-		attachToModule = &mid
+		attachToCourse = &cid
 	}
 
-	id, err := h.service.CreateQuiz(c.Request.Context(), userID, req.Title, req.Description, settings, attachToModule)
+	id, err := h.service.CreateQuiz(c.Request.Context(), userID, req.Title, req.Description, settings, attachToCourse)
 	if err != nil {
 		httpx.WriteError(c, err)
 		return
@@ -116,7 +116,7 @@ func (h *Handler) getQuizAsTeacher(c *gin.Context, quizID, userID uuid.UUID) {
 			ShuffleQuestions:     detail.DefaultSettings.ShuffleQuestions,
 		},
 		IsPublic:       detail.IsPublic,
-		IsDraft:        detail.IsDraft,
+		Source:         string(detail.Source),
 		NeedEvaluation: detail.NeedEvaluation,
 		Questions:      questions,
 	})
@@ -186,13 +186,7 @@ func (h *Handler) PublishQuiz(c *gin.Context) {
 		return
 	}
 
-	var req dto.PublishQuizRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		httpx.WriteError(c, apperr.ErrBadRequest)
-		return
-	}
-
-	if err := h.service.PublishQuiz(c.Request.Context(), quizID, userID, req.IsPublic); err != nil {
+	if err := h.service.PublishQuiz(c.Request.Context(), quizID, userID); err != nil {
 		httpx.WriteError(c, err)
 		return
 	}
@@ -212,7 +206,23 @@ func (h *Handler) CopyQuiz(c *gin.Context) {
 		return
 	}
 
-	newID, err := h.service.CopyQuiz(c.Request.Context(), quizID, userID)
+	var req dto.CopyQuizRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.WriteError(c, apperr.ErrBadRequest)
+		return
+	}
+
+	var attachToCourse *uuid.UUID
+	if req.AttachToCourse != nil {
+		cid, err := uuid.Parse(req.AttachToCourse.CourseID)
+		if err != nil {
+			httpx.WriteError(c, apperr.ErrBadID)
+			return
+		}
+		attachToCourse = &cid
+	}
+
+	newID, err := h.service.CopyQuiz(c.Request.Context(), quizID, userID, attachToCourse)
 	if err != nil {
 		httpx.WriteError(c, err)
 		return

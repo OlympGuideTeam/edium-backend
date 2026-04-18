@@ -195,6 +195,7 @@ jobs:
             IMAGE_TAG=latest
             NATS_URL=${{ secrets.SPHINX_NATS_URL }}
             NATS_TLS_CA_PATH=${{ secrets.SPHINX_NATS_TLS_CA_PATH }}
+            NATS_URL_TEST=${{ secrets.SPHINX_NATS_URL_TEST }}
             SPHINX_PG_PWD=${{ secrets.SPHINX_PG_PWD }}
             HF_TOKEN=${{ secrets.HF_TOKEN }}
             MODEL_ID=${{ secrets.SPHINX_MODEL_ID }}

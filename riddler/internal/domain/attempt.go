@@ -23,6 +23,25 @@ const (
 	FinalSourceLLM     FinalSource = "llm"
 )
 
+type EvaluationStatus string
+
+const (
+	EvaluationStatusPending   EvaluationStatus = "pending"
+	EvaluationStatusCompleted EvaluationStatus = "completed"
+	EvaluationStatusFailed    EvaluationStatus = "failed"
+)
+
+type AnswerEvaluation struct {
+	ID           uuid.UUID
+	SubmissionID uuid.UUID
+	AttemptID    uuid.UUID
+	QuestionID   uuid.UUID
+	Status       EvaluationStatus
+	Score        *float64
+	Source       FinalSource
+	Feedback     *string
+}
+
 type Attempt struct {
 	ID            uuid.UUID
 	SessionID     uuid.UUID
@@ -47,4 +66,32 @@ type AnswerSubmission struct {
 type AttemptResult struct {
 	Attempt
 	Answers []AnswerSubmission
+}
+
+type AttemptSummary struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+	Status AttemptStatus
+	Score  *float64
+}
+
+type AnswerWithQuestion struct {
+	SubmissionID  uuid.UUID
+	QuestionID    uuid.UUID
+	QuestionType  string
+	QuestionText  string
+	AnswerData    map[string]any
+	FinalScore    *float64
+	FinalSource   *FinalSource
+	FinalFeedback *string
+	Options       []AnswerOption
+	Metadata      map[string]any
+}
+
+type FreeAnswerSubmission struct {
+	SubmissionID uuid.UUID
+	AttemptID    uuid.UUID
+	QuestionID   uuid.UUID
+	QuestionText string
+	AnswerText   string
 }

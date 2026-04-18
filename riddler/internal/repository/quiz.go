@@ -20,7 +20,7 @@ func NewPgQuizRepository(database *sql.DB) *PgQuizRepository {
 	return &PgQuizRepository{db: database}
 }
 
-func (r *PgQuizRepository) Create(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings) (uuid.UUID, error) {
+func (r *PgQuizRepository) Create(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings, source domain.QuizSource) (uuid.UUID, error) {
 	settingsJSON, err := json.Marshal(settings)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("marshal settings: %w", err)
@@ -30,10 +30,10 @@ func (r *PgQuizRepository) Create(ctx context.Context, authorID uuid.UUID, title
 
 	var id uuid.UUID
 	err = exec.QueryRowContext(ctx,
-		`INSERT INTO quiz_template (author_id, title, description, default_settings)
-		 VALUES ($1, $2, $3, $4)
+		`INSERT INTO quiz_template (author_id, title, description, default_settings, source)
+		 VALUES ($1, $2, $3, $4, $5)
 		 RETURNING id`,
-		authorID, title, description, settingsJSON,
+		authorID, title, description, settingsJSON, source,
 	).Scan(&id)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("insert quiz_template: %w", err)
@@ -48,11 +48,11 @@ func (r *PgQuizRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Q
 	var q domain.QuizTemplate
 	var settingsJSON []byte
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, author_id, title, description, default_settings, is_public, is_draft, need_evaluation, question_count, library_session_id, created_at, updated_at
+		`SELECT id, author_id, title, description, default_settings, is_public, source, need_evaluation, question_count, library_session_id, created_at, updated_at
 		 FROM quiz_template WHERE id = $1`,
 		id,
 	).Scan(&q.ID, &q.AuthorID, &q.Title, &q.Description, &settingsJSON,
-		&q.IsPublic, &q.IsDraft, &q.NeedEvaluation, &q.QuestionCount, &q.LibrarySessionID, &q.CreatedAt, &q.UpdatedAt)
+		&q.IsPublic, &q.Source, &q.NeedEvaluation, &q.QuestionCount, &q.LibrarySessionID, &q.CreatedAt, &q.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -92,11 +92,11 @@ func (r *PgQuizRepository) Update(ctx context.Context, id uuid.UUID, title, desc
 	return nil
 }
 
-func (r *PgQuizRepository) Publish(ctx context.Context, id uuid.UUID, isPublic bool) error {
+func (r *PgQuizRepository) Publish(ctx context.Context, id uuid.UUID) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,
-		`UPDATE quiz_template SET is_draft = false, is_public = $1 WHERE id = $2`,
-		isPublic, id,
+		`UPDATE quiz_template SET is_public = true WHERE id = $1`,
+		id,
 	)
 	if err != nil {
 		return fmt.Errorf("publish quiz_template: %w", err)
@@ -104,30 +104,34 @@ func (r *PgQuizRepository) Publish(ctx context.Context, id uuid.UUID, isPublic b
 	return nil
 }
 
-func (r *PgQuizRepository) Copy(ctx context.Context, sourceID, newAuthorID uuid.UUID) (uuid.UUID, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
+func (r *PgQuizRepository) HasSession(ctx context.Context, quizID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM quiz_session WHERE quiz_template_id = $1)`,
+		quizID,
+	).Scan(&exists)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("begin tx: %w", err)
+		return false, fmt.Errorf("has session: %w", err)
 	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	return exists, nil
+}
+
+func (r *PgQuizRepository) Copy(ctx context.Context, sourceID, newAuthorID uuid.UUID, source domain.QuizSource) (uuid.UUID, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
 
 	var newID uuid.UUID
-	err = tx.QueryRowContext(ctx,
-		`INSERT INTO quiz_template (author_id, title, description, default_settings, need_evaluation)
-		 SELECT $1, title, description, default_settings, need_evaluation
+	err := exec.QueryRowContext(ctx,
+		`INSERT INTO quiz_template (author_id, title, description, default_settings, need_evaluation, source)
+		 SELECT $1, title, description, default_settings, need_evaluation, $3
 		 FROM quiz_template WHERE id = $2
 		 RETURNING id`,
-		newAuthorID, sourceID,
+		newAuthorID, sourceID, source,
 	).Scan(&newID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("copy quiz_template: %w", err)
 	}
 
-	_, err = tx.ExecContext(ctx, `
+	_, err = exec.ExecContext(ctx, `
 		WITH old_questions AS (
 			SELECT id, order_index FROM question WHERE quiz_template_id = $1
 		),
@@ -151,19 +155,15 @@ func (r *PgQuizRepository) Copy(ctx context.Context, sourceID, newAuthorID uuid.
 		return uuid.Nil, fmt.Errorf("copy questions and options: %w", err)
 	}
 
-	if err = tx.Commit(); err != nil {
-		return uuid.Nil, fmt.Errorf("commit: %w", err)
-	}
-
 	return newID, nil
 }
 
 func (r *PgQuizRepository) ListPublished(ctx context.Context, needEvaluationFalseOnly bool) ([]domain.QuizListItem, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 
-	query := `SELECT id, title, description, default_settings, is_public, is_draft, need_evaluation, question_count
+	query := `SELECT id, title, description, default_settings, is_public, source, need_evaluation, question_count
 	          FROM quiz_template
-	          WHERE is_draft = false`
+	          WHERE is_public = true`
 	if needEvaluationFalseOnly {
 		query += ` AND need_evaluation = false`
 	}
@@ -182,9 +182,9 @@ func (r *PgQuizRepository) ListByAuthor(ctx context.Context, authorID uuid.UUID)
 	exec := db.ExecutorFromContext(ctx, r.db)
 
 	rows, err := exec.QueryContext(ctx,
-		`SELECT id, title, description, default_settings, is_public, is_draft, need_evaluation, question_count
+		`SELECT id, title, description, default_settings, is_public, source, need_evaluation, question_count
 		 FROM quiz_template
-		 WHERE author_id = $1
+		 WHERE author_id = $1 AND source = 'library'
 		 ORDER BY created_at DESC`,
 		authorID,
 	)
@@ -202,7 +202,7 @@ func scanQuizListItems(rows *sql.Rows) ([]domain.QuizListItem, error) {
 		var item domain.QuizListItem
 		var settingsJSON []byte
 		if err := rows.Scan(&item.ID, &item.Title, &item.Description,
-			&settingsJSON, &item.IsPublic, &item.IsDraft, &item.NeedEvaluation, &item.QuestionCount); err != nil {
+			&settingsJSON, &item.IsPublic, &item.Source, &item.NeedEvaluation, &item.QuestionCount); err != nil {
 			return nil, fmt.Errorf("scan quiz list item: %w", err)
 		}
 		if err := json.Unmarshal(settingsJSON, &item.DefaultSettings); err != nil {
@@ -214,6 +214,28 @@ func scanQuizListItems(rows *sql.Rows) ([]domain.QuizListItem, error) {
 		return nil, fmt.Errorf("quiz list rows: %w", err)
 	}
 	return result, nil
+}
+
+func (r *PgQuizRepository) GetQuestionByID(ctx context.Context, id uuid.UUID) (*domain.Question, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	var q domain.Question
+	var metaJSON []byte
+	err := exec.QueryRowContext(ctx,
+		`SELECT id, quiz_template_id, type, text, image_link, order_index, metadata, max_score, created_at, updated_at
+		 FROM question WHERE id = $1`,
+		id,
+	).Scan(&q.ID, &q.QuizTemplateID, &q.Type, &q.Text, &q.ImageLink,
+		&q.OrderIndex, &metaJSON, &q.MaxScore, &q.CreatedAt, &q.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get question: %w", err)
+	}
+	if err := json.Unmarshal(metaJSON, &q.Metadata); err != nil {
+		return nil, fmt.Errorf("unmarshal metadata: %w", err)
+	}
+	return &q, nil
 }
 
 func nullableBytes(b []byte) interface{} {

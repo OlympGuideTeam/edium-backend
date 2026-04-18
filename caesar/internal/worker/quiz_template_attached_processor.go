@@ -21,12 +21,12 @@ const (
 )
 
 type QuizTemplateAttachedProcessor struct {
-	tasks taskRepository
-	items courseItemStore
+	tasks  taskRepository
+	drafts courseDraftStore
 }
 
-func NewQuizTemplateAttachedProcessor(tasks taskRepository, items courseItemStore) *QuizTemplateAttachedProcessor {
-	return &QuizTemplateAttachedProcessor{tasks: tasks, items: items}
+func NewQuizTemplateAttachedProcessor(tasks taskRepository, drafts courseDraftStore) *QuizTemplateAttachedProcessor {
+	return &QuizTemplateAttachedProcessor{tasks: tasks, drafts: drafts}
 }
 
 func (w *QuizTemplateAttachedProcessor) Run(ctx context.Context) error {
@@ -47,7 +47,7 @@ func (w *QuizTemplateAttachedProcessor) Run(ctx context.Context) error {
 
 type quizTemplateAttachedPayload struct {
 	QuizTemplateID string `json:"quiz_template_id"`
-	ModuleID       string `json:"module_id"`
+	CourseID       string `json:"course_id"`
 }
 
 func (w *QuizTemplateAttachedProcessor) processBatch(ctx context.Context) error {
@@ -80,15 +80,15 @@ func (w *QuizTemplateAttachedProcessor) processTask(ctx context.Context, t domai
 	if err != nil {
 		return fmt.Errorf("parse quiz_template_id: %w", err)
 	}
-	moduleID, err := uuid.Parse(p.ModuleID)
+	courseID, err := uuid.Parse(p.CourseID)
 	if err != nil {
-		return fmt.Errorf("parse module_id: %w", err)
+		return fmt.Errorf("parse course_id: %w", err)
 	}
 
-	slog.InfoContext(ctx, "quiz-template-attached-processor: создание элемента", "task_id", t.ID, "quiz_template_id", quizTemplateID)
+	slog.InfoContext(ctx, "quiz-template-attached-processor: создание черновика", "task_id", t.ID, "quiz_template_id", quizTemplateID)
 
-	if _, err := w.items.CreateItem(ctx, moduleID, quizTemplateID, domain.CourseItemTypeQuizTemplate); err != nil {
-		return fmt.Errorf("createItem: %w", err)
+	if _, err := w.drafts.CreateCourseDraft(ctx, quizTemplateID, courseID); err != nil {
+		return fmt.Errorf("createCourseDraft: %w", err)
 	}
 	return w.tasks.MarkDone(ctx, t.ID)
 }

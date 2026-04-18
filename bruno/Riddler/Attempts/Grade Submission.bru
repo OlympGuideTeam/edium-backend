@@ -1,0 +1,22 @@
+meta {
+  name: Grade Submission
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/attempts/{{attemptId}}/submissions/{{submissionId}}/grade
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "score": 8,
+    "feedback": "Верно, но можно было раскрыть подробнее"
+  }
+}
