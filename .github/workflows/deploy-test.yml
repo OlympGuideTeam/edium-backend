@@ -615,8 +615,12 @@ jobs:
 
             # Обновление и запуск
             docker compose pull
+            # NATS рестартуем до старта приложений — конфиг монтируется как volume
+            docker compose up -d nats
+            docker compose restart nats
+            for i in $(seq 1 15); do nc -z 127.0.0.1 4222 2>/dev/null && break; sleep 1; done
             docker compose up -d --remove-orphans
-            docker compose restart nats grafana vector caddy alertmanager
+            docker compose restart grafana vector caddy alertmanager
             docker image prune -f
 
             # Ждём готовности ClickHouse (до 60 сек)
@@ -782,8 +786,12 @@ jobs:
 
             # Обновление и запуск
             docker compose pull
+            # NATS рестартуем до старта приложений — конфиг монтируется как volume
+            docker compose up -d nats
+            docker compose restart nats
+            for i in $(seq 1 15); do nc -z 127.0.0.1 4222 2>/dev/null && break; sleep 1; done
             docker compose up -d --remove-orphans
-            docker compose restart nats grafana vector caddy alertmanager
+            docker compose restart grafana vector caddy alertmanager
             docker image prune -f
 
             # Ждём готовности ClickHouse (до 60 сек)
