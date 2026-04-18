@@ -30,6 +30,10 @@ services:
       OTEL_ENDPOINT: "jaeger:4317"
     expose:
       - "80"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     depends_on:
       doorman-flyway:
         condition: service_completed_successfully
@@ -69,6 +73,10 @@ services:
       SMS_API_KEY: ${SMS_API_KEY}
       SMS_ALLOWED_PHONES: ${SMS_ALLOWED_PHONES}
       OTEL_ENDPOINT: "jaeger:4317"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     depends_on:
       herald-flyway:
         condition: service_completed_successfully
@@ -107,6 +115,10 @@ services:
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       CLICKHOUSE_DSN: "clickhouse://vector:${CLICKHOUSE_PASSWORD}@clickhouse:9000/logs"
       OTEL_ENDPOINT: "jaeger:4317"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     depends_on:
       charon-flyway:
         condition: service_completed_successfully
@@ -142,6 +154,10 @@ services:
       NATS_URL: "nats://caesar:${NATS_PASSWORD_CAESAR}@nats:4222"
       DOORMAN_JWKS_URL: "http://doorman/doorman/v1/.well-known/jwks.json"
       OTEL_ENDPOINT: "jaeger:4317"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     depends_on:
       caesar-flyway:
         condition: service_completed_successfully
@@ -177,6 +193,10 @@ services:
       NATS_URL: "nats://riddler:${NATS_PASSWORD_RIDDLER}@nats:4222"
       DOORMAN_JWKS_URL: "http://doorman/doorman/v1/.well-known/jwks.json"
       OTEL_ENDPOINT: "jaeger:4317"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     depends_on:
       riddler-flyway:
         condition: service_completed_successfully
