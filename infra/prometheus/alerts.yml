@@ -77,14 +77,21 @@ groups:
 
       - alert: ContainerHighMemory
         expr: |
-          container_memory_working_set_bytes{
+          (
+            container_memory_working_set_bytes{
+              container_label_com_docker_compose_service=~"doorman|caesar|herald|charon",
+              name!=""
+            }
+            / container_spec_memory_limit_bytes{
+              container_label_com_docker_compose_service=~"doorman|caesar|herald|charon",
+              name!=""
+            } * 100
+          ) > 85
+          and
+          container_spec_memory_limit_bytes{
             container_label_com_docker_compose_service=~"doorman|caesar|herald|charon",
             name!=""
-          }
-          / container_spec_memory_limit_bytes{
-            container_label_com_docker_compose_service=~"doorman|caesar|herald|charon",
-            name!=""
-          } * 100 > 85
+          } > 0
         for: 5m
         labels:
           severity: warning
