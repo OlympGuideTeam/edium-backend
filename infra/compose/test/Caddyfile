@@ -8,6 +8,9 @@ test.edium.online {
     handle /herald/v1/* {
         reverse_proxy herald:80
     }
+    handle /riddler/v1/* {
+        reverse_proxy riddler:80
+    }
     handle {
         respond "Not Found" 404
     }
