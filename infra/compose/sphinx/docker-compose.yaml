@@ -6,8 +6,9 @@ name: edium-sphinx
 # Переменные окружения (/opt/edium/.env на VM):
 #   ML_REGISTRY_ID    — ID Container Registry ML аккаунта
 #   IMAGE_TAG         — тег образа (default: latest)
-#   NATS_URL          — nats://sphinx:<pwd>@<platform-vm-ip>:4223
+#   NATS_URL          — nats://sphinx:<pwd>@<platform-vm-ip>:4223  (prod, через stunnel)
 #   NATS_TLS_CA_PATH  — путь к CA-сертификату stunnel (пустой если без TLS)
+#   NATS_URL_TEST     — nats://sphinx:<pwd>@<test-vm-ip>:4222  (test, без TLS)
 #   SPHINX_PG_PWD     — пароль PostgreSQL
 #   HF_TOKEN          — HuggingFace token
 #   MODEL_ID          — ID модели (опционально)
@@ -19,6 +20,7 @@ services:
     environment:
       NATS_URL: ${NATS_URL}
       NATS_TLS_CA_PATH: ${NATS_TLS_CA_PATH:-}
+      NATS_URL_TEST: ${NATS_URL_TEST:-}
       POSTGRES_DSN: postgres://sphinx:${SPHINX_PG_PWD}@sphinx-db:5432/sphinx?sslmode=disable
       MODEL_ID: ${MODEL_ID:-mistralai/Mistral-7B-Instruct-v0.3}
       HF_TOKEN: ${HF_TOKEN:-}

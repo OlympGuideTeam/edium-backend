@@ -14,23 +14,28 @@ import (
 
 type quizTemplateAttachedPayload struct {
 	QuizTemplateID uuid.UUID `json:"quiz_template_id"`
-	ModuleID       uuid.UUID `json:"module_id"`
+	CourseID       uuid.UUID `json:"course_id"`
 }
 
-func (s *Service) CreateQuiz(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings, attachToModule *uuid.UUID) (uuid.UUID, error) {
+func (s *Service) CreateQuiz(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings, attachToCourse *uuid.UUID) (uuid.UUID, error) {
 	if strings.TrimSpace(title) == "" {
 		return uuid.Nil, apperr.ErrQuizEmptyTitle
+	}
+
+	source := domain.QuizSourceLibrary
+	if attachToCourse != nil {
+		source = domain.QuizSourceCourse
 	}
 
 	var id uuid.UUID
 	err := s.txManager.WithTx(ctx, func(ctx context.Context) error {
 		var innerErr error
-		id, innerErr = s.quizzes.Create(ctx, authorID, title, description, settings)
+		id, innerErr = s.quizzes.Create(ctx, authorID, title, description, settings, source)
 		if innerErr != nil {
 			return fmt.Errorf("create quiz: %w", innerErr)
 		}
-		if attachToModule != nil {
-			payload, _ := json.Marshal(quizTemplateAttachedPayload{QuizTemplateID: id, ModuleID: *attachToModule})
+		if attachToCourse != nil {
+			payload, _ := json.Marshal(quizTemplateAttachedPayload{QuizTemplateID: id, CourseID: *attachToCourse})
 			if err := s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, payload); err != nil {
 				return fmt.Errorf("schedule quiz_template.attached: %w", err)
 			}
@@ -71,7 +76,7 @@ func (s *Service) GetQuizForStudent(ctx context.Context, id uuid.UUID) (*domain.
 	if quiz == nil {
 		return nil, apperr.ErrQuizNotFound
 	}
-	if quiz.IsDraft || !quiz.IsPublic {
+	if !quiz.IsPublic {
 		return nil, apperr.ErrQuizNotAvailable
 	}
 
@@ -108,7 +113,7 @@ func (s *Service) UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title,
 	return nil
 }
 
-func (s *Service) PublishQuiz(ctx context.Context, id, authorID uuid.UUID, isPublic bool) error {
+func (s *Service) PublishQuiz(ctx context.Context, id, authorID uuid.UUID) error {
 	quiz, err := s.quizzes.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("get quiz: %w", err)
@@ -119,15 +124,20 @@ func (s *Service) PublishQuiz(ctx context.Context, id, authorID uuid.UUID, isPub
 	if quiz.AuthorID != authorID {
 		return apperr.ErrQuizForbidden
 	}
-	if !quiz.IsDraft {
+
+	hasSession, err := s.quizzes.HasSession(ctx, id)
+	if err != nil {
+		return fmt.Errorf("check session: %w", err)
+	}
+	if hasSession {
 		return apperr.ErrQuizAlreadyPublished
 	}
 
 	return s.txManager.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.quizzes.Publish(ctx, id, isPublic); err != nil {
+		if err := s.quizzes.Publish(ctx, id); err != nil {
 			return fmt.Errorf("publish quiz: %w", err)
 		}
-		if isPublic && !quiz.NeedEvaluation {
+		if !quiz.NeedEvaluation {
 			if err := s.createLibrarySession(ctx, quiz); err != nil {
 				return err
 			}
@@ -136,7 +146,7 @@ func (s *Service) PublishQuiz(ctx context.Context, id, authorID uuid.UUID, isPub
 	})
 }
 
-func (s *Service) CopyQuiz(ctx context.Context, quizID, authorID uuid.UUID) (uuid.UUID, error) {
+func (s *Service) CopyQuiz(ctx context.Context, quizID, authorID uuid.UUID, attachToCourse *uuid.UUID) (uuid.UUID, error) {
 	quiz, err := s.quizzes.GetByID(ctx, quizID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("get quiz: %w", err)
@@ -144,13 +154,29 @@ func (s *Service) CopyQuiz(ctx context.Context, quizID, authorID uuid.UUID) (uui
 	if quiz == nil {
 		return uuid.Nil, apperr.ErrQuizNotFound
 	}
-	if quiz.IsDraft {
-		return uuid.Nil, apperr.ErrQuizNotPublished
+
+	source := domain.QuizSourceLibrary
+	if attachToCourse != nil {
+		source = domain.QuizSourceCourse
 	}
 
-	newID, err := s.quizzes.Copy(ctx, quizID, authorID)
+	var newID uuid.UUID
+	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
+		var innerErr error
+		newID, innerErr = s.quizzes.Copy(ctx, quizID, authorID, source)
+		if innerErr != nil {
+			return fmt.Errorf("copy quiz: %w", innerErr)
+		}
+		if attachToCourse != nil {
+			payload, _ := json.Marshal(quizTemplateAttachedPayload{QuizTemplateID: newID, CourseID: *attachToCourse})
+			if err := s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, payload); err != nil {
+				return fmt.Errorf("schedule quiz_template.attached: %w", err)
+			}
+		}
+		return nil
+	})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("copy quiz: %w", err)
+		return uuid.Nil, err
 	}
 	return newID, nil
 }

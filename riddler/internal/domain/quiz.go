@@ -30,6 +30,13 @@ type QuizDefaultSettings struct {
 	ShuffleQuestions     *bool `json:"shuffle_questions"`
 }
 
+type QuizSource string
+
+const (
+	QuizSourceLibrary QuizSource = "library"
+	QuizSourceCourse  QuizSource = "course"
+)
+
 type QuizTemplate struct {
 	ID               uuid.UUID
 	AuthorID         uuid.UUID
@@ -37,7 +44,7 @@ type QuizTemplate struct {
 	Description      *string
 	DefaultSettings  QuizDefaultSettings
 	IsPublic         bool
-	IsDraft          bool
+	Source           QuizSource
 	NeedEvaluation   bool
 	QuestionCount    int
 	LibrarySessionID *uuid.UUID
@@ -107,7 +114,7 @@ type QuizListItem struct {
 	Description     *string
 	DefaultSettings QuizDefaultSettings
 	IsPublic        bool
-	IsDraft         bool
+	Source          QuizSource
 	NeedEvaluation  bool
 	QuestionCount   int
 }

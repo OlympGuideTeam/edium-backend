@@ -40,6 +40,7 @@ type App struct {
 	QuizTemplateAttachedProcessor *worker.QuizTemplateAttachedProcessor
 	CourseSessionCreatedConsumer  *worker.CourseSessionCreatedConsumer
 	CourseSessionCreatedProcessor *worker.CourseSessionCreatedProcessor
+	CourseSessionDeletedPublisher *worker.CourseSessionDeletedPublisher
 	AttemptCreatedConsumer        *worker.AttemptCreatedConsumer
 	AttemptCreatedProcessor       *worker.AttemptCreatedProcessor
 	AttemptScoredConsumer         *worker.AttemptScoredConsumer
@@ -81,7 +82,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 	classService := classsvc.NewService(classStore, courseStore)
 	classHandler := classhandler.NewHandler(classService)
-	courseService := coursesvc.NewService(courseStore, classStore)
+	courseService := coursesvc.NewService(courseStore, classStore, taskRepo, txManager)
 	courseHandler := coursehandler.NewHandler(courseService)
 
 	natsSubscriber := natsinf.NewSubscriber(natsConn)
@@ -98,6 +99,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		QuizTemplateAttachedProcessor: worker.NewQuizTemplateAttachedProcessor(taskRepo, courseStore),
 		CourseSessionCreatedConsumer:  worker.NewCourseSessionCreatedConsumer(natsSubscriber, taskRepo),
 		CourseSessionCreatedProcessor: worker.NewCourseSessionCreatedProcessor(taskRepo, courseStore),
+		CourseSessionDeletedPublisher: worker.NewCourseSessionDeletedPublisher(taskRepo, publisher),
 		AttemptCreatedConsumer:        worker.NewAttemptCreatedConsumer(natsSubscriber, taskRepo),
 		AttemptCreatedProcessor:       worker.NewAttemptCreatedProcessor(taskRepo, courseStore),
 		AttemptScoredConsumer:         worker.NewAttemptScoredConsumer(natsSubscriber, taskRepo),
@@ -118,6 +120,7 @@ func (a *App) Workers() map[string]func(context.Context) error {
 		"QuizTemplateAttachedProcessor": a.QuizTemplateAttachedProcessor.Run,
 		"CourseSessionCreatedConsumer":  a.CourseSessionCreatedConsumer.Run,
 		"CourseSessionCreatedProcessor": a.CourseSessionCreatedProcessor.Run,
+		"CourseSessionDeletedPublisher": a.CourseSessionDeletedPublisher.Run,
 		"AttemptCreatedConsumer":        a.AttemptCreatedConsumer.Run,
 		"AttemptCreatedProcessor":       a.AttemptCreatedProcessor.Run,
 		"AttemptScoredConsumer":         a.AttemptScoredConsumer.Run,
@@ -160,6 +163,7 @@ func (a *App) Router() *gin.Engine {
 	api.DELETE("/modules/:moduleId", a.CourseHandler.DeleteModule)
 
 	api.DELETE("/items/:itemId", a.CourseHandler.DeleteCourseItem)
+	api.DELETE("/drafts/:draftId", a.CourseHandler.DeleteCourseDraft)
 
 	return r
 }

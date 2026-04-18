@@ -1,16 +1,13 @@
 package domain
 
 import (
-	"encoding/json"
-
 	"github.com/google/uuid"
 )
 
 type CourseItemType string
 
 const (
-	CourseItemTypeQuiz         CourseItemType = "quiz"
-	CourseItemTypeQuizTemplate CourseItemType = "quiz_template"
+	CourseItemTypeQuiz CourseItemType = "quiz"
 )
 
 type Course struct {
@@ -34,6 +31,7 @@ type CourseDetail struct {
 	Course
 	TeacherName string
 	IsTeacher   bool
+	Drafts      []CourseDraft
 	Modules     []CourseModule
 }
 
@@ -51,7 +49,12 @@ type CourseItem struct {
 	ModuleID uuid.UUID
 	ObjectID uuid.UUID
 	Type     CourseItemType
-	Settings json.RawMessage
+}
+
+type CourseDraft struct {
+	ID             uuid.UUID
+	QuizTemplateID uuid.UUID
+	CourseID       uuid.UUID
 }
 
 // CourseModuleItem — элемент модуля с прогрессом текущего пользователя.

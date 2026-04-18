@@ -2,6 +2,7 @@ package attempt
 
 import (
 	"math"
+	"strings"
 
 	"riddler/internal/domain"
 )
@@ -73,10 +74,10 @@ func gradeMultipleChoice(q domain.QuestionWithOptions, data map[string]any) floa
 }
 
 func gradeWithGivenAnswer(q domain.QuestionWithOptions, data map[string]any) float64 {
-	text, _ := data["text"].(string)
+	text := strings.ToLower(strings.TrimSpace(data["text"].(string)))
 	correctAnswers, _ := q.Metadata["correct_answers"].([]any)
 	for _, ca := range correctAnswers {
-		if s, ok := ca.(string); ok && s == text {
+		if s, ok := ca.(string); ok && strings.ToLower(strings.TrimSpace(s)) == text {
 			return float64(q.MaxScore)
 		}
 	}

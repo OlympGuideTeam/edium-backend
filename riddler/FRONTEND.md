@@ -37,14 +37,17 @@ GET  /attempts/{attempt_id}/result      ← итог с баллами по ка
 Учитель:
 
 POST /quizzes
-  body: { title, description, default_settings, attach_to_module: { module_id } }
+  body: { title, description, default_settings, attach_to_course: { course_id } }
         │
-        ├── создаёт quiz_template (is_draft=true)
-        └── событие → Caesar создаёт course_item { type: quiz_template, object_id: quiz_template_id }
+        ├── создаёт quiz_template (source=course)
+        └── событие → Caesar добавляет шаблон в курс
 
-POST /quizzes/{id}/questions   ← добавить вопросы
+POST /quizzes/{id}/questions         ← добавить вопросы вручную
+POST /quizzes/{id}/generate          ← сгенерировать вопросы по тексту (async)
+  body: { "text": "параграф или статья" }
+  → возвращает { job_id }; вопросы добавятся в квиз, когда Sphinx ответит
 
-POST /quizzes/{id}/publish     ← опубликовать (is_draft → false)
+POST /quizzes/{id}/publish           ← опубликовать (is_public → true)
 ```
 
 Студенты элемент типа `quiz_template` не видят.
@@ -145,6 +148,7 @@ POST /sessions/{session_id}/attempts   ← только когда status=waitin
 - **Повторная отправка ответа** — upsert, не ошибка. Последнее значение побеждает.
 - `with_free_answer` **не оценивается автоматически** — `final_score: null` до ручной или LLM-проверки.
 - **Одна попытка** на курсовую сессию для каждого студента.
+- **Статусы попытки для студента**: после `/finish` с `need_evaluation=true` попытка переходит в `grading`, затем в `graded` (LLM завершил), затем в `completed` (учитель завершил проверку). `GET /attempts/{id}/result` возвращает статус — фронт должен опрашивать до `completed`.
 
 ---
 
@@ -180,9 +184,47 @@ body: { type, text, image_link, max_score, answer_options, metadata }
 
 ---
 
+---
+
+## Флоу 5 — Проверка учителем (need_evaluation=true)
+
+Применяется для тест-сессий, где квиз создан с `need_evaluation=true`. После сдачи попыток учитель видит статус `graded` (LLM уже выставил предварительные оценки) и может откорректировать любой ответ перед финальным завершением.
+
+```
+Учитель:
+
+GET  /sessions/{session_id}/attempts
+        │  в ответе: [{attempt_id, user_id, status, score}, ...]
+        │  фильтровать по status=graded (ждут проверки)
+        ▼
+GET  /attempts/{attempt_id}/review
+        │  в ответе: все ответы с question_text, answer_data,
+        │            final_score, final_source (auto/llm), final_feedback
+        ▼
+POST /attempts/{attempt_id}/submissions/{submission_id}/grade   ← опционально
+  body: { "score": 8, "feedback": "Неполный ответ" }
+        │  можно вызывать несколько раз для разных submission_id
+        │  перезаписывает оценку auto/llm, final_source становится teacher
+        ▼
+POST /attempts/{attempt_id}/complete
+        │  пересчитывает итоговый балл, status: graded → completed
+        └── событие riddler.attempt.scored → Caesar обновляет оценку
+```
+
+**Студент** после завершения проверки может открыть `GET /attempts/{id}/review` и увидеть финальные оценки с комментариями учителя.
+
+| Статус попытки | Что показать студенту |
+|----------------|----------------------|
+| `in_progress` | Тест идёт |
+| `grading` | На проверке |
+| `graded` | Предварительная оценка (может измениться) |
+| `completed` | Финальная оценка |
+
+---
+
 ## Интеграция с Charon (оценка свободных ответов)
 
-Riddler публикует батч на `edium.completion.requested`, Charon оценивает через LLM и возвращает результат на `charon.quiz.grade.completed`.
+Riddler публикует батч на `riddler.quiz.grade.requested`, Charon оценивает через LLM и возвращает результат на `charon.quiz.grade.completed`.
 
 **Запрос:**
 ```json
