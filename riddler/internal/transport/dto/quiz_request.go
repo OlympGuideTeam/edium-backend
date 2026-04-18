@@ -1,23 +1,19 @@
 package dto
 
-type AttachToModuleRequest struct {
-	ModuleID string `json:"module_id" binding:"required"`
+type AttachToCourseRequest struct {
+	CourseID string `json:"course_id" binding:"required"`
 }
 
 type CreateQuizRequest struct {
 	Title           string                 `json:"title"            binding:"required"`
 	Description     *string                `json:"description"`
 	DefaultSettings *QuizDefaultSettings   `json:"default_settings"`
-	AttachToModule  *AttachToModuleRequest `json:"attach_to_module"`
+	AttachToCourse  *AttachToCourseRequest `json:"attach_to_course"`
 }
 
 type UpdateQuizRequest struct {
 	Title       *string `json:"title"`
 	Description *string `json:"description"`
-}
-
-type PublishQuizRequest struct {
-	IsPublic bool `json:"is_public"`
 }
 
 type ReorderQuestionsRequest struct {
@@ -45,6 +41,10 @@ type CreateTestSessionRequest struct {
 	ShuffleQuestions  *bool   `json:"shuffle_questions"`
 	StartedAt         *string `json:"started_at"`
 	FinishedAt        *string `json:"finished_at"`
+}
+
+type CopyQuizRequest struct {
+	AttachToCourse *AttachToCourseRequest `json:"attach_to_course"`
 }
 
 type CreateLiveSessionRequest struct {

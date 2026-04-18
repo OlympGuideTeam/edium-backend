@@ -49,14 +49,20 @@ type ModuleItem struct {
 	Items        []CourseItemDTO `json:"items"`
 }
 
+type CourseDraftDTO struct {
+	ID             string `json:"id"`
+	QuizTemplateID string `json:"quiz_template_id"`
+}
+
 type CourseDetailResponse struct {
-	ID           string       `json:"id"`
-	Title        string       `json:"title"`
-	TeacherName  string       `json:"teacher_name"`
-	ModuleCount  int          `json:"module_count"`
-	ElementCount int          `json:"element_count"`
-	IsTeacher    bool         `json:"is_teacher"`
-	Modules      []ModuleItem `json:"modules"`
+	ID           string           `json:"id"`
+	Title        string           `json:"title"`
+	TeacherName  string           `json:"teacher_name"`
+	ModuleCount  int              `json:"module_count"`
+	ElementCount int              `json:"element_count"`
+	IsTeacher    bool             `json:"is_teacher"`
+	Drafts       []CourseDraftDTO `json:"drafts"`
+	Modules      []ModuleItem     `json:"modules"`
 }
 
 // ─── Module ───────────────────────────────────────────────────────────────────

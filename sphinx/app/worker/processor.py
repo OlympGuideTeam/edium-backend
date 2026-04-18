@@ -112,7 +112,7 @@ class GenerationProcessor:
             async with conn.transaction():
                 row = await conn.fetchrow(
                     """
-                    SELECT id, job_id, quiz_id, text, trace_ctx
+                    SELECT id, job_id, quiz_id, text, trace_ctx, env
                     FROM generation_task
                     WHERE status = 'pending'
                     ORDER BY created_at
@@ -128,6 +128,7 @@ class GenerationProcessor:
                 quiz_id   = row["quiz_id"]
                 text      = row["text"]
                 trace_ctx = row["trace_ctx"] or ""
+                env       = row["env"]
 
                 await conn.execute(
                     """
@@ -138,11 +139,11 @@ class GenerationProcessor:
                     datetime.now(timezone.utc), task_id,
                 )
 
-        logger.info("GenerationProcessor: running pipeline job_id=%s", job_id)
+        logger.info("GenerationProcessor: running pipeline job_id=%s env=%s", job_id, env)
         try:
             loop   = asyncio.get_event_loop()
             result = await loop.run_in_executor(None, pipeline.run, text)
-            await self._save_result(job_id, quiz_id, result, trace_ctx, task_id)
+            await self._save_result(job_id, quiz_id, result, trace_ctx, env, task_id)
         except Exception as e:
             logger.error("GenerationProcessor: pipeline failed job_id=%s: %s", job_id, e)
             async with self._pool.acquire() as conn:
@@ -161,6 +162,7 @@ class GenerationProcessor:
         quiz_id: str,
         result: dict,
         trace_ctx: str,
+        env: str,
         task_id,
     ) -> None:
         payload = json.dumps(
@@ -178,11 +180,11 @@ class GenerationProcessor:
             async with conn.transaction():
                 await conn.execute(
                     """
-                    INSERT INTO generation_result (job_id, quiz_id, payload, trace_ctx)
-                    VALUES ($1, $2, $3::jsonb, $4)
+                    INSERT INTO generation_result (job_id, quiz_id, payload, trace_ctx, env)
+                    VALUES ($1, $2, $3::jsonb, $4, $5)
                     ON CONFLICT (job_id) DO NOTHING
                     """,
-                    job_id, quiz_id, payload, trace_ctx,
+                    job_id, quiz_id, payload, trace_ctx, env,
                 )
                 await conn.execute(
                     "UPDATE generation_task SET status = 'done', finished_at = $1 WHERE id = $2",

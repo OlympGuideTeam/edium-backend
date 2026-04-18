@@ -2,7 +2,6 @@ package course
 
 import (
 	"context"
-	"encoding/json"
 
 	"caesar/internal/domain"
 
@@ -31,7 +30,18 @@ type courseStore interface {
 	ListItemsByModuleIDs(ctx context.Context, moduleIDs []uuid.UUID, userID uuid.UUID) ([]domain.CourseModuleItem, error)
 	UpsertProgress(ctx context.Context, courseItemID, userID, attemptID uuid.UUID) error
 	UpdateProgressScore(ctx context.Context, courseItemID, userID uuid.UUID, score float64) error
-	UpdateItemSettings(ctx context.Context, id uuid.UUID, settings json.RawMessage) error
+	CreateCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID) (uuid.UUID, error)
+	GetDraftByID(ctx context.Context, id uuid.UUID) (*domain.CourseDraft, error)
+	DeleteDraft(ctx context.Context, id uuid.UUID) error
+	ListDraftsByCourseID(ctx context.Context, courseID uuid.UUID) ([]domain.CourseDraft, error)
+}
+
+type taskScheduler interface {
+	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
+}
+
+type txRunner interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 type classAccessor interface {
