@@ -39,15 +39,31 @@ func NewClient(endpoint string) *Client {
 }
 
 // Load выполняет начальную загрузку ключей. Должен быть вызван до старта сервера.
+// При недоступности эндпоинта повторяет запрос каждые 2с до 30с.
 func (c *Client) Load(ctx context.Context) error {
-	keys, err := c.fetchKeys(ctx)
-	if err != nil {
-		return fmt.Errorf("jwks load: %w", err)
+	const (
+		retryInterval = 2 * time.Second
+		maxWait       = 30 * time.Second
+	)
+	deadline := time.Now().Add(maxWait)
+	for {
+		keys, err := c.fetchKeys(ctx)
+		if err == nil {
+			c.mu.Lock()
+			c.keys = keys
+			c.mu.Unlock()
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("jwks load: %w", err)
+		}
+		slog.WarnContext(ctx, "jwks: не удалось загрузить ключи, повтор через 2с", "err", err)
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("jwks load: %w", ctx.Err())
+		case <-time.After(retryInterval):
+		}
 	}
-	c.mu.Lock()
-	c.keys = keys
-	c.mu.Unlock()
-	return nil
 }
 
 // StartRefresh запускает фоновое обновление ключей каждый час.
