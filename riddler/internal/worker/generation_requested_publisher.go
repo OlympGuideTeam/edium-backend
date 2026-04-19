@@ -28,12 +28,16 @@ type generationRequestedTaskRepository interface {
 	MarkFailed(ctx context.Context, id uuid.UUID, reason string, retryAfter time.Duration) error
 }
 
-type GenerationRequestedPublisher struct {
-	tasks     generationRequestedTaskRepository
-	publisher *natsinf.Publisher
+type generationNATSPublisher interface {
+	Publish(ctx context.Context, subject string, data []byte) error
 }
 
-func NewGenerationRequestedPublisher(tasks generationRequestedTaskRepository, publisher *natsinf.Publisher) *GenerationRequestedPublisher {
+type GenerationRequestedPublisher struct {
+	tasks     generationRequestedTaskRepository
+	publisher generationNATSPublisher
+}
+
+func NewGenerationRequestedPublisher(tasks generationRequestedTaskRepository, publisher generationNATSPublisher) *GenerationRequestedPublisher {
 	return &GenerationRequestedPublisher{tasks: tasks, publisher: publisher}
 }
 
