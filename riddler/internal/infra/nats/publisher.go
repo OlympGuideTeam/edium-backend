@@ -41,3 +41,26 @@ func (p *Publisher) Publish(ctx context.Context, subject string, data []byte) er
 	}
 	return nil
 }
+
+// JetStreamPublisher публикует через JetStream и получает server-side ack о записи в стрим.
+// Используется для субъектов, где важна гарантия доставки (например, riddler → sphinx).
+type JetStreamPublisher struct {
+	js natsgo.JetStreamContext
+}
+
+func NewJetStreamPublisher(js natsgo.JetStreamContext) *JetStreamPublisher {
+	return &JetStreamPublisher{js: js}
+}
+
+func (p *JetStreamPublisher) Publish(ctx context.Context, subject string, data []byte) error {
+	msg := &natsgo.Msg{
+		Subject: subject,
+		Data:    data,
+		Header:  natsgo.Header{},
+	}
+	propagator.Inject(ctx, natsHeaderCarrier{header: msg.Header})
+	if _, err := p.js.PublishMsg(msg); err != nil {
+		return fmt.Errorf("js publish to %s: %w", subject, err)
+	}
+	return nil
+}
