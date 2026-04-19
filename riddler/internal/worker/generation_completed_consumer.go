@@ -17,18 +17,26 @@ type generationCompletedScheduler interface {
 	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
 }
 
+const generationCompletedConsumer = "riddler-generation-completed"
+
 type GenerationCompletedConsumer struct {
-	subscriber *natsinf.Subscriber
+	subscriber *natsinf.JetStreamSubscriber
 	tasks      generationCompletedScheduler
 }
 
-func NewGenerationCompletedConsumer(subscriber *natsinf.Subscriber, tasks generationCompletedScheduler) *GenerationCompletedConsumer {
+func NewGenerationCompletedConsumer(subscriber *natsinf.JetStreamSubscriber, tasks generationCompletedScheduler) *GenerationCompletedConsumer {
 	return &GenerationCompletedConsumer{subscriber: subscriber, tasks: tasks}
 }
 
 func (c *GenerationCompletedConsumer) Run(ctx context.Context) error {
 	slog.Info("generation-completed-consumer: подписка", "subject", natsinf.SubjectGenerationCompleted)
-	return c.subscriber.QueueSubscribe(ctx, natsinf.SubjectGenerationCompleted, "riddler-generation-completed", c.handle)
+	return c.subscriber.Subscribe(
+		ctx,
+		natsinf.SubjectGenerationCompleted,
+		natsinf.StreamGenerationCompleted,
+		generationCompletedConsumer,
+		c.handle,
+	)
 }
 
 type generationCompletedMsg struct {
