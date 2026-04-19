@@ -68,6 +68,9 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	if err := natsinf.EnsureGenerationStream(js); err != nil {
 		return nil, fmt.Errorf("ensure generation stream: %w", err)
 	}
+	if err := natsinf.EnsureGenerationCompletedStream(js); err != nil {
+		return nil, fmt.Errorf("ensure generation completed stream: %w", err)
+	}
 
 	jwksClient := jwks.NewClient(cfg.Doorman.JWKSEndpoint)
 	if err := jwksClient.Load(ctx); err != nil {
@@ -92,6 +95,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	natsPublisher := natsinf.NewPublisher(natsConn)
 	natsJSPublisher := natsinf.NewJetStreamPublisher(js)
 	natsSubscriber := natsinf.NewSubscriber(natsConn)
+	natsJSSubscriber := natsinf.NewJetStreamSubscriber(js)
 
 	return &App{
 		quizHandler:    quizHandler,
@@ -104,7 +108,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		attemptScoredPublisher:        worker.NewAttemptScoredPublisher(taskRepo, natsPublisher),
 
 		generationRequestedPublisher:  worker.NewGenerationRequestedPublisher(taskRepo, natsJSPublisher),
-		generationCompletedConsumer:   worker.NewGenerationCompletedConsumer(natsSubscriber, taskRepo),
+		generationCompletedConsumer:   worker.NewGenerationCompletedConsumer(natsJSSubscriber, taskRepo),
 		generationCompletedProcessor:  worker.NewGenerationCompletedProcessor(taskRepo, quizService),
 		courseSessionDeletedConsumer:  worker.NewCourseSessionDeletedConsumer(natsSubscriber, taskRepo),
 		courseSessionDeletedProcessor: worker.NewCourseSessionDeletedProcessor(taskRepo, sessionRepo),
