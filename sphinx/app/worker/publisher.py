@@ -25,7 +25,7 @@ class GenerationPublisher:
         pool: asyncpg.Pool,
         nc_test: Optional[nats.aio.client.Client] = None,
     ):
-        self._nc   = {"prod": nc_prod, "test": nc_test}
+        self._js   = {"prod": nc_prod.jetstream(), "test": nc_test.jetstream() if nc_test else None}
         self._pool = pool
 
     async def run(self) -> None:
@@ -58,8 +58,8 @@ class GenerationPublisher:
                 payload   = row["payload"]
                 env       = row["env"]
 
-                nc = self._nc.get(env)
-                if nc is None:
+                js = self._js.get(env)
+                if js is None:
                     logger.error(
                         "GenerationPublisher: no NATS connection for env=%s job_id=%s, skipping",
                         env, job_id,
@@ -67,7 +67,7 @@ class GenerationPublisher:
                     return
 
                 try:
-                    await nc.publish(SUBJECT, payload.encode())
+                    await js.publish(SUBJECT, payload.encode())
                 except Exception as e:
                     logger.error("GenerationPublisher: publish failed job_id=%s env=%s: %s", job_id, env, e)
                     return
