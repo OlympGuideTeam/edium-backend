@@ -7,7 +7,8 @@ name: edium-sphinx
 #   ML_REGISTRY_ID    — ID Container Registry ML аккаунта
 #   IMAGE_TAG         — тег образа (default: latest)
 #   NATS_URL          — nats://sphinx:<pwd>@<platform-vm-ip>:4223  (prod, через stunnel)
-#   NATS_TLS_CA_PATH  — путь к CA-сертификату stunnel (пустой если без TLS)
+#   NATS_TLS_CA_PATH  — абс. путь к CA-сертификату на хосте (одновременно монтируется в
+#                       контейнер по тому же пути); оставить пустым если без TLS
 #   NATS_URL_TEST     — nats://sphinx:<pwd>@<test-vm-ip>:4222  (test, без TLS)
 #   SPHINX_PG_PWD     — пароль PostgreSQL
 #   HF_TOKEN          — HuggingFace token
@@ -26,6 +27,7 @@ services:
       HF_TOKEN: ${HF_TOKEN:-}
     volumes:
       - hf_cache:/root/.cache/huggingface
+      - ${NATS_TLS_CA_PATH:-/dev/null}:${NATS_TLS_CA_PATH:-/dev/null}:ro
     depends_on:
       sphinx-db:
         condition: service_healthy
