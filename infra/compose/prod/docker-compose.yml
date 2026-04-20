@@ -309,8 +309,13 @@ services:
     restart: always
     ports:
       - "4223:4223"
+    environment:
+      STUNNEL_SERVICE: nats
+      STUNNEL_ACCEPT: "4223"
+      STUNNEL_CONNECT: "nats:4222"
+      STUNNEL_CRT: /etc/stunnel/tls.crt
+      STUNNEL_KEY: /etc/stunnel/tls.key
     volumes:
-      - ./nats/stunnel.conf:/etc/stunnel/stunnel.conf:ro
       - ./nats/tls.crt:/etc/stunnel/tls.crt:ro
       - ./nats/tls.key:/etc/stunnel/tls.key:ro
     depends_on:
