@@ -100,25 +100,10 @@ func (h *Handler) GetCourse(c *gin.Context) {
 		Modules:      make([]dto.ModuleItem, 0, len(detail.Modules)),
 	}
 	for _, m := range detail.Modules {
-		items := make([]dto.CourseItemDTO, 0, len(m.Items))
-		for _, it := range m.Items {
-			item := dto.CourseItemDTO{
-				ID:       it.ID.String(),
-				ObjectID: it.ObjectID.String(),
-				Type:     string(it.Type),
-			}
-			if it.AttemptID != nil {
-				s := it.AttemptID.String()
-				item.AttemptID = &s
-			}
-			item.Score = it.Score
-			items = append(items, item)
-		}
 		resp.Modules = append(resp.Modules, dto.ModuleItem{
 			ID:           m.ID.String(),
 			Title:        m.Title,
 			ElementCount: m.ElementCount,
-			Items:        items,
 		})
 	}
 

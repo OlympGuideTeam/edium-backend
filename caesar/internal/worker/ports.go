@@ -3,6 +3,7 @@ package worker
 import (
 	"caesar/internal/domain"
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,12 +20,12 @@ type taskRepository interface {
 }
 
 type courseItemStore interface {
-	CreateItem(ctx context.Context, moduleID, objectID uuid.UUID, t domain.CourseItemType) (uuid.UUID, error)
+	CreateItem(ctx context.Context, moduleID, objectID uuid.UUID, t domain.CourseItemType, payload json.RawMessage) (uuid.UUID, error)
 	FindItemByObjectID(ctx context.Context, objectID uuid.UUID) (*domain.CourseItem, error)
 	UpsertProgress(ctx context.Context, courseItemID, userID, attemptID uuid.UUID) error
 	UpdateProgressScore(ctx context.Context, courseItemID, userID uuid.UUID, score float64) error
 }
 
 type courseDraftStore interface {
-	CreateCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID) (uuid.UUID, error)
+	UpsertCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID, title string) (uuid.UUID, error)
 }
