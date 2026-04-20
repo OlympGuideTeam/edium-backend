@@ -47,7 +47,8 @@ func (w *QuizTemplateAttachedPublisher) Run(ctx context.Context) error {
 
 type quizTemplateAttachedMsg struct {
 	QuizTemplateID string `json:"quiz_template_id"`
-	ModuleID       string `json:"module_id"`
+	CourseID       string `json:"course_id"`
+	Title          string `json:"title"`
 }
 
 func (w *QuizTemplateAttachedPublisher) processBatch(ctx context.Context) error {

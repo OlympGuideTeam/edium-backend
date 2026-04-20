@@ -25,8 +25,12 @@ func (c *CourseSessionCreatedConsumer) Run(ctx context.Context) error {
 }
 
 type courseSessionCreatedMsg struct {
-	SessionID string `json:"session_id"`
-	ModuleID  string `json:"module_id"`
+	SessionID            string `json:"session_id"`
+	ModuleID             string `json:"module_id"`
+	Mode                 string `json:"mode"`
+	TotalTimeLimitSec    *int   `json:"total_time_limit_sec,omitempty"`
+	QuestionTimeLimitSec *int   `json:"question_time_limit_sec,omitempty"`
+	ShuffleQuestions     *bool  `json:"shuffle_questions,omitempty"`
 }
 
 func (c *CourseSessionCreatedConsumer) handle(ctx context.Context, data []byte) error {

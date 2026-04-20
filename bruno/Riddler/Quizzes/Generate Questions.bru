@@ -1,0 +1,33 @@
+meta {
+  name: Generate Questions
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/quizzes/{{quizId}}/generate
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "text": "Митохондрии — органоиды клетки, отвечающие за синтез АТФ путём окислительного фосфорилирования. Они имеют двойную мембрану: внешнюю и внутреннюю с кристами. Содержат собственную ДНК и рибосомы."
+  }
+}
+
+vars:pre-request {
+  riddlerUrl: test.edium.online
+  quizId: 02388768-1860-47e4-86c2-7bac14591c30
+}
+
+tests {
+  const body = res.getBody();
+  if (body.job_id) {
+    bru.setEnvVar("generationJobId", body.job_id);
+  }
+}
