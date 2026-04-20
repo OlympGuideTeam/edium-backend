@@ -173,6 +173,16 @@ jobs:
           target: /tmp/sphinx-deploy/
           strip_components: 0
 
+      - name: Запись CA-сертификата NATS на VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SPHINX_VM_HOST }}
+          username: deploy
+          key: ${{ secrets.SPHINX_VM_SSH_KEY }}
+          script: |
+            mkdir -p /opt/edium
+            printf '%s' '${{ secrets.SPHINX_NATS_TLS_CA }}' > /opt/edium/nats-ca.pem
+
       - name: Deploy
         uses: appleboy/ssh-action@v1
         with:
