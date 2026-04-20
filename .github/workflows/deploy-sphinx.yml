@@ -180,8 +180,8 @@ jobs:
           username: deploy
           key: ${{ secrets.SPHINX_VM_SSH_KEY }}
           script: |
-            mkdir -p /opt/edium
-            printf '%s' '${{ secrets.SPHINX_NATS_TLS_CA }}' > /opt/edium/nats-ca.pem
+            mkdir -p "$(dirname '${{ secrets.SPHINX_NATS_TLS_CA_PATH }}')"
+            printf '%s' '${{ secrets.SPHINX_NATS_TLS_CA }}' > '${{ secrets.SPHINX_NATS_TLS_CA_PATH }}'
 
       - name: Deploy
         uses: appleboy/ssh-action@v1
