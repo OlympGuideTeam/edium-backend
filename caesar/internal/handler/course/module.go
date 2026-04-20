@@ -11,6 +11,48 @@ import (
 	"github.com/google/uuid"
 )
 
+func (h *Handler) GetModule(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	moduleID, err := uuid.Parse(c.Param("moduleId"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	m, err := h.service.GetModule(c.Request.Context(), moduleID, userID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	items := make([]dto.CourseItemDTO, 0, len(m.Items))
+	for _, it := range m.Items {
+		item := dto.CourseItemDTO{
+			ID:       it.ID.String(),
+			ObjectID: it.ObjectID.String(),
+			Type:     string(it.Type),
+			Payload:  it.Payload,
+		}
+		if it.AttemptID != nil {
+			s := it.AttemptID.String()
+			item.AttemptID = &s
+		}
+		item.Score = it.Score
+		items = append(items, item)
+	}
+
+	c.JSON(http.StatusOK, dto.ModuleDetailResponse{
+		ID:           m.ID.String(),
+		Title:        m.Title,
+		ElementCount: m.ElementCount,
+		Items:        items,
+	})
+}
+
 func (h *Handler) CreateModule(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
 	if !ok {

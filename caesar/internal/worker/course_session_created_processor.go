@@ -14,6 +14,15 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+type courseItemPayload struct {
+	Mode                 string     `json:"mode"`
+	TotalTimeLimitSec    *int       `json:"total_time_limit_sec,omitempty"`
+	QuestionTimeLimitSec *int       `json:"question_time_limit_sec,omitempty"`
+	ShuffleQuestions     *bool      `json:"shuffle_questions,omitempty"`
+	StartedAt            *time.Time `json:"started_at,omitempty"`
+	FinishedAt           *time.Time `json:"finished_at,omitempty"`
+}
+
 const (
 	courseSessionCreatedPollInterval = 2 * time.Second
 	courseSessionCreatedBatchSize    = 10
@@ -46,8 +55,14 @@ func (w *CourseSessionCreatedProcessor) Run(ctx context.Context) error {
 }
 
 type courseSessionCreatedPayload struct {
-	SessionID string `json:"session_id"`
-	ModuleID  string `json:"module_id"`
+	SessionID            string     `json:"session_id"`
+	ModuleID             string     `json:"module_id"`
+	Mode                 string     `json:"mode"`
+	TotalTimeLimitSec    *int       `json:"total_time_limit_sec,omitempty"`
+	QuestionTimeLimitSec *int       `json:"question_time_limit_sec,omitempty"`
+	ShuffleQuestions     *bool      `json:"shuffle_questions,omitempty"`
+	StartedAt            *time.Time `json:"started_at,omitempty"`
+	FinishedAt           *time.Time `json:"finished_at,omitempty"`
 }
 
 func (w *CourseSessionCreatedProcessor) processBatch(ctx context.Context) error {
@@ -87,7 +102,16 @@ func (w *CourseSessionCreatedProcessor) processTask(ctx context.Context, t domai
 
 	slog.InfoContext(ctx, "course-session-created-processor: создание элемента", "task_id", t.ID, "session_id", sessionID)
 
-	if _, err := w.items.CreateItem(ctx, moduleID, sessionID, domain.CourseItemTypeQuiz); err != nil {
+	itemPayloadBytes, _ := json.Marshal(courseItemPayload{
+		Mode:                 p.Mode,
+		TotalTimeLimitSec:    p.TotalTimeLimitSec,
+		QuestionTimeLimitSec: p.QuestionTimeLimitSec,
+		ShuffleQuestions:     p.ShuffleQuestions,
+		StartedAt:            p.StartedAt,
+		FinishedAt:           p.FinishedAt,
+	})
+
+	if _, err := w.items.CreateItem(ctx, moduleID, sessionID, domain.CourseItemTypeQuiz, json.RawMessage(itemPayloadBytes)); err != nil {
 		return fmt.Errorf("createItem: %w", err)
 	}
 	return w.tasks.MarkDone(ctx, t.ID)
