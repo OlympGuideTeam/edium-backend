@@ -3,7 +3,7 @@ name: edium-test
 services:
   caddy:
     image: caddy:2-alpine
-    restart: unless-stopped
+    restart: always
     ports:
       - "80:80"
       - "443:443"
@@ -19,7 +19,7 @@ services:
 
   doorman:
     image: cr.yandex/${YC_REGISTRY_ID}/edium-doorman:latest
-    restart: on-failure
+    restart: always
     environment:
       APP_PORT: "80"
       POSTGRES_DSN: "postgres://${DOORMAN_PG_USER}:${DOORMAN_PG_PWD}@${PG_HOST}:6432/${DOORMAN_PG_DB}?sslmode=require"
@@ -63,7 +63,7 @@ services:
 
   herald:
     image: cr.yandex/${YC_REGISTRY_ID}/edium-herald:latest
-    restart: on-failure
+    restart: always
     environment:
       POSTGRES_DSN: "postgres://${HERALD_PG_USER}:${HERALD_PG_PWD}@${PG_HOST}:6432/${HERALD_PG_DB}?sslmode=require"
       NATS_URL: "nats://herald:${NATS_PASSWORD_HERALD}@nats:4222"
@@ -105,7 +105,7 @@ services:
 
   charon:
     image: cr.yandex/${YC_REGISTRY_ID}/edium-charon:latest
-    restart: on-failure
+    restart: always
     environment:
       APP_PORT: "80"
       POSTGRES_DSN: "postgres://${CHARON_PG_USER}:${CHARON_PG_PWD}@${PG_HOST}:6432/${CHARON_PG_DB}?sslmode=require"
@@ -147,7 +147,7 @@ services:
 
   caesar:
     image: cr.yandex/${YC_REGISTRY_ID}/edium-caesar:latest
-    restart: on-failure
+    restart: always
     environment:
       APP_PORT: "80"
       POSTGRES_DSN: "postgres://${CAESAR_PG_USER}:${CAESAR_PG_PWD}@${PG_HOST}:6432/${CAESAR_PG_DB}?sslmode=require"
@@ -186,7 +186,7 @@ services:
 
   riddler:
     image: cr.yandex/${YC_REGISTRY_ID}/edium-riddler:latest
-    restart: on-failure
+    restart: always
     environment:
       APP_PORT: "80"
       POSTGRES_DSN: "postgres://${RIDDLER_PG_USER}:${RIDDLER_PG_PWD}@${PG_HOST}:6432/${RIDDLER_PG_DB}?sslmode=require"
@@ -225,7 +225,7 @@ services:
 
   nats:
     image: nats:2.10
-    restart: unless-stopped
+    restart: always
     command: ["-c", "/etc/nats/nats-server.conf"]
     environment:
       NATS_PASSWORD_DOORMAN: ${NATS_PASSWORD_DOORMAN}
@@ -244,7 +244,7 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.8
-    restart: unless-stopped
+    restart: always
     environment:
       CLICKHOUSE_USER: vector
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
@@ -261,7 +261,7 @@ services:
 
   vector:
     image: timberio/vector:0.42.0-alpine
-    restart: unless-stopped
+    restart: always
     volumes:
       - ./vector.yaml:/etc/vector/vector.yaml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -274,7 +274,7 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:1.68.0
-    restart: unless-stopped
+    restart: always
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     expose:
@@ -289,7 +289,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v3.3.0
-    restart: unless-stopped
+    restart: always
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
@@ -315,7 +315,7 @@ services:
 
   grafana:
     image: grafana/grafana:11.4.0
-    restart: unless-stopped
+    restart: always
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
       GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
@@ -337,7 +337,7 @@ services:
   # Node exporter для мониторинга с prod VM
   node-exporter:
     image: prom/node-exporter:latest
-    restart: unless-stopped
+    restart: always
     pid: host
     volumes:
       - /proc:/host/proc:ro
@@ -354,7 +354,7 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
-    restart: unless-stopped
+    restart: always
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
