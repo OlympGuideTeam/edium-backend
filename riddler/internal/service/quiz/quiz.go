@@ -15,6 +15,7 @@ import (
 type quizTemplateAttachedPayload struct {
 	QuizTemplateID uuid.UUID `json:"quiz_template_id"`
 	CourseID       uuid.UUID `json:"course_id"`
+	Title          string    `json:"title"`
 }
 
 func (s *Service) CreateQuiz(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings, attachToCourse *uuid.UUID) (uuid.UUID, error) {
@@ -30,12 +31,12 @@ func (s *Service) CreateQuiz(ctx context.Context, authorID uuid.UUID, title stri
 	var id uuid.UUID
 	err := s.txManager.WithTx(ctx, func(ctx context.Context) error {
 		var innerErr error
-		id, innerErr = s.quizzes.Create(ctx, authorID, title, description, settings, source)
+		id, innerErr = s.quizzes.Create(ctx, authorID, title, description, settings, source, attachToCourse)
 		if innerErr != nil {
 			return fmt.Errorf("create quiz: %w", innerErr)
 		}
 		if attachToCourse != nil {
-			payload, _ := json.Marshal(quizTemplateAttachedPayload{QuizTemplateID: id, CourseID: *attachToCourse})
+			payload, _ := json.Marshal(quizTemplateAttachedPayload{QuizTemplateID: id, CourseID: *attachToCourse, Title: title})
 			if err := s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, payload); err != nil {
 				return fmt.Errorf("schedule quiz_template.attached: %w", err)
 			}
@@ -107,10 +108,18 @@ func (s *Service) UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title,
 		return apperr.ErrQuizForbidden
 	}
 
-	if err := s.quizzes.Update(ctx, id, title, description); err != nil {
-		return fmt.Errorf("update quiz: %w", err)
-	}
-	return nil
+	return s.txManager.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.quizzes.Update(ctx, id, title, description); err != nil {
+			return fmt.Errorf("update quiz: %w", err)
+		}
+		if title != nil && quiz.CourseID != nil {
+			payload, _ := json.Marshal(quizTemplateAttachedPayload{QuizTemplateID: id, CourseID: *quiz.CourseID, Title: *title})
+			if err := s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, payload); err != nil {
+				return fmt.Errorf("schedule quiz_template.attached: %w", err)
+			}
+		}
+		return nil
+	})
 }
 
 func (s *Service) PublishQuiz(ctx context.Context, id, authorID uuid.UUID) error {
@@ -163,12 +172,12 @@ func (s *Service) CopyQuiz(ctx context.Context, quizID, authorID uuid.UUID, atta
 	var newID uuid.UUID
 	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
 		var innerErr error
-		newID, innerErr = s.quizzes.Copy(ctx, quizID, authorID, source)
+		newID, innerErr = s.quizzes.Copy(ctx, quizID, authorID, source, attachToCourse)
 		if innerErr != nil {
 			return fmt.Errorf("copy quiz: %w", innerErr)
 		}
 		if attachToCourse != nil {
-			payload, _ := json.Marshal(quizTemplateAttachedPayload{QuizTemplateID: newID, CourseID: *attachToCourse})
+			payload, _ := json.Marshal(quizTemplateAttachedPayload{QuizTemplateID: newID, CourseID: *attachToCourse, Title: quiz.Title})
 			if err := s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, payload); err != nil {
 				return fmt.Errorf("schedule quiz_template.attached: %w", err)
 			}

@@ -363,9 +363,10 @@ paths:
 
   /caesar/v1/courses/{courseId}:
     get:
-      summary: Получить детали курса с модулями и элементами
+      summary: Получить детали курса с модулями (без элементов)
       operationId: getCourse
       tags: [Courses]
+      description: Возвращает курс со списком модулей. Элементы модуля загружаются отдельно через `GET /modules/{moduleId}`.
       parameters:
         - $ref: "#/components/parameters/CourseId"
       responses:
@@ -493,6 +494,28 @@ paths:
           $ref: "#/components/responses/InternalError"
 
   /caesar/v1/modules/{moduleId}:
+    get:
+      summary: Получить модуль с элементами
+      operationId: getModule
+      tags: [Modules]
+      parameters:
+        - $ref: "#/components/parameters/ModuleId"
+      responses:
+        "200":
+          description: Модуль с элементами и прогрессом текущего пользователя
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
     patch:
       summary: Обновить модуль
       operationId: updateModule
@@ -881,9 +904,25 @@ components:
           items:
             $ref: "#/components/schemas/CourseSummary"
 
+    CourseDraftSummary:
+      type: object
+      required: [id, quiz_template_id, title]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        quiz_template_id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        title:
+          type: string
+          example: "Квиз по алгебре"
+
     CourseDetail:
       type: object
-      required: [id, title, teacher_name, module_count, element_count, is_teacher, modules]
+      required: [id, title, teacher_name, module_count, element_count, is_teacher, drafts, modules]
       properties:
         id:
           type: string
@@ -903,10 +942,16 @@ components:
           example: 12
         is_teacher:
           type: boolean
+        drafts:
+          type: array
+          description: Шаблоны квизов, привязанные к курсу, но ещё не опубликованные как сессии
+          items:
+            $ref: "#/components/schemas/CourseDraftSummary"
         modules:
           type: array
+          description: Список модулей без элементов. Элементы загружаются отдельно через GET /modules/{moduleId}.
           items:
-            $ref: "#/components/schemas/ModuleDetail"
+            $ref: "#/components/schemas/ModuleSummary"
 
     CreateCourseRequest:
       type: object
@@ -937,6 +982,21 @@ components:
           example: "Геометрия 10 класс"
 
     # ─── Модули ──────────────────────────────────────────────────────
+
+    ModuleSummary:
+      type: object
+      required: [id, title, element_count]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        title:
+          type: string
+          example: "Модуль 1: Функции"
+        element_count:
+          type: integer
+          example: 4
 
     ModuleDetail:
       type: object
@@ -998,9 +1058,42 @@ components:
 
     # ─── Элементы модуля ─────────────────────────────────────────────
 
+    CourseItemPayload:
+      type: object
+      description: Конфигурация квиз-сессии, сохранённая в момент создания
+      properties:
+        mode:
+          type: string
+          enum: [test, live]
+          example: "test"
+        total_time_limit_sec:
+          type: integer
+          nullable: true
+          description: Лимит времени на весь тест (только для test)
+          example: 3600
+        question_time_limit_sec:
+          type: integer
+          nullable: true
+          description: Лимит времени на вопрос (только для live)
+          example: 30
+        shuffle_questions:
+          type: boolean
+          nullable: true
+          example: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Дата открытия доступа
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Дедлайн сдачи
+
     CourseItemDetail:
       type: object
-      required: [id, object_id, type]
+      required: [id, object_id, type, payload]
       properties:
         id:
           type: string
@@ -1009,13 +1102,11 @@ components:
         object_id:
           type: string
           format: uuid
-          description: |
-            ID объекта в Riddler. Для type=quiz_template — ID шаблона квиза.
-            Для type=quiz — ID сессии.
+          description: ID сессии квиза в Riddler
           example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         type:
           type: string
-          enum: [quiz, quiz_template]
+          enum: [quiz]
           example: "quiz"
         attempt_id:
           type: string
@@ -1029,6 +1120,10 @@ components:
           nullable: true
           description: Оценка текущего пользователя (0–100)
           example: 85.0
+        payload:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CourseItemPayload"
 
     # ─── Ведомость ───────────────────────────────────────────────────
 

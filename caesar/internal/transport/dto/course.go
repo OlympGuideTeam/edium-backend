@@ -1,5 +1,7 @@
 package dto
 
+import "encoding/json"
+
 // ─── Course list ──────────────────────────────────────────────────────────────
 
 type CourseSummary struct {
@@ -35,14 +37,21 @@ type UpdateCourseRequest struct {
 // ─── Detail ───────────────────────────────────────────────────────────────────
 
 type CourseItemDTO struct {
-	ID        string   `json:"id"`
-	ObjectID  string   `json:"object_id"`
-	Type      string   `json:"type"`
-	AttemptID *string  `json:"attempt_id,omitempty"`
-	Score     *float64 `json:"score,omitempty"`
+	ID        string          `json:"id"`
+	ObjectID  string          `json:"object_id"`
+	Type      string          `json:"type"`
+	AttemptID *string         `json:"attempt_id,omitempty"`
+	Score     *float64        `json:"score,omitempty"`
+	Payload   json.RawMessage `json:"payload"`
 }
 
 type ModuleItem struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	ElementCount int    `json:"element_count"`
+}
+
+type ModuleDetailResponse struct {
 	ID           string          `json:"id"`
 	Title        string          `json:"title"`
 	ElementCount int             `json:"element_count"`

@@ -63,6 +63,7 @@ func (w *CourseSessionCreatedPublisher) processTask(ctx context.Context, t domai
 	var msg struct {
 		SessionID string `json:"session_id"`
 		ModuleID  string `json:"module_id"`
+		Mode      string `json:"mode"`
 	}
 	if err := json.Unmarshal(t.Payload, &msg); err != nil {
 		return fmt.Errorf("decode payload: %w", err)

@@ -47,6 +47,7 @@ type QuizTemplate struct {
 	Source           QuizSource
 	NeedEvaluation   bool
 	QuestionCount    int
+	CourseID         *uuid.UUID
 	LibrarySessionID *uuid.UUID
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
