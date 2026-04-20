@@ -31,6 +31,7 @@ async def _connect(url: str, ca_path: str) -> nats.aio.client.Client:
 
     if ca_path:
         ctx = ssl.create_default_context(cafile=ca_path)
+        ctx.check_hostname = False
         options["tls"] = ctx
         logger.info("NATS TLS enabled (CA: %s)", ca_path)
 
