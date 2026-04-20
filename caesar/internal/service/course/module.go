@@ -5,10 +5,41 @@ import (
 	"fmt"
 	"strings"
 
+	"caesar/internal/domain"
 	"caesar/internal/pkg/apperr"
 
 	"github.com/google/uuid"
 )
+
+func (s *Service) GetModule(ctx context.Context, moduleID, userID uuid.UUID) (*domain.CourseModule, error) {
+	m, err := s.courses.GetModuleByID(ctx, moduleID)
+	if err != nil {
+		return nil, fmt.Errorf("getModuleByID: %w", err)
+	}
+	if m == nil {
+		return nil, apperr.ErrModuleNotFound
+	}
+
+	c, err := s.getCourse(ctx, m.CourseID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, ok, err := s.classes.GetMemberRole(ctx, c.ClassID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("getMemberRole: %w", err)
+	}
+	if !ok {
+		return nil, apperr.ErrCourseNotMember
+	}
+
+	items, err := s.courses.ListItemsByModuleIDs(ctx, []uuid.UUID{moduleID}, userID)
+	if err != nil {
+		return nil, fmt.Errorf("listItems: %w", err)
+	}
+	m.Items = items
+	return m, nil
+}
 
 func (s *Service) CreateModule(ctx context.Context, courseID, userID uuid.UUID, title string) (uuid.UUID, error) {
 	if strings.TrimSpace(title) == "" {

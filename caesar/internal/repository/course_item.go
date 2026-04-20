@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	"caesar/internal/domain"
@@ -12,12 +13,12 @@ import (
 	"github.com/lib/pq"
 )
 
-func (s *PgCourseStore) CreateItem(ctx context.Context, moduleID, objectID uuid.UUID, t domain.CourseItemType) (uuid.UUID, error) {
+func (s *PgCourseStore) CreateItem(ctx context.Context, moduleID, objectID uuid.UUID, t domain.CourseItemType, payload json.RawMessage) (uuid.UUID, error) {
 	exec := db.ExecutorFromContext(ctx, s.db)
 	var id uuid.UUID
 	err := exec.QueryRowContext(ctx,
-		`INSERT INTO course_item (module_id, object_id, type) VALUES ($1, $2, $3) RETURNING id`,
-		moduleID, objectID, t,
+		`INSERT INTO course_item (module_id, object_id, type, payload) VALUES ($1, $2, $3, $4) RETURNING id`,
+		moduleID, objectID, t, []byte(payload),
 	).Scan(&id)
 	return id, err
 }
@@ -48,12 +49,14 @@ func (s *PgCourseStore) FindItemByObjectID(ctx context.Context, objectID uuid.UU
 	return &item, err
 }
 
-func (s *PgCourseStore) CreateCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID) (uuid.UUID, error) {
+func (s *PgCourseStore) UpsertCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID, title string) (uuid.UUID, error) {
 	exec := db.ExecutorFromContext(ctx, s.db)
 	var id uuid.UUID
 	err := exec.QueryRowContext(ctx,
-		`INSERT INTO course_draft (quiz_template_id, course_id) VALUES ($1, $2) RETURNING id`,
-		quizTemplateID, courseID,
+		`INSERT INTO course_draft (quiz_template_id, course_id, title) VALUES ($1, $2, $3)
+		 ON CONFLICT (quiz_template_id, course_id) DO UPDATE SET title = EXCLUDED.title
+		 RETURNING id`,
+		quizTemplateID, courseID, title,
 	).Scan(&id)
 	return id, err
 }
@@ -62,9 +65,9 @@ func (s *PgCourseStore) GetDraftByID(ctx context.Context, id uuid.UUID) (*domain
 	exec := db.ExecutorFromContext(ctx, s.db)
 	var d domain.CourseDraft
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, quiz_template_id, course_id FROM course_draft WHERE id = $1`,
+		`SELECT id, quiz_template_id, course_id, title FROM course_draft WHERE id = $1`,
 		id,
-	).Scan(&d.ID, &d.QuizTemplateID, &d.CourseID)
+	).Scan(&d.ID, &d.QuizTemplateID, &d.CourseID, &d.Title)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -79,7 +82,7 @@ func (s *PgCourseStore) DeleteDraft(ctx context.Context, id uuid.UUID) error {
 
 func (s *PgCourseStore) ListDraftsByCourseID(ctx context.Context, courseID uuid.UUID) ([]domain.CourseDraft, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, quiz_template_id, course_id FROM course_draft WHERE course_id = $1 ORDER BY created_at`,
+		`SELECT id, quiz_template_id, course_id, title FROM course_draft WHERE course_id = $1 ORDER BY created_at`,
 		courseID,
 	)
 	if err != nil {
@@ -90,7 +93,7 @@ func (s *PgCourseStore) ListDraftsByCourseID(ctx context.Context, courseID uuid.
 	var drafts []domain.CourseDraft
 	for rows.Next() {
 		var d domain.CourseDraft
-		if err := rows.Scan(&d.ID, &d.QuizTemplateID, &d.CourseID); err != nil {
+		if err := rows.Scan(&d.ID, &d.QuizTemplateID, &d.CourseID, &d.Title); err != nil {
 			return nil, err
 		}
 		drafts = append(drafts, d)
@@ -164,7 +167,7 @@ func (s *PgCourseStore) ListItemsByModuleIDs(ctx context.Context, moduleIDs []uu
 
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT ci.id, ci.module_id, ci.object_id, ci.type,
-		       p.attempt_id, p.score
+		       p.attempt_id, p.score, ci.payload
 		FROM course_item ci
 		LEFT JOIN course_user_item_progress p
 		       ON p.course_item_id = ci.id AND p.user_id = $2
@@ -179,12 +182,14 @@ func (s *PgCourseStore) ListItemsByModuleIDs(ctx context.Context, moduleIDs []uu
 	var items []domain.CourseModuleItem
 	for rows.Next() {
 		var item domain.CourseModuleItem
+		var payload []byte
 		if err := rows.Scan(
 			&item.ID, &item.ModuleID, &item.ObjectID, &item.Type,
-			&item.AttemptID, &item.Score,
+			&item.AttemptID, &item.Score, &payload,
 		); err != nil {
 			return nil, err
 		}
+		item.Payload = json.RawMessage(payload)
 		items = append(items, item)
 	}
 	return items, rows.Err()

@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"encoding/json"
+
 	"github.com/google/uuid"
 )
 
@@ -55,6 +57,7 @@ type CourseDraft struct {
 	ID             uuid.UUID
 	QuizTemplateID uuid.UUID
 	CourseID       uuid.UUID
+	Title          string
 }
 
 // CourseModuleItem — элемент модуля с прогрессом текущего пользователя.
@@ -65,6 +68,7 @@ type CourseModuleItem struct {
 	Type      CourseItemType
 	AttemptID *uuid.UUID
 	Score     *float64
+	Payload   json.RawMessage
 }
 
 type CourseUserItemProgress struct {

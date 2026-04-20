@@ -15,6 +15,7 @@ type courseService interface {
 	UpdateCourse(ctx context.Context, courseID, userID uuid.UUID, title string) error
 	DeleteCourse(ctx context.Context, courseID, userID uuid.UUID) error
 
+	GetModule(ctx context.Context, moduleID, userID uuid.UUID) (*domain.CourseModule, error)
 	CreateModule(ctx context.Context, courseID, userID uuid.UUID, title string) (uuid.UUID, error)
 	UpdateModule(ctx context.Context, moduleID, userID uuid.UUID, title string) error
 	DeleteModule(ctx context.Context, moduleID, userID uuid.UUID) error

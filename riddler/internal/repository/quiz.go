@@ -20,7 +20,7 @@ func NewPgQuizRepository(database *sql.DB) *PgQuizRepository {
 	return &PgQuizRepository{db: database}
 }
 
-func (r *PgQuizRepository) Create(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings, source domain.QuizSource) (uuid.UUID, error) {
+func (r *PgQuizRepository) Create(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings, source domain.QuizSource, courseID *uuid.UUID) (uuid.UUID, error) {
 	settingsJSON, err := json.Marshal(settings)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("marshal settings: %w", err)
@@ -30,10 +30,10 @@ func (r *PgQuizRepository) Create(ctx context.Context, authorID uuid.UUID, title
 
 	var id uuid.UUID
 	err = exec.QueryRowContext(ctx,
-		`INSERT INTO quiz_template (author_id, title, description, default_settings, source)
-		 VALUES ($1, $2, $3, $4, $5)
+		`INSERT INTO quiz_template (author_id, title, description, default_settings, source, course_id)
+		 VALUES ($1, $2, $3, $4, $5, $6)
 		 RETURNING id`,
-		authorID, title, description, settingsJSON, source,
+		authorID, title, description, settingsJSON, source, courseID,
 	).Scan(&id)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("insert quiz_template: %w", err)
@@ -48,11 +48,11 @@ func (r *PgQuizRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Q
 	var q domain.QuizTemplate
 	var settingsJSON []byte
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, author_id, title, description, default_settings, is_public, source, need_evaluation, question_count, library_session_id, created_at, updated_at
+		`SELECT id, author_id, title, description, default_settings, is_public, source, need_evaluation, question_count, course_id, library_session_id, created_at, updated_at
 		 FROM quiz_template WHERE id = $1`,
 		id,
 	).Scan(&q.ID, &q.AuthorID, &q.Title, &q.Description, &settingsJSON,
-		&q.IsPublic, &q.Source, &q.NeedEvaluation, &q.QuestionCount, &q.LibrarySessionID, &q.CreatedAt, &q.UpdatedAt)
+		&q.IsPublic, &q.Source, &q.NeedEvaluation, &q.QuestionCount, &q.CourseID, &q.LibrarySessionID, &q.CreatedAt, &q.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -116,16 +116,16 @@ func (r *PgQuizRepository) HasSession(ctx context.Context, quizID uuid.UUID) (bo
 	return exists, nil
 }
 
-func (r *PgQuizRepository) Copy(ctx context.Context, sourceID, newAuthorID uuid.UUID, source domain.QuizSource) (uuid.UUID, error) {
+func (r *PgQuizRepository) Copy(ctx context.Context, sourceID, newAuthorID uuid.UUID, source domain.QuizSource, courseID *uuid.UUID) (uuid.UUID, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 
 	var newID uuid.UUID
 	err := exec.QueryRowContext(ctx,
-		`INSERT INTO quiz_template (author_id, title, description, default_settings, need_evaluation, source)
-		 SELECT $1, title, description, default_settings, need_evaluation, $3
+		`INSERT INTO quiz_template (author_id, title, description, default_settings, need_evaluation, source, course_id)
+		 SELECT $1, title, description, default_settings, need_evaluation, $3, $4
 		 FROM quiz_template WHERE id = $2
 		 RETURNING id`,
-		newAuthorID, sourceID, source,
+		newAuthorID, sourceID, source, courseID,
 	).Scan(&newID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("copy quiz_template: %w", err)

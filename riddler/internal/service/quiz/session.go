@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -16,8 +17,14 @@ const (
 )
 
 type courseSessionCreatedPayload struct {
-	SessionID uuid.UUID `json:"session_id"`
-	ModuleID  uuid.UUID `json:"module_id"`
+	SessionID            uuid.UUID  `json:"session_id"`
+	ModuleID             uuid.UUID  `json:"module_id"`
+	Mode                 string     `json:"mode"`
+	TotalTimeLimitSec    *int       `json:"total_time_limit_sec,omitempty"`
+	QuestionTimeLimitSec *int       `json:"question_time_limit_sec,omitempty"`
+	ShuffleQuestions     *bool      `json:"shuffle_questions,omitempty"`
+	StartedAt            *time.Time `json:"started_at,omitempty"`
+	FinishedAt           *time.Time `json:"finished_at,omitempty"`
 }
 
 func (s *Service) CreateTestCourseSession(ctx context.Context, quizTemplateID, moduleID uuid.UUID, p domain.CreateTestCourseSessionParams) (uuid.UUID, error) {
@@ -29,15 +36,25 @@ func (s *Service) CreateTestCourseSession(ctx context.Context, quizTemplateID, m
 		return uuid.Nil, fmt.Errorf("quiz not found")
 	}
 
+	params := s.buildTestCourseSessionParams(quizTemplateID, quiz, p)
+
 	var sessionID uuid.UUID
 	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
 		var innerErr error
-		sessionID, innerErr = s.sessions.Create(ctx, s.buildTestCourseSessionParams(quizTemplateID, quiz, p))
+		sessionID, innerErr = s.sessions.Create(ctx, params)
 		if innerErr != nil {
 			return fmt.Errorf("create session: %w", innerErr)
 		}
-		payload, _ := json.Marshal(courseSessionCreatedPayload{SessionID: sessionID, ModuleID: moduleID})
-		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeCourseSessionCreatedPublisher, payload); innerErr != nil {
+		eventPayload, _ := json.Marshal(courseSessionCreatedPayload{
+			SessionID:         sessionID,
+			ModuleID:          moduleID,
+			Mode:              string(params.Mode),
+			TotalTimeLimitSec: params.TotalTimeLimitSec,
+			ShuffleQuestions:  params.ShuffleQuestions,
+			StartedAt:         params.StartedAt,
+			FinishedAt:        params.FinishedAt,
+		})
+		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeCourseSessionCreatedPublisher, eventPayload); innerErr != nil {
 			return fmt.Errorf("schedule course_session.created: %w", innerErr)
 		}
 		return nil
@@ -57,15 +74,22 @@ func (s *Service) CreateLiveCourseSession(ctx context.Context, quizTemplateID, m
 		return uuid.Nil, fmt.Errorf("quiz not found")
 	}
 
+	params := s.buildLiveCourseSessionParams(quizTemplateID, quiz, p)
+
 	var sessionID uuid.UUID
 	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
 		var innerErr error
-		sessionID, innerErr = s.sessions.Create(ctx, s.buildLiveCourseSessionParams(quizTemplateID, quiz, p))
+		sessionID, innerErr = s.sessions.Create(ctx, params)
 		if innerErr != nil {
 			return fmt.Errorf("create session: %w", innerErr)
 		}
-		payload, _ := json.Marshal(courseSessionCreatedPayload{SessionID: sessionID, ModuleID: moduleID})
-		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeCourseSessionCreatedPublisher, payload); innerErr != nil {
+		eventPayload, _ := json.Marshal(courseSessionCreatedPayload{
+			SessionID:            sessionID,
+			ModuleID:             moduleID,
+			Mode:                 string(params.Mode),
+			QuestionTimeLimitSec: params.QuestionTimeLimitSec,
+		})
+		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeCourseSessionCreatedPublisher, eventPayload); innerErr != nil {
 			return fmt.Errorf("schedule course_session.created: %w", innerErr)
 		}
 		return nil
