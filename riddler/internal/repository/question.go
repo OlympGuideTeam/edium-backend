@@ -14,18 +14,10 @@ import (
 )
 
 func (r *PgQuizRepository) AddQuestion(ctx context.Context, params domain.AddQuestionParams) (uuid.UUID, int, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return uuid.Nil, 0, fmt.Errorf("begin tx: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		}
-	}()
+	exec := db.ExecutorFromContext(ctx, r.db)
 
 	var orderIndex int
-	err = tx.QueryRowContext(ctx,
+	err := exec.QueryRowContext(ctx,
 		`SELECT COALESCE(MAX(order_index), 0) + 1 FROM question WHERE quiz_template_id = $1`,
 		params.QuizTemplateID,
 	).Scan(&orderIndex)
@@ -42,7 +34,7 @@ func (r *PgQuizRepository) AddQuestion(ctx context.Context, params domain.AddQue
 	}
 
 	var questionID uuid.UUID
-	err = tx.QueryRowContext(ctx,
+	err = exec.QueryRowContext(ctx,
 		`INSERT INTO question (quiz_template_id, type, text, image_link, order_index, metadata, max_score)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7)
 		 RETURNING id`,
@@ -54,17 +46,13 @@ func (r *PgQuizRepository) AddQuestion(ctx context.Context, params domain.AddQue
 	}
 
 	for _, opt := range params.Options {
-		_, err = tx.ExecContext(ctx,
+		_, err = exec.ExecContext(ctx,
 			`INSERT INTO answer_option (question_id, text, is_correct) VALUES ($1, $2, $3)`,
 			questionID, opt.Text, opt.IsCorrect,
 		)
 		if err != nil {
 			return uuid.Nil, 0, fmt.Errorf("insert answer_option: %w", err)
 		}
-	}
-
-	if err = tx.Commit(); err != nil {
-		return uuid.Nil, 0, fmt.Errorf("commit: %w", err)
 	}
 
 	return questionID, orderIndex, nil
