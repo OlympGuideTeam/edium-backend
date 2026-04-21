@@ -12,8 +12,9 @@ type CreateQuizRequest struct {
 }
 
 type UpdateQuizRequest struct {
-	Title       *string `json:"title"`
-	Description *string `json:"description"`
+	Title           *string              `json:"title"`
+	Description     *string              `json:"description"`
+	DefaultSettings *QuizDefaultSettings `json:"default_settings"`
 }
 
 type ReorderQuestionsRequest struct {
