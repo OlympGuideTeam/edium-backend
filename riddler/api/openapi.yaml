@@ -876,6 +876,128 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
 
+  /sessions/{session_id}:
+    delete:
+      tags: [Sessions]
+      summary: Отменить сессию курса
+      operationId: deleteCourseSession
+      description: |
+        Удаляет сессию курса, если она ещё не была начата (нет попыток, live не запущен).
+        Автоматически восстанавливает черновик шаблона квиза в курсе через событие.
+        **Условия отмены:**
+        - live-сессия: статус не `running`
+        - test-сессия: нет ни одной попытки
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Сессия удалена
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+
+  /sessions/test/inline:
+    post:
+      tags: [Sessions]
+      summary: Создать квиз и тестовую сессию за один запрос (для курса)
+      operationId: createTestCourseSessionInline
+      description: |
+        Атомарно создаёт шаблон квиза с `source=course`, добавляет вопросы и создаёт тестовую
+        сессию. Предназначен для флоу «создать квиз прямо в курсе» без промежуточных запросов.
+        Публикует события `riddler.quiz_template.attached` и `riddler.course_session.created`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, course_id, module_id, questions]
+              properties:
+                title:
+                  type: string
+                  example: "Тест по теме 1"
+                description:
+                  type: string
+                  nullable: true
+                course_id:
+                  type: string
+                  format: uuid
+                module_id:
+                  type: string
+                  format: uuid
+                questions:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [type, text, answer_options]
+                    properties:
+                      type:
+                        type: string
+                        enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
+                      text:
+                        type: string
+                      image_link:
+                        type: string
+                        nullable: true
+                      metadata:
+                        type: object
+                        nullable: true
+                      max_score:
+                        type: integer
+                        nullable: true
+                      answer_options:
+                        type: array
+                        items:
+                          type: object
+                          required: [text, is_correct]
+                          properties:
+                            text:
+                              type: string
+                            is_correct:
+                              type: boolean
+                total_time_limit_sec:
+                  type: integer
+                  nullable: true
+                  description: "Если не передан — 60 × кол-во вопросов"
+                shuffle_questions:
+                  type: boolean
+                  nullable: true
+                started_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Дата открытия доступа (RFC3339)
+                finished_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Дедлайн сдачи (RFC3339)
+      responses:
+        "200":
+          description: Квиз и сессия созданы
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  quiz_template_id:
+                    type: string
+                    format: uuid
+                  session_id:
+                    type: string
+                    format: uuid
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
   /sessions/live:
     post:
       tags: [Sessions]

@@ -36,15 +36,17 @@ type App struct {
 	UserCreatedProcessor *worker.UserCreatedProcessor
 	UserDeletedPublisher *worker.UserDeletedPublisher
 
-	QuizTemplateAttachedConsumer  *worker.QuizTemplateAttachedConsumer
-	QuizTemplateAttachedProcessor *worker.QuizTemplateAttachedProcessor
-	CourseSessionCreatedConsumer  *worker.CourseSessionCreatedConsumer
-	CourseSessionCreatedProcessor *worker.CourseSessionCreatedProcessor
-	CourseSessionDeletedPublisher *worker.CourseSessionDeletedPublisher
-	AttemptCreatedConsumer        *worker.AttemptCreatedConsumer
-	AttemptCreatedProcessor       *worker.AttemptCreatedProcessor
-	AttemptScoredConsumer         *worker.AttemptScoredConsumer
-	AttemptScoredProcessor        *worker.AttemptScoredProcessor
+	QuizTemplateAttachedConsumer   *worker.QuizTemplateAttachedConsumer
+	QuizTemplateAttachedProcessor  *worker.QuizTemplateAttachedProcessor
+	CourseSessionCreatedConsumer   *worker.CourseSessionCreatedConsumer
+	CourseSessionCreatedProcessor  *worker.CourseSessionCreatedProcessor
+	CourseSessionDeletedPublisher  *worker.CourseSessionDeletedPublisher
+	CourseSessionCanceledConsumer  *worker.CourseSessionCanceledConsumer
+	CourseSessionCanceledProcessor *worker.CourseSessionCanceledProcessor
+	AttemptCreatedConsumer         *worker.AttemptCreatedConsumer
+	AttemptCreatedProcessor        *worker.AttemptCreatedProcessor
+	AttemptScoredConsumer          *worker.AttemptScoredConsumer
+	AttemptScoredProcessor         *worker.AttemptScoredProcessor
 
 	jwksClient  *jwks.Client
 	httpAddr    string
@@ -95,15 +97,17 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		UserCreatedProcessor: worker.NewUserCreatedProcessor(taskRepo, userStore),
 		UserDeletedPublisher: worker.NewUserDeletedPublisher(taskRepo, publisher),
 
-		QuizTemplateAttachedConsumer:  worker.NewQuizTemplateAttachedConsumer(natsSubscriber, taskRepo),
-		QuizTemplateAttachedProcessor: worker.NewQuizTemplateAttachedProcessor(taskRepo, courseStore),
-		CourseSessionCreatedConsumer:  worker.NewCourseSessionCreatedConsumer(natsSubscriber, taskRepo),
-		CourseSessionCreatedProcessor: worker.NewCourseSessionCreatedProcessor(taskRepo, courseStore),
-		CourseSessionDeletedPublisher: worker.NewCourseSessionDeletedPublisher(taskRepo, publisher),
-		AttemptCreatedConsumer:        worker.NewAttemptCreatedConsumer(natsSubscriber, taskRepo),
-		AttemptCreatedProcessor:       worker.NewAttemptCreatedProcessor(taskRepo, courseStore),
-		AttemptScoredConsumer:         worker.NewAttemptScoredConsumer(natsSubscriber, taskRepo),
-		AttemptScoredProcessor:        worker.NewAttemptScoredProcessor(taskRepo, courseStore),
+		QuizTemplateAttachedConsumer:   worker.NewQuizTemplateAttachedConsumer(natsSubscriber, taskRepo),
+		QuizTemplateAttachedProcessor:  worker.NewQuizTemplateAttachedProcessor(taskRepo, courseStore),
+		CourseSessionCreatedConsumer:   worker.NewCourseSessionCreatedConsumer(natsSubscriber, taskRepo),
+		CourseSessionCreatedProcessor:  worker.NewCourseSessionCreatedProcessor(taskRepo, courseStore, courseStore),
+		CourseSessionDeletedPublisher:  worker.NewCourseSessionDeletedPublisher(taskRepo, publisher),
+		CourseSessionCanceledConsumer:  worker.NewCourseSessionCanceledConsumer(natsSubscriber, taskRepo),
+		CourseSessionCanceledProcessor: worker.NewCourseSessionCanceledProcessor(taskRepo, courseStore),
+		AttemptCreatedConsumer:         worker.NewAttemptCreatedConsumer(natsSubscriber, taskRepo),
+		AttemptCreatedProcessor:        worker.NewAttemptCreatedProcessor(taskRepo, courseStore),
+		AttemptScoredConsumer:          worker.NewAttemptScoredConsumer(natsSubscriber, taskRepo),
+		AttemptScoredProcessor:         worker.NewAttemptScoredProcessor(taskRepo, courseStore),
 
 		jwksClient:  jwksClient,
 		httpAddr:    fmt.Sprintf(":%d", cfg.App.Port),
@@ -113,18 +117,20 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 func (a *App) Workers() map[string]func(context.Context) error {
 	return map[string]func(context.Context) error{
-		"UserCreatedConsumer":           a.UserCreatedConsumer.Run,
-		"UserCreatedProcessor":          a.UserCreatedProcessor.Run,
-		"UserDeletedPublisher":          a.UserDeletedPublisher.Run,
-		"QuizTemplateAttachedConsumer":  a.QuizTemplateAttachedConsumer.Run,
-		"QuizTemplateAttachedProcessor": a.QuizTemplateAttachedProcessor.Run,
-		"CourseSessionCreatedConsumer":  a.CourseSessionCreatedConsumer.Run,
-		"CourseSessionCreatedProcessor": a.CourseSessionCreatedProcessor.Run,
-		"CourseSessionDeletedPublisher": a.CourseSessionDeletedPublisher.Run,
-		"AttemptCreatedConsumer":        a.AttemptCreatedConsumer.Run,
-		"AttemptCreatedProcessor":       a.AttemptCreatedProcessor.Run,
-		"AttemptScoredConsumer":         a.AttemptScoredConsumer.Run,
-		"AttemptScoredProcessor":        a.AttemptScoredProcessor.Run,
+		"UserCreatedConsumer":            a.UserCreatedConsumer.Run,
+		"UserCreatedProcessor":           a.UserCreatedProcessor.Run,
+		"UserDeletedPublisher":           a.UserDeletedPublisher.Run,
+		"QuizTemplateAttachedConsumer":   a.QuizTemplateAttachedConsumer.Run,
+		"QuizTemplateAttachedProcessor":  a.QuizTemplateAttachedProcessor.Run,
+		"CourseSessionCreatedConsumer":   a.CourseSessionCreatedConsumer.Run,
+		"CourseSessionCreatedProcessor":  a.CourseSessionCreatedProcessor.Run,
+		"CourseSessionDeletedPublisher":  a.CourseSessionDeletedPublisher.Run,
+		"CourseSessionCanceledConsumer":  a.CourseSessionCanceledConsumer.Run,
+		"CourseSessionCanceledProcessor": a.CourseSessionCanceledProcessor.Run,
+		"AttemptCreatedConsumer":         a.AttemptCreatedConsumer.Run,
+		"AttemptCreatedProcessor":        a.AttemptCreatedProcessor.Run,
+		"AttemptScoredConsumer":          a.AttemptScoredConsumer.Run,
+		"AttemptScoredProcessor":         a.AttemptScoredProcessor.Run,
 	}
 }
 

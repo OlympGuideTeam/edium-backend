@@ -22,10 +22,12 @@ type taskRepository interface {
 type courseItemStore interface {
 	CreateItem(ctx context.Context, moduleID, objectID uuid.UUID, t domain.CourseItemType, payload json.RawMessage) (uuid.UUID, error)
 	FindItemByObjectID(ctx context.Context, objectID uuid.UUID) (*domain.CourseItem, error)
+	DeleteItem(ctx context.Context, id uuid.UUID) error
 	UpsertProgress(ctx context.Context, courseItemID, userID, attemptID uuid.UUID) error
 	UpdateProgressScore(ctx context.Context, courseItemID, userID uuid.UUID, score float64) error
 }
 
 type courseDraftStore interface {
 	UpsertCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID, title string, payload json.RawMessage) (uuid.UUID, error)
+	DeleteDraftByTemplateAndCourse(ctx context.Context, quizTemplateID, courseID uuid.UUID) error
 }

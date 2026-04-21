@@ -82,6 +82,16 @@ func (r *PgSessionRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+func (r *PgSessionRepository) HasAttempts(ctx context.Context, sessionID uuid.UUID) (bool, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	var exists bool
+	err := exec.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM attempt WHERE session_id = $1)`,
+		sessionID,
+	).Scan(&exists)
+	return exists, err
+}
+
 func (r *PgSessionRepository) FindFinishedNeedingGrading(ctx context.Context) ([]domain.QuizSession, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT qs.id, qs.quiz_template_id, qs.mode, qs.status,
