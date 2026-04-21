@@ -3,6 +3,7 @@ package course
 import (
 	"net/http"
 
+	"caesar/internal/domain"
 	"caesar/internal/middleware"
 	"caesar/internal/pkg/apperr"
 	"caesar/internal/pkg/httpx"
@@ -86,6 +87,8 @@ func (h *Handler) GetCourse(c *gin.Context) {
 		drafts = append(drafts, dto.CourseDraftDTO{
 			ID:             d.ID.String(),
 			QuizTemplateID: d.QuizTemplateID.String(),
+			Type:           string(domain.CourseItemTypeQuiz),
+			Payload:        d.Payload,
 		})
 	}
 

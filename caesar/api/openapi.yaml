@@ -906,7 +906,11 @@ components:
 
     CourseDraftSummary:
       type: object
-      required: [id, quiz_template_id, title]
+      description: |
+        Шаблон квиза, привязанный к курсу, но ещё не опубликованный как сессия.
+        Форма `payload` совпадает с CourseItemPayload у модульных элементов —
+        это снимок настроек, сделанный в момент привязки шаблона к курсу.
+      required: [id, quiz_template_id, type, payload]
       properties:
         id:
           type: string
@@ -916,9 +920,14 @@ components:
           type: string
           format: uuid
           example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-        title:
+        type:
           type: string
-          example: "Квиз по алгебре"
+          enum: [quiz]
+          example: "quiz"
+        payload:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CourseItemPayload"
 
     CourseDetail:
       type: object
