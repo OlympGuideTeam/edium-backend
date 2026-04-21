@@ -43,19 +43,40 @@ components:
 
     QuizDefaultSettings:
       type: object
+      description: |
+        Настройки квиза по умолчанию. Совпадают по составу с настройками сессии —
+        при создании сессии можно переопределить любые поля, а недостающие берутся отсюда.
       properties:
+        mode:
+          type: string
+          enum: [test, live]
+          nullable: true
+          description: Тип квиза — асинхронный (test) или синхронный (live)
+          example: "test"
         total_time_limit_sec:
           type: integer
           nullable: true
+          description: Лимит времени на весь тест (актуально для mode=test)
           example: 600
         question_time_limit_sec:
           type: integer
           nullable: true
+          description: Лимит времени на вопрос (актуально для mode=live)
           example: 30
         shuffle_questions:
           type: boolean
           nullable: true
           example: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Дата открытия доступа (mode=test)
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Дедлайн сдачи (mode=test)
 
     QuizStudentDefaultSettings:
       type: object

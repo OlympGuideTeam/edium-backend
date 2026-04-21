@@ -25,9 +25,10 @@ func (c *QuizTemplateAttachedConsumer) Run(ctx context.Context) error {
 }
 
 type quizTemplateAttachedMsg struct {
-	QuizTemplateID string `json:"quiz_template_id"`
-	CourseID       string `json:"course_id"`
-	Title          string `json:"title"`
+	QuizTemplateID string          `json:"quiz_template_id"`
+	CourseID       string          `json:"course_id"`
+	Title          string          `json:"title"`
+	Payload        json.RawMessage `json:"payload,omitempty"`
 }
 
 func (c *QuizTemplateAttachedConsumer) handle(ctx context.Context, data []byte) error {

@@ -46,9 +46,10 @@ func (w *QuizTemplateAttachedProcessor) Run(ctx context.Context) error {
 }
 
 type quizTemplateAttachedPayload struct {
-	QuizTemplateID string `json:"quiz_template_id"`
-	CourseID       string `json:"course_id"`
-	Title          string `json:"title"`
+	QuizTemplateID string          `json:"quiz_template_id"`
+	CourseID       string          `json:"course_id"`
+	Title          string          `json:"title"`
+	Payload        json.RawMessage `json:"payload,omitempty"`
 }
 
 func (w *QuizTemplateAttachedProcessor) processBatch(ctx context.Context) error {
@@ -88,7 +89,7 @@ func (w *QuizTemplateAttachedProcessor) processTask(ctx context.Context, t domai
 
 	slog.InfoContext(ctx, "quiz-template-attached-processor: upsert черновика", "task_id", t.ID, "quiz_template_id", quizTemplateID)
 
-	if _, err := w.drafts.UpsertCourseDraft(ctx, quizTemplateID, courseID, p.Title); err != nil {
+	if _, err := w.drafts.UpsertCourseDraft(ctx, quizTemplateID, courseID, p.Title, p.Payload); err != nil {
 		return fmt.Errorf("upsertCourseDraft: %w", err)
 	}
 	return w.tasks.MarkDone(ctx, t.ID)

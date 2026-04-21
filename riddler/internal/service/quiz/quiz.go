@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -13,9 +14,41 @@ import (
 )
 
 type quizTemplateAttachedPayload struct {
-	QuizTemplateID uuid.UUID `json:"quiz_template_id"`
-	CourseID       uuid.UUID `json:"course_id"`
-	Title          string    `json:"title"`
+	QuizTemplateID uuid.UUID       `json:"quiz_template_id"`
+	CourseID       uuid.UUID       `json:"course_id"`
+	Title          string          `json:"title"`
+	Payload        json.RawMessage `json:"payload,omitempty"`
+}
+
+// courseDraftPayload — содержимое черновика курса, совпадает по форме
+// с payload у course_item (caesar). Хранится в course_draft.payload
+// и отдаётся клиенту как есть через GET /courses/{id}.
+type courseDraftPayload struct {
+	Title                string     `json:"title"`
+	Mode                 string     `json:"mode"`
+	TotalTimeLimitSec    *int       `json:"total_time_limit_sec,omitempty"`
+	QuestionTimeLimitSec *int       `json:"question_time_limit_sec,omitempty"`
+	ShuffleQuestions     *bool      `json:"shuffle_questions,omitempty"`
+	StartedAt            *time.Time `json:"started_at,omitempty"`
+	FinishedAt           *time.Time `json:"finished_at,omitempty"`
+}
+
+func buildCourseDraftPayload(title string, s domain.QuizDefaultSettings) json.RawMessage {
+	mode := domain.SessionModeTest
+	if s.Mode != nil {
+		mode = *s.Mode
+	}
+	p := courseDraftPayload{
+		Title:                title,
+		Mode:                 string(mode),
+		TotalTimeLimitSec:    s.TotalTimeLimitSec,
+		QuestionTimeLimitSec: s.QuestionTimeLimitSec,
+		ShuffleQuestions:     s.ShuffleQuestions,
+		StartedAt:            s.StartedAt,
+		FinishedAt:           s.FinishedAt,
+	}
+	b, _ := json.Marshal(p)
+	return b
 }
 
 func (s *Service) CreateQuiz(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings, attachToCourse *uuid.UUID) (uuid.UUID, error) {
@@ -36,7 +69,12 @@ func (s *Service) CreateQuiz(ctx context.Context, authorID uuid.UUID, title stri
 			return fmt.Errorf("create quiz: %w", innerErr)
 		}
 		if attachToCourse != nil {
-			payload, _ := json.Marshal(quizTemplateAttachedPayload{QuizTemplateID: id, CourseID: *attachToCourse, Title: title})
+			payload, _ := json.Marshal(quizTemplateAttachedPayload{
+				QuizTemplateID: id,
+				CourseID:       *attachToCourse,
+				Title:          title,
+				Payload:        buildCourseDraftPayload(title, settings),
+			})
 			if err := s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, payload); err != nil {
 				return fmt.Errorf("schedule quiz_template.attached: %w", err)
 			}
@@ -113,7 +151,12 @@ func (s *Service) UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title,
 			return fmt.Errorf("update quiz: %w", err)
 		}
 		if title != nil && quiz.CourseID != nil {
-			payload, _ := json.Marshal(quizTemplateAttachedPayload{QuizTemplateID: id, CourseID: *quiz.CourseID, Title: *title})
+			payload, _ := json.Marshal(quizTemplateAttachedPayload{
+				QuizTemplateID: id,
+				CourseID:       *quiz.CourseID,
+				Title:          *title,
+				Payload:        buildCourseDraftPayload(*title, quiz.DefaultSettings),
+			})
 			if err := s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, payload); err != nil {
 				return fmt.Errorf("schedule quiz_template.attached: %w", err)
 			}
@@ -177,7 +220,12 @@ func (s *Service) CopyQuiz(ctx context.Context, quizID, authorID uuid.UUID, atta
 			return fmt.Errorf("copy quiz: %w", innerErr)
 		}
 		if attachToCourse != nil {
-			payload, _ := json.Marshal(quizTemplateAttachedPayload{QuizTemplateID: newID, CourseID: *attachToCourse, Title: quiz.Title})
+			payload, _ := json.Marshal(quizTemplateAttachedPayload{
+				QuizTemplateID: newID,
+				CourseID:       *attachToCourse,
+				Title:          quiz.Title,
+				Payload:        buildCourseDraftPayload(quiz.Title, quiz.DefaultSettings),
+			})
 			if err := s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, payload); err != nil {
 				return fmt.Errorf("schedule quiz_template.attached: %w", err)
 			}

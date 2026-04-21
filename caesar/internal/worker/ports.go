@@ -27,5 +27,5 @@ type courseItemStore interface {
 }
 
 type courseDraftStore interface {
-	UpsertCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID, title string) (uuid.UUID, error)
+	UpsertCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID, title string, payload json.RawMessage) (uuid.UUID, error)
 }
