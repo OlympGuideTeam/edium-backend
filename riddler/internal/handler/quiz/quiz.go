@@ -159,13 +159,17 @@ func (h *Handler) UpdateQuiz(c *gin.Context) {
 		return
 	}
 
-	settings, err := quizSettingsFromDTO(req.DefaultSettings)
-	if err != nil {
-		httpx.WriteError(c, apperr.ErrBadRequest)
-		return
+	var settings *domain.QuizDefaultSettings
+	if req.DefaultSettings != nil {
+		st, err := quizSettingsFromDTO(req.DefaultSettings)
+		if err != nil {
+			httpx.WriteError(c, apperr.ErrBadRequest)
+			return
+		}
+		settings = &st
 	}
 
-	if err := h.service.UpdateQuiz(c.Request.Context(), quizID, userID, req.Title, req.Description, &settings); err != nil {
+	if err := h.service.UpdateQuiz(c.Request.Context(), quizID, userID, req.Title, req.Description, settings); err != nil {
 		httpx.WriteError(c, err)
 		return
 	}
