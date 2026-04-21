@@ -32,3 +32,14 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizSessio
 	}
 	return session, nil
 }
+
+func (s *Service) HasAttempts(ctx context.Context, sessionID uuid.UUID) (bool, error) {
+	return s.sessions.HasAttempts(ctx, sessionID)
+}
+
+func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
+	if err := s.sessions.Delete(ctx, id); err != nil {
+		return fmt.Errorf("delete session: %w", err)
+	}
+	return nil
+}

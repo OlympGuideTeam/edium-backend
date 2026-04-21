@@ -27,6 +27,8 @@ var (
 	ErrSessionNotActive      = New("SESSION_NOT_ACTIVE", "Сессия недоступна", http.StatusConflict)
 	ErrSessionNotStarted     = New("SESSION_NOT_STARTED", "Сессия ещё не началась", http.StatusConflict)
 	ErrSessionDeadlinePassed = New("SESSION_DEADLINE_PASSED", "Дедлайн сессии истёк", http.StatusConflict)
+	ErrSessionAlreadyStarted = New("SESSION_ALREADY_STARTED", "Сессия уже запущена", http.StatusConflict)
+	ErrSessionHasAttempts    = New("SESSION_HAS_ATTEMPTS", "Нельзя удалить сессию с попытками", http.StatusConflict)
 
 	// Попытки
 	ErrAttemptNotFound  = New("ATTEMPT_NOT_FOUND", "Попытка не найдена", http.StatusNotFound)
