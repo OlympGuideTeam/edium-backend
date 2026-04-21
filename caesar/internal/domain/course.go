@@ -58,6 +58,7 @@ type CourseDraft struct {
 	QuizTemplateID uuid.UUID
 	CourseID       uuid.UUID
 	Title          string
+	Payload        json.RawMessage
 }
 
 // CourseModuleItem — элемент модуля с прогрессом текущего пользователя.

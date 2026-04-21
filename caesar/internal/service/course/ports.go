@@ -31,7 +31,7 @@ type courseStore interface {
 	ListItemsByModuleIDs(ctx context.Context, moduleIDs []uuid.UUID, userID uuid.UUID) ([]domain.CourseModuleItem, error)
 	UpsertProgress(ctx context.Context, courseItemID, userID, attemptID uuid.UUID) error
 	UpdateProgressScore(ctx context.Context, courseItemID, userID uuid.UUID, score float64) error
-	UpsertCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID, title string) (uuid.UUID, error)
+	UpsertCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID, title string, payload json.RawMessage) (uuid.UUID, error)
 	GetDraftByID(ctx context.Context, id uuid.UUID) (*domain.CourseDraft, error)
 	DeleteDraft(ctx context.Context, id uuid.UUID) error
 	ListDraftsByCourseID(ctx context.Context, courseID uuid.UUID) ([]domain.CourseDraft, error)

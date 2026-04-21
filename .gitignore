@@ -65,3 +65,5 @@ infra/terraform/accounts/*/ml-sa-key.json
 
 # Скомпилированный бинарь snowflake-client для Tor-прокси (собирается через make build-snowflake)
 tor/snowflake-client
+
+*/index.html
