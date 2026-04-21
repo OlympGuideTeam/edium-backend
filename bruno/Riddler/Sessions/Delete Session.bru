@@ -1,0 +1,15 @@
+meta {
+  name: Delete Session
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{riddlerUrl}}/riddler/v1/sessions/{{sessionId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

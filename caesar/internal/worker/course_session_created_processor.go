@@ -31,12 +31,13 @@ const (
 )
 
 type CourseSessionCreatedProcessor struct {
-	tasks taskRepository
-	items courseItemStore
+	tasks  taskRepository
+	items  courseItemStore
+	drafts courseDraftStore
 }
 
-func NewCourseSessionCreatedProcessor(tasks taskRepository, items courseItemStore) *CourseSessionCreatedProcessor {
-	return &CourseSessionCreatedProcessor{tasks: tasks, items: items}
+func NewCourseSessionCreatedProcessor(tasks taskRepository, items courseItemStore, drafts courseDraftStore) *CourseSessionCreatedProcessor {
+	return &CourseSessionCreatedProcessor{tasks: tasks, items: items, drafts: drafts}
 }
 
 func (w *CourseSessionCreatedProcessor) Run(ctx context.Context) error {
@@ -58,6 +59,8 @@ func (w *CourseSessionCreatedProcessor) Run(ctx context.Context) error {
 type courseSessionCreatedPayload struct {
 	SessionID            string     `json:"session_id"`
 	ModuleID             string     `json:"module_id"`
+	QuizTemplateID       *string    `json:"quiz_template_id,omitempty"`
+	CourseID             *string    `json:"course_id,omitempty"`
 	Title                string     `json:"title"`
 	Mode                 string     `json:"mode"`
 	TotalTimeLimitSec    *int       `json:"total_time_limit_sec,omitempty"`
@@ -117,5 +120,20 @@ func (w *CourseSessionCreatedProcessor) processTask(ctx context.Context, t domai
 	if _, err := w.items.CreateItem(ctx, moduleID, sessionID, domain.CourseItemTypeQuiz, json.RawMessage(itemPayloadBytes)); err != nil {
 		return fmt.Errorf("createItem: %w", err)
 	}
+
+	if p.QuizTemplateID != nil && p.CourseID != nil {
+		quizTemplateID, err := uuid.Parse(*p.QuizTemplateID)
+		if err != nil {
+			return fmt.Errorf("parse quiz_template_id: %w", err)
+		}
+		courseID, err := uuid.Parse(*p.CourseID)
+		if err != nil {
+			return fmt.Errorf("parse course_id: %w", err)
+		}
+		if err := w.drafts.DeleteDraftByTemplateAndCourse(ctx, quizTemplateID, courseID); err != nil {
+			return fmt.Errorf("deleteDraft: %w", err)
+		}
+	}
+
 	return w.tasks.MarkDone(ctx, t.ID)
 }

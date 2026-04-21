@@ -31,15 +31,16 @@ type App struct {
 	attemptHandler *attempthandler.Handler
 	attemptService *attemptsvc.Service
 
-	quizTemplateAttachedPublisher *worker.QuizTemplateAttachedPublisher
-	courseSessionCreatedPublisher *worker.CourseSessionCreatedPublisher
-	attemptCreatedPublisher       *worker.AttemptCreatedPublisher
-	attemptScoredPublisher        *worker.AttemptScoredPublisher
-	generationRequestedPublisher  *worker.GenerationRequestedPublisher
-	generationCompletedConsumer   *worker.GenerationCompletedConsumer
-	generationCompletedProcessor  *worker.GenerationCompletedProcessor
-	courseSessionDeletedConsumer  *worker.CourseSessionDeletedConsumer
-	courseSessionDeletedProcessor *worker.CourseSessionDeletedProcessor
+	quizTemplateAttachedPublisher  *worker.QuizTemplateAttachedPublisher
+	courseSessionCreatedPublisher  *worker.CourseSessionCreatedPublisher
+	attemptCreatedPublisher        *worker.AttemptCreatedPublisher
+	attemptScoredPublisher         *worker.AttemptScoredPublisher
+	generationRequestedPublisher   *worker.GenerationRequestedPublisher
+	generationCompletedConsumer    *worker.GenerationCompletedConsumer
+	generationCompletedProcessor   *worker.GenerationCompletedProcessor
+	courseSessionDeletedConsumer   *worker.CourseSessionDeletedConsumer
+	courseSessionDeletedProcessor  *worker.CourseSessionDeletedProcessor
+	courseSessionCanceledPublisher *worker.CourseSessionCanceledPublisher
 
 	gradingRequestedPublisher *worker.GradingRequestedPublisher
 	gradingCompletedConsumer  *worker.GradingCompletedConsumer
@@ -107,11 +108,12 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		attemptCreatedPublisher:       worker.NewAttemptCreatedPublisher(taskRepo, natsPublisher),
 		attemptScoredPublisher:        worker.NewAttemptScoredPublisher(taskRepo, natsPublisher),
 
-		generationRequestedPublisher:  worker.NewGenerationRequestedPublisher(taskRepo, natsJSPublisher),
-		generationCompletedConsumer:   worker.NewGenerationCompletedConsumer(natsJSSubscriber, taskRepo),
-		generationCompletedProcessor:  worker.NewGenerationCompletedProcessor(taskRepo, quizService),
-		courseSessionDeletedConsumer:  worker.NewCourseSessionDeletedConsumer(natsSubscriber, taskRepo),
-		courseSessionDeletedProcessor: worker.NewCourseSessionDeletedProcessor(taskRepo, sessionRepo),
+		generationRequestedPublisher:   worker.NewGenerationRequestedPublisher(taskRepo, natsJSPublisher),
+		generationCompletedConsumer:    worker.NewGenerationCompletedConsumer(natsJSSubscriber, taskRepo),
+		generationCompletedProcessor:   worker.NewGenerationCompletedProcessor(taskRepo, quizService),
+		courseSessionDeletedConsumer:   worker.NewCourseSessionDeletedConsumer(natsSubscriber, taskRepo),
+		courseSessionDeletedProcessor:  worker.NewCourseSessionDeletedProcessor(taskRepo, sessionRepo),
+		courseSessionCanceledPublisher: worker.NewCourseSessionCanceledPublisher(taskRepo, natsPublisher),
 
 		gradingRequestedPublisher: worker.NewGradingRequestedPublisher(taskRepo, natsPublisher),
 		gradingCompletedConsumer:  worker.NewGradingCompletedConsumer(natsSubscriber, taskRepo),
@@ -125,18 +127,19 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 func (a *App) workers() map[string]func(context.Context) error {
 	return map[string]func(context.Context) error{
-		"quiz-template-attached-publisher": a.quizTemplateAttachedPublisher.Run,
-		"course-session-created-publisher": a.courseSessionCreatedPublisher.Run,
-		"attempt-created-publisher":        a.attemptCreatedPublisher.Run,
-		"attempt-scored-publisher":         a.attemptScoredPublisher.Run,
-		"generation-requested-publisher":   a.generationRequestedPublisher.Run,
-		"generation-completed-consumer":    a.generationCompletedConsumer.Run,
-		"generation-completed-processor":   a.generationCompletedProcessor.Run,
-		"course-session-deleted-consumer":  a.courseSessionDeletedConsumer.Run,
-		"course-session-deleted-processor": a.courseSessionDeletedProcessor.Run,
-		"grading-requested-publisher":      a.gradingRequestedPublisher.Run,
-		"grading-completed-consumer":       a.gradingCompletedConsumer.Run,
-		"grading-completed-processor":      a.gradingCompletedProcessor.Run,
+		"quiz-template-attached-publisher":  a.quizTemplateAttachedPublisher.Run,
+		"course-session-created-publisher":  a.courseSessionCreatedPublisher.Run,
+		"attempt-created-publisher":         a.attemptCreatedPublisher.Run,
+		"attempt-scored-publisher":          a.attemptScoredPublisher.Run,
+		"generation-requested-publisher":    a.generationRequestedPublisher.Run,
+		"generation-completed-consumer":     a.generationCompletedConsumer.Run,
+		"generation-completed-processor":    a.generationCompletedProcessor.Run,
+		"course-session-deleted-consumer":   a.courseSessionDeletedConsumer.Run,
+		"course-session-deleted-processor":  a.courseSessionDeletedProcessor.Run,
+		"course-session-canceled-publisher": a.courseSessionCanceledPublisher.Run,
+		"grading-requested-publisher":       a.gradingRequestedPublisher.Run,
+		"grading-completed-consumer":        a.gradingCompletedConsumer.Run,
+		"grading-completed-processor":       a.gradingCompletedProcessor.Run,
 	}
 }
 
@@ -169,7 +172,9 @@ func (a *App) Router() *gin.Engine {
 	sessions := api.Group("/sessions")
 	{
 		sessions.POST("/test", a.quizHandler.CreateTestCourseSession)
+		sessions.POST("/test/inline", a.quizHandler.CreateTestCourseSessionInline)
 		sessions.POST("/live", a.quizHandler.CreateLiveCourseSession)
+		sessions.DELETE("/:session_id", a.quizHandler.DeleteCourseSession)
 		sessions.POST("/:session_id/attempts", a.attemptHandler.CreateAttempt)
 		sessions.GET("/:session_id/attempts", a.attemptHandler.ListSessionAttempts)
 	}
