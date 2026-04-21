@@ -77,14 +77,24 @@ func (r *PgQuizRepository) SetLibrarySession(ctx context.Context, quizID, sessio
 	return nil
 }
 
-func (r *PgQuizRepository) Update(ctx context.Context, id uuid.UUID, title, description *string) error {
+func (r *PgQuizRepository) Update(ctx context.Context, id uuid.UUID, title, description *string, settings *domain.QuizDefaultSettings) error {
+	var settingsJSON any
+	if settings != nil {
+		b, err := json.Marshal(*settings)
+		if err != nil {
+			return fmt.Errorf("marshal settings: %w", err)
+		}
+		settingsJSON = b
+	}
+
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,
 		`UPDATE quiz_template
-		 SET title       = COALESCE($1, title),
-		     description = COALESCE($2, description)
-		 WHERE id = $3`,
-		title, description, id,
+		 SET title            = COALESCE($1, title),
+		     description      = COALESCE($2, description),
+		     default_settings = COALESCE($3, default_settings)
+		 WHERE id = $4`,
+		title, description, settingsJSON, id,
 	)
 	if err != nil {
 		return fmt.Errorf("update quiz_template: %w", err)

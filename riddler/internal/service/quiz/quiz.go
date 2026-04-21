@@ -130,7 +130,7 @@ func (s *Service) GetQuizForStudent(ctx context.Context, id uuid.UUID) (*domain.
 	}, nil
 }
 
-func (s *Service) UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title, description *string) error {
+func (s *Service) UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title, description *string, settings *domain.QuizDefaultSettings) error {
 	if title != nil && strings.TrimSpace(*title) == "" {
 		return apperr.ErrQuizEmptyTitle
 	}
@@ -147,7 +147,7 @@ func (s *Service) UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title,
 	}
 
 	return s.txManager.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.quizzes.Update(ctx, id, title, description); err != nil {
+		if err := s.quizzes.Update(ctx, id, title, description, settings); err != nil {
 			return fmt.Errorf("update quiz: %w", err)
 		}
 		if title != nil && quiz.CourseID != nil {

@@ -564,6 +564,10 @@ paths:
                 description:
                   type: string
                   nullable: true
+                default_settings:
+                  nullable: true
+                  allOf:
+                    - $ref: "#/components/schemas/QuizDefaultSettings"
       responses:
         "200":
           description: Квиз обновлён
