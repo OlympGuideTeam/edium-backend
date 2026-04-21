@@ -12,7 +12,7 @@ type quizRepository interface {
 	Create(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings, source domain.QuizSource, courseID *uuid.UUID) (uuid.UUID, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizTemplate, error)
 	AddQuestion(ctx context.Context, params domain.AddQuestionParams) (uuid.UUID, int, error)
-	Update(ctx context.Context, id uuid.UUID, title, description *string) error
+	Update(ctx context.Context, id uuid.UUID, title, description *string, settings *domain.QuizDefaultSettings) error
 	ReorderQuestions(ctx context.Context, quizID uuid.UUID, questionIDs []uuid.UUID) error
 	DeleteQuestion(ctx context.Context, quizID, questionID uuid.UUID) error
 	Publish(ctx context.Context, id uuid.UUID) error
