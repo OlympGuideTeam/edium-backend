@@ -11,7 +11,7 @@ import (
 type quizService interface {
 	CreateQuiz(ctx context.Context, authorID uuid.UUID, title string, description *string, settings domain.QuizDefaultSettings, attachToCourse *uuid.UUID) (uuid.UUID, error)
 	AddQuestion(ctx context.Context, quizID, authorID uuid.UUID, params domain.AddQuestionParams) (uuid.UUID, int, error)
-	UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title, description *string) error
+	UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title, description *string, settings *domain.QuizDefaultSettings) error
 	ReorderQuestions(ctx context.Context, quizID, authorID uuid.UUID, questionIDs []uuid.UUID) error
 	DeleteQuestion(ctx context.Context, quizID, questionID, authorID uuid.UUID) error
 	PublishQuiz(ctx context.Context, id, authorID uuid.UUID) error
