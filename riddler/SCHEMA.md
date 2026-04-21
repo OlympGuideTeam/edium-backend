@@ -104,7 +104,7 @@ erDiagram
 | Subject | Payload | Когда |
 |---------|---------|-------|
 | `riddler.quiz_template.attached` | `{quiz_template_id, module_id}` | POST /quizzes с `attach_to_module` |
-| `riddler.course_session.created` | `{session_id, module_id}` | POST /sessions/test или /sessions/live |
+| `riddler.course_session.created` | `{session_id, module_id, title, mode, …}` | POST /sessions/test или /sessions/live |
 | `riddler.attempt.created` | `{attempt_id, session_id, user_id}` | POST /sessions/:id/attempts |
 | `riddler.attempt.scored` | `{attempt_id, session_id, user_id, total_score}` | POST /attempts/:id/finish (после автооценки) |
 

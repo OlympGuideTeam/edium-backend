@@ -15,6 +15,7 @@ import (
 )
 
 type courseItemPayload struct {
+	Title                string     `json:"title"`
 	Mode                 string     `json:"mode"`
 	TotalTimeLimitSec    *int       `json:"total_time_limit_sec,omitempty"`
 	QuestionTimeLimitSec *int       `json:"question_time_limit_sec,omitempty"`
@@ -57,6 +58,7 @@ func (w *CourseSessionCreatedProcessor) Run(ctx context.Context) error {
 type courseSessionCreatedPayload struct {
 	SessionID            string     `json:"session_id"`
 	ModuleID             string     `json:"module_id"`
+	Title                string     `json:"title"`
 	Mode                 string     `json:"mode"`
 	TotalTimeLimitSec    *int       `json:"total_time_limit_sec,omitempty"`
 	QuestionTimeLimitSec *int       `json:"question_time_limit_sec,omitempty"`
@@ -103,6 +105,7 @@ func (w *CourseSessionCreatedProcessor) processTask(ctx context.Context, t domai
 	slog.InfoContext(ctx, "course-session-created-processor: создание элемента", "task_id", t.ID, "session_id", sessionID)
 
 	itemPayloadBytes, _ := json.Marshal(courseItemPayload{
+		Title:                p.Title,
 		Mode:                 p.Mode,
 		TotalTimeLimitSec:    p.TotalTimeLimitSec,
 		QuestionTimeLimitSec: p.QuestionTimeLimitSec,
