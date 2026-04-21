@@ -9,7 +9,8 @@ const (
 	SubjectGenerationRequested = "riddler.generation.requested"
 	SubjectGenerationCompleted = "sphinx.generation.completed"
 
-	SubjectCourseSessionDeleted = "caesar.course_session.deleted"
+	SubjectCourseSessionDeleted  = "caesar.course_session.deleted"
+	SubjectCourseSessionCanceled = "riddler.course_session.canceled"
 
 	SubjectQuizGradeRequested = "riddler.quiz.grade.requested"
 	SubjectQuizGradeCompleted = "charon.quiz.grade.completed"

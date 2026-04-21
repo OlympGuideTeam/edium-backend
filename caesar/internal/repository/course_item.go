@@ -91,6 +91,15 @@ func (s *PgCourseStore) DeleteDraft(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+func (s *PgCourseStore) DeleteDraftByTemplateAndCourse(ctx context.Context, quizTemplateID, courseID uuid.UUID) error {
+	exec := db.ExecutorFromContext(ctx, s.db)
+	_, err := exec.ExecContext(ctx,
+		`DELETE FROM course_draft WHERE quiz_template_id = $1 AND course_id = $2`,
+		quizTemplateID, courseID,
+	)
+	return err
+}
+
 func (s *PgCourseStore) ListDraftsByCourseID(ctx context.Context, courseID uuid.UUID) ([]domain.CourseDraft, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, quiz_template_id, course_id, title, payload FROM course_draft WHERE course_id = $1 ORDER BY created_at`,

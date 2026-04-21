@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"riddler/internal/domain"
+	"riddler/internal/pkg/apperr"
 )
 
 const (
@@ -19,6 +20,8 @@ const (
 type courseSessionCreatedPayload struct {
 	SessionID            uuid.UUID  `json:"session_id"`
 	ModuleID             uuid.UUID  `json:"module_id"`
+	QuizTemplateID       *uuid.UUID `json:"quiz_template_id,omitempty"`
+	CourseID             *uuid.UUID `json:"course_id,omitempty"`
 	Title                string     `json:"title"`
 	Mode                 string     `json:"mode"`
 	TotalTimeLimitSec    *int       `json:"total_time_limit_sec,omitempty"`
@@ -46,9 +49,12 @@ func (s *Service) CreateTestCourseSession(ctx context.Context, quizTemplateID, m
 		if innerErr != nil {
 			return fmt.Errorf("create session: %w", innerErr)
 		}
+		qtID := quizTemplateID
 		eventPayload, _ := json.Marshal(courseSessionCreatedPayload{
 			SessionID:         sessionID,
 			ModuleID:          moduleID,
+			QuizTemplateID:    &qtID,
+			CourseID:          quiz.CourseID,
 			Title:             quiz.Title,
 			Mode:              string(params.Mode),
 			TotalTimeLimitSec: params.TotalTimeLimitSec,
@@ -85,9 +91,12 @@ func (s *Service) CreateLiveCourseSession(ctx context.Context, quizTemplateID, m
 		if innerErr != nil {
 			return fmt.Errorf("create session: %w", innerErr)
 		}
+		qtID := quizTemplateID
 		eventPayload, _ := json.Marshal(courseSessionCreatedPayload{
 			SessionID:            sessionID,
 			ModuleID:             moduleID,
+			QuizTemplateID:       &qtID,
+			CourseID:             quiz.CourseID,
 			Title:                quiz.Title,
 			Mode:                 string(params.Mode),
 			QuestionTimeLimitSec: params.QuestionTimeLimitSec,
@@ -101,6 +110,148 @@ func (s *Service) CreateLiveCourseSession(ctx context.Context, quizTemplateID, m
 		return uuid.Nil, err
 	}
 	return sessionID, nil
+}
+
+func (s *Service) CreateTestCourseSessionInline(ctx context.Context, authorID uuid.UUID, p domain.CreateTestCourseSessionInlineParams) (uuid.UUID, uuid.UUID, error) {
+	var quizTemplateID, sessionID uuid.UUID
+
+	err := s.txManager.WithTx(ctx, func(ctx context.Context) error {
+		var innerErr error
+		quizTemplateID, innerErr = s.quizzes.Create(ctx, authorID, p.Title, p.Description, domain.QuizDefaultSettings{}, domain.QuizSourceCourse, &p.CourseID)
+		if innerErr != nil {
+			return fmt.Errorf("create quiz: %w", innerErr)
+		}
+
+		needEvaluation := false
+		for i := range p.Questions {
+			p.Questions[i].QuizTemplateID = quizTemplateID
+			if err := validateQuestion(p.Questions[i].Type, p.Questions[i].Metadata, p.Questions[i].Options); err != nil {
+				return err
+			}
+			if _, _, innerErr = s.quizzes.AddQuestion(ctx, p.Questions[i]); innerErr != nil {
+				return fmt.Errorf("add question: %w", innerErr)
+			}
+			if p.Questions[i].Type == domain.QuestionTypeWithFreeAnswer {
+				needEvaluation = true
+			}
+		}
+		if needEvaluation {
+			if innerErr = s.quizzes.SetNeedEvaluation(ctx, quizTemplateID, true); innerErr != nil {
+				return fmt.Errorf("set need_evaluation: %w", innerErr)
+			}
+		}
+
+		totalLimit := p.TotalTimeLimitSec
+		if totalLimit == nil {
+			v := len(p.Questions) * defaultTestTotalTimeLimitPerQuestion
+			totalLimit = &v
+		}
+		sessionParams := domain.CreateSessionParams{
+			QuizTemplateID:    quizTemplateID,
+			Mode:              domain.SessionModeTest,
+			TotalTimeLimitSec: totalLimit,
+			ShuffleQuestions:  p.ShuffleQuestions,
+			Status:            domain.SessionStatusActive,
+			StartedAt:         p.StartedAt,
+			FinishedAt:        p.FinishedAt,
+		}
+		sessionID, innerErr = s.sessions.Create(ctx, sessionParams)
+		if innerErr != nil {
+			return fmt.Errorf("create session: %w", innerErr)
+		}
+
+		attachedPayload, _ := json.Marshal(quizTemplateAttachedPayload{
+			QuizTemplateID: quizTemplateID,
+			CourseID:       p.CourseID,
+			Title:          p.Title,
+			Payload:        buildCourseDraftPayload(p.Title, domain.QuizDefaultSettings{}),
+		})
+		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, attachedPayload); innerErr != nil {
+			return fmt.Errorf("schedule quiz_template.attached: %w", innerErr)
+		}
+
+		qtID := quizTemplateID
+		cID := p.CourseID
+		sessionCreatedPayload, _ := json.Marshal(courseSessionCreatedPayload{
+			SessionID:         sessionID,
+			ModuleID:          p.ModuleID,
+			QuizTemplateID:    &qtID,
+			CourseID:          &cID,
+			Title:             p.Title,
+			Mode:              string(domain.SessionModeTest),
+			TotalTimeLimitSec: totalLimit,
+			ShuffleQuestions:  p.ShuffleQuestions,
+			StartedAt:         p.StartedAt,
+			FinishedAt:        p.FinishedAt,
+		})
+		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeCourseSessionCreatedPublisher, sessionCreatedPayload); innerErr != nil {
+			return fmt.Errorf("schedule course_session.created: %w", innerErr)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	return quizTemplateID, sessionID, nil
+}
+
+type courseSessionCanceledPayload struct {
+	SessionID      uuid.UUID       `json:"session_id"`
+	QuizTemplateID uuid.UUID       `json:"quiz_template_id"`
+	CourseID       *uuid.UUID      `json:"course_id,omitempty"`
+	Title          string          `json:"title"`
+	Payload        json.RawMessage `json:"payload,omitempty"`
+}
+
+func (s *Service) DeleteCourseSession(ctx context.Context, sessionID, authorID uuid.UUID) error {
+	session, err := s.sessions.GetByID(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("get session: %w", err)
+	}
+	if session == nil {
+		return apperr.ErrSessionNotFound
+	}
+
+	quiz, err := s.quizzes.GetByID(ctx, session.QuizTemplateID)
+	if err != nil {
+		return fmt.Errorf("get quiz: %w", err)
+	}
+	if quiz == nil {
+		return apperr.ErrQuizNotFound
+	}
+	if quiz.AuthorID != authorID {
+		return apperr.ErrQuizForbidden
+	}
+
+	if session.Mode == domain.SessionModeLive && session.Status == domain.SessionStatusRunning {
+		return apperr.ErrSessionAlreadyStarted
+	}
+
+	hasAttempts, err := s.sessions.HasAttempts(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("check attempts: %w", err)
+	}
+	if hasAttempts {
+		return apperr.ErrSessionHasAttempts
+	}
+
+	return s.txManager.WithTx(ctx, func(ctx context.Context) error {
+		if innerErr := s.sessions.Delete(ctx, sessionID); innerErr != nil {
+			return fmt.Errorf("delete session: %w", innerErr)
+		}
+		eventPayload, _ := json.Marshal(courseSessionCanceledPayload{
+			SessionID:      sessionID,
+			QuizTemplateID: quiz.ID,
+			CourseID:       quiz.CourseID,
+			Title:          quiz.Title,
+			Payload:        buildCourseDraftPayload(quiz.Title, quiz.DefaultSettings),
+		})
+		if innerErr := s.tasks.Schedule(ctx, domain.TaskTypeCourseSessionCanceledPublisher, eventPayload); innerErr != nil {
+			return fmt.Errorf("schedule course_session.canceled: %w", innerErr)
+		}
+		return nil
+	})
 }
 
 func (s *Service) createLibrarySession(ctx context.Context, quiz *domain.QuizTemplate) error {

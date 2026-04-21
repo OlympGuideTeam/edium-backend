@@ -84,3 +84,15 @@ type CreateTestCourseSessionParams struct {
 type CreateLiveCourseSessionParams struct {
 	QuestionTimeLimitSec *int
 }
+
+type CreateTestCourseSessionInlineParams struct {
+	Title             string
+	Description       *string
+	CourseID          uuid.UUID
+	ModuleID          uuid.UUID
+	Questions         []AddQuestionParams
+	TotalTimeLimitSec *int
+	ShuffleQuestions  *bool
+	StartedAt         *time.Time
+	FinishedAt        *time.Time
+}

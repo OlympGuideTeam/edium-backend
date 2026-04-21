@@ -21,11 +21,12 @@ var (
 	UserCreated TaskType = "user_created"
 	UserDeleted TaskType = "user_deleted"
 
-	QuizTemplateAttached TaskType = "quiz_template_attached"
-	CourseSessionCreated TaskType = "course_session_created"
-	CourseSessionDeleted TaskType = "course_session_deleted"
-	AttemptCreated       TaskType = "attempt_created"
-	AttemptScored        TaskType = "attempt_scored"
+	QuizTemplateAttached  TaskType = "quiz_template_attached"
+	CourseSessionCreated  TaskType = "course_session_created"
+	CourseSessionDeleted  TaskType = "course_session_deleted"
+	CourseSessionCanceled TaskType = "course_session_canceled"
+	AttemptCreated        TaskType = "attempt_created"
+	AttemptScored         TaskType = "attempt_scored"
 )
 
 type Task struct {

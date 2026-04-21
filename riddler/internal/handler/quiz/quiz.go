@@ -287,6 +287,107 @@ func (h *Handler) CreateTestCourseSession(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.CreateSessionResponse{SessionID: sessionID.String()})
 }
 
+func (h *Handler) DeleteCourseSession(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	sessionID, err := uuid.Parse(c.Param("session_id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	if err := h.service.DeleteCourseSession(c.Request.Context(), sessionID, userID); err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
+func (h *Handler) CreateTestCourseSessionInline(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	var req dto.CreateTestCourseSessionInlineRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.WriteError(c, apperr.ErrBadRequest)
+		return
+	}
+
+	courseID, err := uuid.Parse(req.CourseID)
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+	moduleID, err := uuid.Parse(req.ModuleID)
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	questions := make([]domain.AddQuestionParams, len(req.Questions))
+	for i, q := range req.Questions {
+		maxScore := 10
+		if q.MaxScore != nil {
+			maxScore = *q.MaxScore
+		}
+		options := make([]domain.AddOptionParams, len(q.AnswerOptions))
+		for j, o := range q.AnswerOptions {
+			options[j] = domain.AddOptionParams{Text: o.Text, IsCorrect: o.IsCorrect}
+		}
+		questions[i] = domain.AddQuestionParams{
+			Type:      domain.QuestionType(q.Type),
+			Text:      q.Text,
+			ImageLink: q.ImageLink,
+			Metadata:  q.Metadata,
+			MaxScore:  maxScore,
+			Options:   options,
+		}
+	}
+
+	params := domain.CreateTestCourseSessionInlineParams{
+		Title:             req.Title,
+		Description:       req.Description,
+		CourseID:          courseID,
+		ModuleID:          moduleID,
+		Questions:         questions,
+		TotalTimeLimitSec: req.TotalTimeLimitSec,
+		ShuffleQuestions:  req.ShuffleQuestions,
+	}
+	if req.StartedAt != nil {
+		t, err := time.Parse(time.RFC3339, *req.StartedAt)
+		if err != nil {
+			httpx.WriteError(c, apperr.ErrBadRequest)
+			return
+		}
+		params.StartedAt = &t
+	}
+	if req.FinishedAt != nil {
+		t, err := time.Parse(time.RFC3339, *req.FinishedAt)
+		if err != nil {
+			httpx.WriteError(c, apperr.ErrBadRequest)
+			return
+		}
+		params.FinishedAt = &t
+	}
+
+	quizTemplateID, sessionID, err := h.service.CreateTestCourseSessionInline(c.Request.Context(), userID, params)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.CreateTestCourseSessionInlineResponse{
+		QuizTemplateID: quizTemplateID.String(),
+		SessionID:      sessionID.String(),
+	})
+}
+
 func (h *Handler) CreateLiveCourseSession(c *gin.Context) {
 	_, ok := userIDFromCtx(c)
 	if !ok {
