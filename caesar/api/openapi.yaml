@@ -583,6 +583,29 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /caesar/v1/drafts/{draftId}:
+    delete:
+      summary: Удалить черновик квиза из курса
+      operationId: deleteCourseDraft
+      tags: [Items]
+      description: Удаляет шаблон квиза из списка черновиков курса без удаления сессии.
+      parameters:
+        - name: draftId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Черновик удалён
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   # ─── Ведомость ─────────────────────────────────────────────────────
 
   /caesar/v1/courses/{courseId}/sheet:

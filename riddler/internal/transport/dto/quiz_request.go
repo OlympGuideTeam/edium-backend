@@ -54,6 +54,23 @@ type CreateLiveSessionRequest struct {
 	QuestionTimeLimitSec *int   `json:"question_time_limit_sec"`
 }
 
+type CreateTestCourseSessionInlineRequest struct {
+	Title             string               `json:"title"               binding:"required"`
+	Description       *string              `json:"description"`
+	CourseID          string               `json:"course_id"           binding:"required"`
+	ModuleID          string               `json:"module_id"           binding:"required"`
+	Questions         []AddQuestionRequest `json:"questions"           binding:"required,min=1"`
+	TotalTimeLimitSec *int                 `json:"total_time_limit_sec"`
+	ShuffleQuestions  *bool                `json:"shuffle_questions"`
+	StartedAt         *string              `json:"started_at"`
+	FinishedAt        *string              `json:"finished_at"`
+}
+
+type CreateTestCourseSessionInlineResponse struct {
+	QuizTemplateID string `json:"quiz_template_id"`
+	SessionID      string `json:"session_id"`
+}
+
 type CreateSessionResponse struct {
 	SessionID string `json:"session_id"`
 }

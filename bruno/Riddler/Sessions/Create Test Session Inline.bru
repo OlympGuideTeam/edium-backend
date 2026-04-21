@@ -1,0 +1,48 @@
+meta {
+  name: Create Test Session Inline
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{riddlerUrl}}/riddler/v1/sessions/test/inline
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "title": "Тест по теме",
+    "course_id": "{{courseId}}",
+    "module_id": "{{moduleId}}",
+    "questions": [
+      {
+        "type": "single_choice",
+        "text": "Вопрос?",
+        "max_score": 10,
+        "answer_options": [
+          {"text": "Вариант А", "is_correct": true},
+          {"text": "Вариант Б", "is_correct": false}
+        ]
+      }
+    ],
+    "total_time_limit_sec": 600,
+    "shuffle_questions": false,
+    "started_at": null,
+    "finished_at": null
+  }
+}
+
+tests {
+  const body = res.getBody();
+  if (body.session_id) {
+    bru.setEnvVar("sessionId", body.session_id);
+  }
+  if (body.quiz_template_id) {
+    bru.setEnvVar("quizId", body.quiz_template_id);
+  }
+}

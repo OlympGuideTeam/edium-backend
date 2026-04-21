@@ -26,7 +26,8 @@ const (
 	TaskTypeGenerationRequestedPublisher TaskType = "generation_requested_publisher"
 	TaskTypeGenerationCompleted          TaskType = "generation_completed"
 
-	TaskTypeCourseSessionDeleted TaskType = "course_session_deleted"
+	TaskTypeCourseSessionDeleted           TaskType = "course_session_deleted"
+	TaskTypeCourseSessionCanceledPublisher TaskType = "course_session_canceled_publisher"
 
 	TaskTypeGradingRequestedPublisher TaskType = "grading_requested_publisher"
 	TaskTypeGradingCompleted          TaskType = "grading_completed"
