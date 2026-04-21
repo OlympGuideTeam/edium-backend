@@ -1,0 +1,15 @@
+meta {
+  name: Delete Draft
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{caesarUrl}}/caesar/v1/drafts/{{draftId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
