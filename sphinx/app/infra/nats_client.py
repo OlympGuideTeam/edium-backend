@@ -34,6 +34,14 @@ async def _connect(url: str, ca_path: str) -> nats.aio.client.Client:
         ctx.check_hostname = False
         options["tls"] = ctx
         logger.info("NATS TLS enabled (CA: %s)", ca_path)
+    elif url.startswith("tls://"):
+        # stunnel с самоподписанным сертификатом: проверка CA отключена.
+        # Для prod с ca.crt — установить NATS_TLS_CA_PATH.
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        options["tls"] = ctx
+        logger.warning("NATS TLS enabled without CA verification (set NATS_TLS_CA_PATH for prod)")
 
     nc = await nats.connect(**options)
     logger.info("NATS connected: %s", url)
@@ -41,10 +49,7 @@ async def _connect(url: str, ca_path: str) -> nats.aio.client.Client:
 
 
 async def _on_error(e: Exception) -> None:
-    msg = str(e)
-    if not msg:
-        return
-    logger.error("NATS error: %s", msg)
+    logger.error("NATS error: %s", repr(e))
 
 
 async def _on_reconnect() -> None:
