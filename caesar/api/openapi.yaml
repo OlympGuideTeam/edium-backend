@@ -1062,6 +1062,10 @@ components:
       type: object
       description: Конфигурация квиз-сессии, сохранённая в момент создания
       properties:
+        title:
+          type: string
+          description: Название квиза, скопированное из Riddler в момент создания сессии
+          example: "Квиз по биологии: клетка"
         mode:
           type: string
           enum: [test, live]
