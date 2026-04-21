@@ -150,16 +150,27 @@ func (s *Service) UpdateQuiz(ctx context.Context, id, authorID uuid.UUID, title,
 		if err := s.quizzes.Update(ctx, id, title, description, settings); err != nil {
 			return fmt.Errorf("update quiz: %w", err)
 		}
-		if title != nil && quiz.CourseID != nil {
-			payload, _ := json.Marshal(quizTemplateAttachedPayload{
-				QuizTemplateID: id,
-				CourseID:       *quiz.CourseID,
-				Title:          *title,
-				Payload:        buildCourseDraftPayload(*title, quiz.DefaultSettings),
-			})
-			if err := s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, payload); err != nil {
-				return fmt.Errorf("schedule quiz_template.attached: %w", err)
-			}
+		if quiz.CourseID == nil {
+			return nil
+		}
+		if title == nil && description == nil && settings == nil {
+			return nil
+		}
+		updated, err := s.quizzes.GetByID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("get quiz after update: %w", err)
+		}
+		if updated == nil {
+			return apperr.ErrQuizNotFound
+		}
+		payload, _ := json.Marshal(quizTemplateAttachedPayload{
+			QuizTemplateID: id,
+			CourseID:       *quiz.CourseID,
+			Title:          updated.Title,
+			Payload:        buildCourseDraftPayload(updated.Title, updated.DefaultSettings),
+		})
+		if err := s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, payload); err != nil {
+			return fmt.Errorf("schedule quiz_template.attached: %w", err)
 		}
 		return nil
 	})
