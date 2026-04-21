@@ -46,6 +46,11 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   sphinx-db:
     image: postgres:17
