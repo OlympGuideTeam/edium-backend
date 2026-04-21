@@ -25,13 +25,10 @@ func (h *Handler) CreateQuiz(c *gin.Context) {
 		return
 	}
 
-	var settings domain.QuizDefaultSettings
-	if req.DefaultSettings != nil {
-		settings = domain.QuizDefaultSettings{
-			TotalTimeLimitSec:    req.DefaultSettings.TotalTimeLimitSec,
-			QuestionTimeLimitSec: req.DefaultSettings.QuestionTimeLimitSec,
-			ShuffleQuestions:     req.DefaultSettings.ShuffleQuestions,
-		}
+	settings, err := quizSettingsFromDTO(req.DefaultSettings)
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadRequest)
+		return
 	}
 
 	var attachToCourse *uuid.UUID
@@ -107,18 +104,14 @@ func (h *Handler) getQuizAsTeacher(c *gin.Context, quizID, userID uuid.UUID) {
 	}
 
 	c.JSON(http.StatusOK, dto.QuizDetailResponse{
-		ID:          detail.ID.String(),
-		Title:       detail.Title,
-		Description: detail.Description,
-		DefaultSettings: dto.QuizDefaultSettings{
-			TotalTimeLimitSec:    detail.DefaultSettings.TotalTimeLimitSec,
-			QuestionTimeLimitSec: detail.DefaultSettings.QuestionTimeLimitSec,
-			ShuffleQuestions:     detail.DefaultSettings.ShuffleQuestions,
-		},
-		IsPublic:       detail.IsPublic,
-		Source:         string(detail.Source),
-		NeedEvaluation: detail.NeedEvaluation,
-		Questions:      questions,
+		ID:              detail.ID.String(),
+		Title:           detail.Title,
+		Description:     detail.Description,
+		DefaultSettings: quizSettingsToDTO(detail.DefaultSettings),
+		IsPublic:        detail.IsPublic,
+		Source:          string(detail.Source),
+		NeedEvaluation:  detail.NeedEvaluation,
+		Questions:       questions,
 	})
 }
 
