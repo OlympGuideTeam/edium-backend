@@ -19,6 +19,7 @@ const (
 type courseSessionCreatedPayload struct {
 	SessionID            uuid.UUID  `json:"session_id"`
 	ModuleID             uuid.UUID  `json:"module_id"`
+	Title                string     `json:"title"`
 	Mode                 string     `json:"mode"`
 	TotalTimeLimitSec    *int       `json:"total_time_limit_sec,omitempty"`
 	QuestionTimeLimitSec *int       `json:"question_time_limit_sec,omitempty"`
@@ -48,6 +49,7 @@ func (s *Service) CreateTestCourseSession(ctx context.Context, quizTemplateID, m
 		eventPayload, _ := json.Marshal(courseSessionCreatedPayload{
 			SessionID:         sessionID,
 			ModuleID:          moduleID,
+			Title:             quiz.Title,
 			Mode:              string(params.Mode),
 			TotalTimeLimitSec: params.TotalTimeLimitSec,
 			ShuffleQuestions:  params.ShuffleQuestions,
@@ -86,6 +88,7 @@ func (s *Service) CreateLiveCourseSession(ctx context.Context, quizTemplateID, m
 		eventPayload, _ := json.Marshal(courseSessionCreatedPayload{
 			SessionID:            sessionID,
 			ModuleID:             moduleID,
+			Title:                quiz.Title,
 			Mode:                 string(params.Mode),
 			QuestionTimeLimitSec: params.QuestionTimeLimitSec,
 		})
