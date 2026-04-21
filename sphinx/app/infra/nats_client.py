@@ -41,7 +41,10 @@ async def _connect(url: str, ca_path: str) -> nats.aio.client.Client:
 
 
 async def _on_error(e: Exception) -> None:
-    logger.error("NATS error: %s", e)
+    msg = str(e)
+    if not msg:
+        return
+    logger.error("NATS error: %s", msg)
 
 
 async def _on_reconnect() -> None:
