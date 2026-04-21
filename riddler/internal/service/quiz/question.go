@@ -28,15 +28,23 @@ func (s *Service) AddQuestion(ctx context.Context, quizID, authorID uuid.UUID, p
 
 	params.QuizTemplateID = quizID
 
-	id, orderIndex, err := s.quizzes.AddQuestion(ctx, params)
-	if err != nil {
-		return uuid.Nil, 0, fmt.Errorf("add question: %w", err)
-	}
-
-	if params.Type == domain.QuestionTypeWithFreeAnswer && !quiz.NeedEvaluation {
-		if err := s.quizzes.SetNeedEvaluation(ctx, quizID, true); err != nil {
-			return uuid.Nil, 0, fmt.Errorf("set need_evaluation: %w", err)
+	var id uuid.UUID
+	var orderIndex int
+	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
+		var innerErr error
+		id, orderIndex, innerErr = s.quizzes.AddQuestion(ctx, params)
+		if innerErr != nil {
+			return fmt.Errorf("add question: %w", innerErr)
 		}
+		if params.Type == domain.QuestionTypeWithFreeAnswer && !quiz.NeedEvaluation {
+			if innerErr = s.quizzes.SetNeedEvaluation(ctx, quizID, true); innerErr != nil {
+				return fmt.Errorf("set need_evaluation: %w", innerErr)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return uuid.Nil, 0, err
 	}
 
 	return id, orderIndex, nil
