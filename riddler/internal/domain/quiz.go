@@ -25,9 +25,12 @@ const (
 )
 
 type QuizDefaultSettings struct {
-	TotalTimeLimitSec    *int  `json:"total_time_limit_sec"`
-	QuestionTimeLimitSec *int  `json:"question_time_limit_sec"`
-	ShuffleQuestions     *bool `json:"shuffle_questions"`
+	Mode                 *SessionMode `json:"mode,omitempty"`
+	TotalTimeLimitSec    *int         `json:"total_time_limit_sec,omitempty"`
+	QuestionTimeLimitSec *int         `json:"question_time_limit_sec,omitempty"`
+	ShuffleQuestions     *bool        `json:"shuffle_questions,omitempty"`
+	StartedAt            *time.Time   `json:"started_at,omitempty"`
+	FinishedAt           *time.Time   `json:"finished_at,omitempty"`
 }
 
 type QuizSource string
