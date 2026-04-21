@@ -6,29 +6,39 @@ name: edium-sphinx
 # Переменные окружения (/opt/edium/.env на VM):
 #   ML_REGISTRY_ID    — ID Container Registry ML аккаунта
 #   IMAGE_TAG         — тег образа (default: latest)
-#   NATS_URL          — nats://sphinx:<pwd>@<platform-vm-ip>:4223  (prod, через stunnel)
-#   NATS_TLS_CA_PATH  — абс. путь к CA-сертификату на хосте (одновременно монтируется в
-#                       контейнер по тому же пути); оставить пустым если без TLS
+#   NATS_URL          — nats://sphinx:<pwd>@nats-proxy:4223  (prod, через socat → stunnel → TLS)
+#   NATS_TLS_CA_PATH  — не нужен (socat делает TLS на себя)
 #   NATS_URL_TEST     — nats://sphinx:<pwd>@<test-vm-ip>:4222  (test, без TLS)
 #   SPHINX_PG_PWD     — пароль PostgreSQL
 #   HF_TOKEN          — HuggingFace token
 #   MODEL_ID          — ID модели (опционально)
 
 services:
+  nats-proxy:
+    image: alpine/socat:1.7.4.4
+    command: "tcp-listen:4223,fork,reuseaddr openssl-connect:130.193.37.78:4223,verify=0"
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4223"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
   sphinx:
     image: cr.yandex/${ML_REGISTRY_ID}/edium-sphinx:${IMAGE_TAG:-latest}
     restart: on-failure
     environment:
       NATS_URL: ${NATS_URL}
-      NATS_TLS_CA_PATH: ${NATS_TLS_CA_PATH:-}
       NATS_URL_TEST: ${NATS_URL_TEST:-}
       POSTGRES_DSN: postgres://sphinx:${SPHINX_PG_PWD}@sphinx-db:5432/sphinx?sslmode=disable
       MODEL_ID: ${MODEL_ID:-mistralai/Mistral-7B-Instruct-v0.3}
       HF_TOKEN: ${HF_TOKEN:-}
     volumes:
       - hf_cache:/root/.cache/huggingface
-      - ${NATS_TLS_CA_PATH:-/dev/null}:${NATS_TLS_CA_PATH:-/dev/null}:ro
     depends_on:
+      nats-proxy:
+        condition: service_healthy
       sphinx-db:
         condition: service_healthy
       sphinx-flyway:
