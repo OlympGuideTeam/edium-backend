@@ -25,8 +25,8 @@ func (h *Handler) ListQuizzes(c *gin.Context) {
 	}
 
 	result := make([]dto.QuizListItemResponse, len(items))
-	for i, item := range items {
-		result[i] = toListItemResponse(item)
+	for i := range items {
+		result[i] = toListItemResponse(items[i])
 	}
 
 	c.JSON(http.StatusOK, result)
@@ -45,8 +45,8 @@ func (h *Handler) ListMyQuizzes(c *gin.Context) {
 	}
 
 	result := make([]dto.QuizListItemResponse, len(items))
-	for i, item := range items {
-		result[i] = toListItemResponse(item)
+	for i := range items {
+		result[i] = toListItemResponse(items[i])
 	}
 
 	c.JSON(http.StatusOK, result)

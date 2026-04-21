@@ -59,8 +59,10 @@ type ModuleDetailResponse struct {
 }
 
 type CourseDraftDTO struct {
-	ID             string `json:"id"`
-	QuizTemplateID string `json:"quiz_template_id"`
+	ID             string          `json:"id"`
+	QuizTemplateID string          `json:"quiz_template_id"`
+	Type           string          `json:"type"`
+	Payload        json.RawMessage `json:"payload"`
 }
 
 type CourseDetailResponse struct {
