@@ -230,9 +230,11 @@ func (h *Handler) CopyQuiz(c *gin.Context) {
 	}
 
 	var req dto.CopyQuizRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		httpx.WriteError(c, apperr.ErrBadRequest)
-		return
+	if c.Request.ContentLength != 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			httpx.WriteError(c, apperr.ErrBadRequest)
+			return
+		}
 	}
 
 	var attachToCourse *uuid.UUID
