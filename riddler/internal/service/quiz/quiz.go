@@ -187,12 +187,11 @@ func (s *Service) PublishQuiz(ctx context.Context, id, authorID uuid.UUID) error
 	if quiz.AuthorID != authorID {
 		return apperr.ErrQuizForbidden
 	}
-
-	hasSession, err := s.quizzes.HasSession(ctx, id)
-	if err != nil {
-		return fmt.Errorf("check session: %w", err)
+	if quiz.Source != domain.QuizSourceLibrary {
+		return apperr.ErrQuizCourseOnly
 	}
-	if hasSession {
+
+	if quiz.LibrarySessionID != nil || quiz.IsPublic {
 		return apperr.ErrQuizAlreadyPublished
 	}
 

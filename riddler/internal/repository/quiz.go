@@ -114,18 +114,6 @@ func (r *PgQuizRepository) Publish(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r *PgQuizRepository) HasSession(ctx context.Context, quizID uuid.UUID) (bool, error) {
-	var exists bool
-	err := r.db.QueryRowContext(ctx,
-		`SELECT EXISTS (SELECT 1 FROM quiz_session WHERE quiz_template_id = $1)`,
-		quizID,
-	).Scan(&exists)
-	if err != nil {
-		return false, fmt.Errorf("has session: %w", err)
-	}
-	return exists, nil
-}
-
 func (r *PgQuizRepository) Copy(ctx context.Context, sourceID, newAuthorID uuid.UUID, source domain.QuizSource, courseID *uuid.UUID) (uuid.UUID, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 

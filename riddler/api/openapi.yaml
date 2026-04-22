@@ -588,7 +588,9 @@ paths:
           schema:
             type: string
             format: uuid
-      description: Публикует квиз (is_draft → false). Квиз становится доступен для назначения в курс.
+      description: |
+        Публикует квиз в публичную библиотеку (`is_public`). Доступно только для шаблонов с `source: library`;
+        квизы курса (`source: course`) только в контексте курса и в библиотеку не публикуются.
       responses:
         "200":
           description: Квиз опубликован
@@ -597,6 +599,7 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
 
   /quizzes/{id}/copy:
     post:
