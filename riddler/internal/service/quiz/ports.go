@@ -16,7 +16,6 @@ type quizRepository interface {
 	ReorderQuestions(ctx context.Context, quizID uuid.UUID, questionIDs []uuid.UUID) error
 	DeleteQuestion(ctx context.Context, quizID, questionID uuid.UUID) error
 	Publish(ctx context.Context, id uuid.UUID) error
-	HasSession(ctx context.Context, quizID uuid.UUID) (bool, error)
 	SetLibrarySession(ctx context.Context, quizID, sessionID uuid.UUID) error
 	GetQuestionsWithOptions(ctx context.Context, quizID uuid.UUID) ([]domain.QuestionWithOptions, error)
 	SetNeedEvaluation(ctx context.Context, quizID uuid.UUID, value bool) error
