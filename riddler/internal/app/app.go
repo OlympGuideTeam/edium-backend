@@ -160,6 +160,7 @@ func (a *App) Router() *gin.Engine {
 		quizzes.POST("", a.quizHandler.CreateQuiz)
 		quizzes.GET("/my", a.quizHandler.ListMyQuizzes)
 		quizzes.GET("/:id", a.quizHandler.GetQuiz)
+		quizzes.DELETE("/:id", a.quizHandler.DeleteQuiz)
 		quizzes.PATCH("/:id", a.quizHandler.UpdateQuiz)
 		quizzes.POST("/:id/publish", a.quizHandler.PublishQuiz)
 		quizzes.POST("/:id/copy", a.quizHandler.CopyQuiz)

@@ -141,6 +141,26 @@ func (h *Handler) getQuizAsStudent(c *gin.Context, quizID uuid.UUID) {
 	})
 }
 
+func (h *Handler) DeleteQuiz(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	quizID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	if err := h.service.DeleteQuiz(c.Request.Context(), quizID, userID); err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
 func (h *Handler) UpdateQuiz(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
 	if !ok {

@@ -575,6 +575,29 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      tags: [Quizzes]
+      summary: Удалить квиз
+      operationId: deleteQuiz
+      description: |
+        Удаляет квиз. Запрещено если:
+        - квиз опубликован (`is_public = true`)
+        - вызывающий не является автором
+        - для квиза существует хотя бы одна сессия
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Квиз удалён
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
 
   /quizzes/{id}/publish:
     post:
