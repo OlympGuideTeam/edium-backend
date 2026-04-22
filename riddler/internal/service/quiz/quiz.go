@@ -248,6 +248,35 @@ func (s *Service) CopyQuiz(ctx context.Context, quizID, authorID uuid.UUID, atta
 	return newID, nil
 }
 
+func (s *Service) DeleteQuiz(ctx context.Context, id, authorID uuid.UUID) error {
+	quiz, err := s.quizzes.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get quiz: %w", err)
+	}
+	if quiz == nil {
+		return apperr.ErrQuizNotFound
+	}
+	if quiz.AuthorID != authorID {
+		return apperr.ErrQuizForbidden
+	}
+	if quiz.IsPublic {
+		return apperr.ErrQuizIsPublic
+	}
+
+	hasSessions, err := s.sessions.HasSessions(ctx, id)
+	if err != nil {
+		return fmt.Errorf("check sessions: %w", err)
+	}
+	if hasSessions {
+		return apperr.ErrQuizHasSessions
+	}
+
+	if err := s.quizzes.Delete(ctx, id); err != nil {
+		return fmt.Errorf("delete quiz: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) ListQuizzes(ctx context.Context, role domain.Role) ([]domain.QuizListItem, error) {
 	items, err := s.quizzes.ListPublished(ctx, role == domain.RoleStudent)
 	if err != nil {

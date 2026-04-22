@@ -92,6 +92,16 @@ func (r *PgSessionRepository) HasAttempts(ctx context.Context, sessionID uuid.UU
 	return exists, err
 }
 
+func (r *PgSessionRepository) HasSessions(ctx context.Context, quizTemplateID uuid.UUID) (bool, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	var exists bool
+	err := exec.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM quiz_session WHERE quiz_template_id = $1)`,
+		quizTemplateID,
+	).Scan(&exists)
+	return exists, err
+}
+
 func (r *PgSessionRepository) FindFinishedNeedingGrading(ctx context.Context) ([]domain.QuizSession, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT qs.id, qs.quiz_template_id, qs.mode, qs.status,

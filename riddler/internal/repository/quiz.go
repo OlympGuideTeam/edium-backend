@@ -65,6 +65,15 @@ func (r *PgQuizRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Q
 	return &q, nil
 }
 
+func (r *PgQuizRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	_, err := exec.ExecContext(ctx, `DELETE FROM quiz_template WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("delete quiz_template: %w", err)
+	}
+	return nil
+}
+
 func (r *PgQuizRepository) SetLibrarySession(ctx context.Context, quizID, sessionID uuid.UUID) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,
