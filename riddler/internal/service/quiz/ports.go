@@ -15,6 +15,7 @@ type quizRepository interface {
 	Update(ctx context.Context, id uuid.UUID, title, description *string, settings *domain.QuizDefaultSettings) error
 	ReorderQuestions(ctx context.Context, quizID uuid.UUID, questionIDs []uuid.UUID) error
 	DeleteQuestion(ctx context.Context, quizID, questionID uuid.UUID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 	Publish(ctx context.Context, id uuid.UUID) error
 	SetLibrarySession(ctx context.Context, quizID, sessionID uuid.UUID) error
 	GetQuestionsWithOptions(ctx context.Context, quizID uuid.UUID) ([]domain.QuestionWithOptions, error)
@@ -29,6 +30,7 @@ type sessionService interface {
 	Create(ctx context.Context, p domain.CreateSessionParams) (uuid.UUID, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizSession, error)
 	HasAttempts(ctx context.Context, sessionID uuid.UUID) (bool, error)
+	HasSessions(ctx context.Context, quizTemplateID uuid.UUID) (bool, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
