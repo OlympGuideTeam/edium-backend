@@ -95,7 +95,7 @@ func (s *Service) GetQuiz(ctx context.Context, id, userID uuid.UUID) (*domain.Qu
 	if quiz == nil {
 		return nil, apperr.ErrQuizNotFound
 	}
-	if quiz.AuthorID != userID {
+	if quiz.AuthorID != userID && !quiz.IsPublic {
 		return nil, apperr.ErrQuizForbidden
 	}
 
