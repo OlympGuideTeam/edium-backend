@@ -20,6 +20,7 @@ var (
 	ErrQuizEmptyTitle       = New("VALIDATION_ERROR", "Название квиза не может быть пустым", http.StatusUnprocessableEntity)
 	ErrQuizNotPublished     = New("QUIZ_NOT_PUBLISHED", "Копировать можно только опубликованный квиз", http.StatusUnprocessableEntity)
 	ErrQuizAlreadyPublished = New("QUIZ_ALREADY_PUBLISHED", "Квиз уже опубликован", http.StatusConflict)
+	ErrQuizCourseOnly       = New("QUIZ_COURSE_ONLY", "Квиз курса нельзя опубликовать в библиотеку", http.StatusUnprocessableEntity)
 	ErrQuizNotAvailable     = New("QUIZ_NOT_AVAILABLE", "Квиз недоступен", http.StatusForbidden)
 
 	// Сессии
