@@ -1,42 +1,41 @@
-edium.online {
-	root * /srv
-	file_server
-
-	log {
-		output file /var/log/caddy/access.log {
-			roll_size 10mb
-			roll_keep 5
-		}
-		format json
-	}
+edium.online, www.edium.online {
+    handle /.well-known/apple-app-site-association {
+        header Content-Type application/json
+        respond `{"webcredentials":{"apps":["FV7B395QF2.online.edium.app"]}}`
+    }
+    handle {
+        root * /srv/landing
+        file_server
+        encode gzip
+    }
 }
 
 api.edium.online {
-	handle /doorman/v1/* {
-		reverse_proxy doorman:80
-	}
-	handle /caesar/v1/* {
-		reverse_proxy caesar:80
-	}
-	handle /herald/v1/* {
-		reverse_proxy herald:80
-	}
-	handle /riddler/v1/* {
-		reverse_proxy riddler:80
-	}
-	handle {
-		respond "Not Found" 404
-	}
+    handle /doorman/v1/* {
+        reverse_proxy doorman:80
+    }
+    handle /caesar/v1/* {
+        reverse_proxy caesar:80
+    }
+    handle /herald/v1/* {
+        reverse_proxy herald:80
+    }
+    handle /riddler/v1/* {
+        reverse_proxy riddler:80
+    }
+    handle {
+        respond "Not Found" 404
+    }
 
-	log {
-		output file /var/log/caddy/access.log {
-			roll_size 10mb
-			roll_keep 5
-		}
-		format json
-	}
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+        format json
+    }
 }
 
 grafana.edium.online {
-	reverse_proxy grafana:3000
+    reverse_proxy grafana:3000
 }
