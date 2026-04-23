@@ -1,3 +1,16 @@
+edium.online {
+	root * /srv
+	file_server
+
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+		format json
+	}
+}
+
 api.edium.online {
 	handle /doorman/v1/* {
 		reverse_proxy doorman:80
