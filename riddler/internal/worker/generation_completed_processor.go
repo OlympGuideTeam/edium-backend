@@ -166,10 +166,15 @@ func mapOneSphinxQuestion(q sphinxQuestion) (domain.AddQuestionParams, error) {
 		}, nil
 
 	case "short_answer":
+		answer, ok := q.Answer.(string)
+		if !ok {
+			return domain.AddQuestionParams{}, fmt.Errorf("single_choice: answer должен быть строкой")
+		}
 		return domain.AddQuestionParams{
-			Type:     domain.QuestionTypeWithFreeAnswer,
+			Type:     domain.QuestionTypeWithGivenAnswer,
 			Text:     q.Question,
 			MaxScore: 10,
+			Metadata: map[string]any{"correct_answers": []string{answer}},
 		}, nil
 
 	default:
