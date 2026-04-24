@@ -83,7 +83,8 @@ class QuizPipeline:
         """Загрузка модели. При наличии кэша квантизованной модели — грузит из него (~30 сек),
         иначе квантизует из HuggingFace и сохраняет кэш (~10 мин первый раз)."""
         token = settings.hf_token or None
-        cache_dir = settings.quantized_model_cache_dir
+        model_slug = settings.model_id.replace("/", "--")
+        cache_dir = os.path.join(settings.quantized_model_cache_dir, model_slug) if settings.quantized_model_cache_dir else ""
 
         self._tokenizer = AutoTokenizer.from_pretrained(settings.model_id, token=token, trust_remote_code=True)
         if self._tokenizer.pad_token is None:

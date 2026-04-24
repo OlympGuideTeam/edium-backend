@@ -30,6 +30,7 @@ services:
       EXTRACTION_ADAPTER: ${EXTRACTION_ADAPTER:-edium/sphinx-extraction-lora}
       GENERATION_ADAPTER: ${GENERATION_ADAPTER:-edium/sphinx-generation-lora}
       HF_TOKEN: ${HF_TOKEN:-}
+      CUDA_LAUNCH_BLOCKING: "1"
     volumes:
       - ${NATS_TLS_CA_PATH:-/dev/null}:${NATS_TLS_CA_PATH:-/dev/null}:ro
       - ${NATS_TLS_CA_PATH_TEST:-/dev/null}:${NATS_TLS_CA_PATH_TEST:-/dev/null}:ro
