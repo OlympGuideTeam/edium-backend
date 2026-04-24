@@ -86,8 +86,9 @@ class QuizPipeline:
         cache_dir = settings.quantized_model_cache_dir
 
         self._tokenizer = AutoTokenizer.from_pretrained(settings.model_id, token=token, trust_remote_code=True)
-        self._tokenizer.pad_token = self._tokenizer.eos_token
-        self._tokenizer.padding_side = "right"
+        if self._tokenizer.pad_token is None:
+            self._tokenizer.pad_token = self._tokenizer.eos_token
+        self._tokenizer.padding_side = "left"
 
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
@@ -140,6 +141,9 @@ class QuizPipeline:
         )
         inputs = self._tokenizer(prompt, return_tensors="pt").to(self._model.device)
 
+        eos_token_id = self._tokenizer.eos_token_id
+        pad_token_id = eos_token_id[0] if isinstance(eos_token_id, list) else eos_token_id
+
         with torch.no_grad():
             outputs = self._model.generate(
                 **inputs,
@@ -147,7 +151,8 @@ class QuizPipeline:
                 temperature=settings.temperature,
                 top_p=settings.top_p,
                 do_sample=True,
-                pad_token_id=self._tokenizer.eos_token_id,
+                eos_token_id=eos_token_id,
+                pad_token_id=pad_token_id,
             )
 
         response = self._tokenizer.decode(
