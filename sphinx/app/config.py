@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # HuggingFace
-    model_id: str = "mistralai/Mistral-7B-Instruct-v0.3"
+    model_id: str = "Qwen/Qwen2.5-14B-Instruct"
     # TODO: раскомментировать после обучения адаптеров
     # extraction_adapter: str = "edium/sphinx-extraction-lora"
     # generation_adapter: str = "edium/sphinx-generation-lora"

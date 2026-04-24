@@ -4,7 +4,7 @@ services:
     restart: on-failure
     environment:
       GRPC_PORT: "50051"
-      MODEL_ID: ${MODEL_ID:-mistralai/Mistral-7B-Instruct-v0.3}
+      MODEL_ID: ${MODEL_ID:-Qwen/Qwen2.5-14B-Instruct}
       EXTRACTION_ADAPTER: ${EXTRACTION_ADAPTER:-edium/sphinx-extraction-lora}
       GENERATION_ADAPTER: ${GENERATION_ADAPTER:-edium/sphinx-generation-lora}
       HF_TOKEN: ${HF_TOKEN}
