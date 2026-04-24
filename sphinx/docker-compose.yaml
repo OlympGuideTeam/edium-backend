@@ -26,7 +26,7 @@ services:
       NATS_URL_TEST: ${NATS_URL_TEST:-}
       NATS_TLS_CA_PATH_TEST: ${NATS_TLS_CA_PATH_TEST:-}
       POSTGRES_DSN: postgres://sphinx:${SPHINX_PG_PWD}@sphinx-db:5432/sphinx?sslmode=disable
-      MODEL_ID: ${MODEL_ID:-mistralai/Mistral-7B-Instruct-v0.3}
+      MODEL_ID: ${MODEL_ID:-Qwen/Qwen2.5-14B-Instruct}
       EXTRACTION_ADAPTER: ${EXTRACTION_ADAPTER:-edium/sphinx-extraction-lora}
       GENERATION_ADAPTER: ${GENERATION_ADAPTER:-edium/sphinx-generation-lora}
       HF_TOKEN: ${HF_TOKEN:-}
