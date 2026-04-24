@@ -85,9 +85,16 @@ class QuizPipeline:
         token = settings.hf_token or None
         cache_dir = settings.quantized_model_cache_dir
 
-        self._tokenizer = AutoTokenizer.from_pretrained(settings.model_id, token=token)
+        self._tokenizer = AutoTokenizer.from_pretrained(settings.model_id, token=token, trust_remote_code=True)
         self._tokenizer.pad_token = self._tokenizer.eos_token
         self._tokenizer.padding_side = "right"
+
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+        )
 
         if cache_dir and os.path.isdir(cache_dir):
             logger.info("Loading quantized model from cache: %s", cache_dir)
@@ -95,21 +102,17 @@ class QuizPipeline:
                 cache_dir,
                 device_map="auto",
                 torch_dtype=torch.bfloat16,
+                quantization_config=bnb_config,
             )
         else:
             logger.info("Quantizing base model: %s (first run, will save to cache)", settings.model_id)
-            bnb_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_quant_type="nf4",
-                bnb_4bit_compute_dtype=torch.bfloat16,
-                bnb_4bit_use_double_quant=True,
-            )
             self._model = AutoModelForCausalLM.from_pretrained(
                 settings.model_id,
-                quantization_config=bnb_config,
                 device_map="auto",
+                quantization_config=bnb_config,
                 torch_dtype=torch.bfloat16,
                 token=token,
+                trust_remote_code=True,
             )
             if cache_dir:
                 logger.info("Saving quantized model to cache: %s", cache_dir)
