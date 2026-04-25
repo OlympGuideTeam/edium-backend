@@ -40,7 +40,13 @@ func (s *Service) CreateTestCourseSession(ctx context.Context, quizTemplateID, m
 		return uuid.Nil, fmt.Errorf("quiz not found")
 	}
 
+	maxScore, err := s.quizzes.SumMaxScore(ctx, quizTemplateID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("sum max score: %w", err)
+	}
+
 	params := s.buildTestCourseSessionParams(quizTemplateID, quiz, p)
+	params.MaxScore = maxScore
 
 	var sessionID uuid.UUID
 	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
@@ -82,7 +88,13 @@ func (s *Service) CreateLiveCourseSession(ctx context.Context, quizTemplateID, m
 		return uuid.Nil, fmt.Errorf("quiz not found")
 	}
 
+	maxScore, err := s.quizzes.SumMaxScore(ctx, quizTemplateID)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("sum max score: %w", err)
+	}
+
 	params := s.buildLiveCourseSessionParams(quizTemplateID, quiz, p)
+	params.MaxScore = maxScore
 
 	var sessionID uuid.UUID
 	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
@@ -114,6 +126,11 @@ func (s *Service) CreateLiveCourseSession(ctx context.Context, quizTemplateID, m
 
 func (s *Service) CreateTestCourseSessionInline(ctx context.Context, authorID uuid.UUID, p domain.CreateTestCourseSessionInlineParams) (uuid.UUID, uuid.UUID, error) {
 	var quizTemplateID, sessionID uuid.UUID
+
+	var inlineMaxScore int
+	for _, q := range p.Questions {
+		inlineMaxScore += q.MaxScore
+	}
 
 	err := s.txManager.WithTx(ctx, func(ctx context.Context) error {
 		var innerErr error
@@ -149,6 +166,7 @@ func (s *Service) CreateTestCourseSessionInline(ctx context.Context, authorID uu
 		sessionParams := domain.CreateSessionParams{
 			QuizTemplateID:    quizTemplateID,
 			Mode:              domain.SessionModeTest,
+			MaxScore:          inlineMaxScore,
 			TotalTimeLimitSec: totalLimit,
 			ShuffleQuestions:  p.ShuffleQuestions,
 			Status:            domain.SessionStatusActive,
@@ -255,7 +273,13 @@ func (s *Service) DeleteCourseSession(ctx context.Context, sessionID, authorID u
 }
 
 func (s *Service) createLibrarySession(ctx context.Context, quiz *domain.QuizTemplate) error {
-	sessionID, err := s.sessions.Create(ctx, s.buildLibrarySessionParams(quiz))
+	maxScore, err := s.quizzes.SumMaxScore(ctx, quiz.ID)
+	if err != nil {
+		return fmt.Errorf("sum max score: %w", err)
+	}
+	params := s.buildLibrarySessionParams(quiz)
+	params.MaxScore = maxScore
+	sessionID, err := s.sessions.Create(ctx, params)
 	if err != nil {
 		return fmt.Errorf("create library session: %w", err)
 	}

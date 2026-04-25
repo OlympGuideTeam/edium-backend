@@ -1,0 +1,3 @@
+ALTER TABLE quiz_session ADD COLUMN max_score INT NOT NULL DEFAULT 0;
+
+ALTER TABLE attempt ADD COLUMN grade NUMERIC(5, 2);

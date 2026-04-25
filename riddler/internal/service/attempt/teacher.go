@@ -124,11 +124,16 @@ func (s *Service) CompleteAttempt(ctx context.Context, attemptID, teacherID uuid
 		if err := s.requireSessionOwner(ctx, attempt.SessionID, teacherID); err != nil {
 			return err
 		}
+		session, err := s.sessions.GetByID(ctx, attempt.SessionID)
+		if err != nil {
+			return fmt.Errorf("get session: %w", err)
+		}
 		total, err := s.attempts.SumScores(ctx, attemptID)
 		if err != nil {
 			return fmt.Errorf("sum scores: %w", err)
 		}
-		if err := s.attempts.CompleteGraded(ctx, attemptID, total); err != nil {
+		grade := computeGrade(total, session.MaxScore)
+		if err := s.attempts.CompleteGraded(ctx, attemptID, total, grade); err != nil {
 			return fmt.Errorf("complete graded: %w", err)
 		}
 		attempt.Score = &total

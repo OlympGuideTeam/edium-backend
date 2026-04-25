@@ -65,6 +65,27 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h *Handler) GetMeStatistic(c *gin.Context) {
+	userID, ok := middleware.UserIDFromContext(c.Request.Context())
+	if !ok {
+		httpx.WriteError(c, apperr.ErrUnauthorized)
+		return
+	}
+
+	st, err := h.service.GetMeStatistic(c.Request.Context(), userID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.UserStatisticResponse{
+		ClassTeacherCount:  st.ClassTeacherCount,
+		StudentCount:       st.StudentCount,
+		CourseTeacherCount: st.CourseTeacherCount,
+		CourseStudentCount: st.CourseStudentCount,
+	})
+}
+
 func (h *Handler) DeleteMe(c *gin.Context) {
 	userID, ok := middleware.UserIDFromContext(c.Request.Context())
 	if !ok {
