@@ -14,7 +14,7 @@ type attemptRepository interface {
 	UpsertAnswer(ctx context.Context, attemptID, questionID uuid.UUID, answerData map[string]any) (uuid.UUID, error)
 	GetAnswers(ctx context.Context, attemptID uuid.UUID) ([]domain.AnswerSubmission, error)
 	EvaluateSubmission(ctx context.Context, submissionID uuid.UUID, score float64, source domain.FinalSource, feedback *string) error
-	Complete(ctx context.Context, attemptID uuid.UUID, score float64) error
+	Complete(ctx context.Context, attemptID uuid.UUID, score, grade float64) error
 	FindExpiredInProgress(ctx context.Context) ([]domain.Attempt, error)
 	SetGrading(ctx context.Context, attemptID uuid.UUID) error
 	SetGraded(ctx context.Context, attemptID uuid.UUID, score float64) error
@@ -29,7 +29,8 @@ type attemptRepository interface {
 	GetAnswersWithQuestion(ctx context.Context, attemptID uuid.UUID) ([]domain.AnswerWithQuestion, error)
 	GetSubmissionByID(ctx context.Context, id uuid.UUID) (*domain.AnswerSubmission, error)
 	UpdateScore(ctx context.Context, attemptID uuid.UUID, score float64) error
-	CompleteGraded(ctx context.Context, attemptID uuid.UUID, score float64) error
+	CompleteGraded(ctx context.Context, attemptID uuid.UUID, score, grade float64) error
+	GetUserStatistic(ctx context.Context, userID uuid.UUID) (*domain.UserStatistic, error)
 }
 
 type sessionReader interface {

@@ -48,6 +48,7 @@ type Attempt struct {
 	UserID        uuid.UUID
 	Status        AttemptStatus
 	Score         *float64
+	Grade         *float64
 	QuestionOrder []uuid.UUID
 	StartedAt     time.Time
 	FinishedAt    *time.Time
@@ -94,4 +95,10 @@ type FreeAnswerSubmission struct {
 	QuestionID   uuid.UUID
 	QuestionText string
 	AnswerText   string
+}
+
+type UserStatistic struct {
+	QuizCountPassed       int
+	AvgQuizScore          float64
+	QuizSessionsConducted int
 }

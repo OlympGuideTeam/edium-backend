@@ -47,10 +47,10 @@ func (r *PgAttemptRepository) GetByID(ctx context.Context, id uuid.UUID) (*domai
 	var a domain.Attempt
 	var orderJSON []byte
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, session_id, user_id, status, score, question_order, started_at, finished_at
+		`SELECT id, session_id, user_id, status, score, grade, question_order, started_at, finished_at
 		 FROM attempt WHERE id = $1`,
 		id,
-	).Scan(&a.ID, &a.SessionID, &a.UserID, &a.Status, &a.Score, &orderJSON, &a.StartedAt, &a.FinishedAt)
+	).Scan(&a.ID, &a.SessionID, &a.UserID, &a.Status, &a.Score, &a.Grade, &orderJSON, &a.StartedAt, &a.FinishedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -87,13 +87,13 @@ func (r *PgAttemptRepository) SetGraded(ctx context.Context, attemptID uuid.UUID
 	return nil
 }
 
-func (r *PgAttemptRepository) Complete(ctx context.Context, attemptID uuid.UUID, score float64) error {
+func (r *PgAttemptRepository) Complete(ctx context.Context, attemptID uuid.UUID, score, grade float64) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,
 		`UPDATE attempt
-		 SET status = $2, score = $3, finished_at = now(), updated_at = now()
+		 SET status = $2, score = $3, grade = $4, finished_at = now(), updated_at = now()
 		 WHERE id = $1`,
-		attemptID, domain.AttemptStatusCompleted, score,
+		attemptID, domain.AttemptStatusCompleted, score, grade,
 	)
 	if err != nil {
 		return fmt.Errorf("complete attempt: %w", err)
@@ -101,11 +101,11 @@ func (r *PgAttemptRepository) Complete(ctx context.Context, attemptID uuid.UUID,
 	return nil
 }
 
-func (r *PgAttemptRepository) CompleteGraded(ctx context.Context, attemptID uuid.UUID, score float64) error {
+func (r *PgAttemptRepository) CompleteGraded(ctx context.Context, attemptID uuid.UUID, score, grade float64) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,
-		`UPDATE attempt SET status = $2, score = $3, updated_at = now() WHERE id = $1`,
-		attemptID, domain.AttemptStatusCompleted, score,
+		`UPDATE attempt SET status = $2, score = $3, grade = $4, updated_at = now() WHERE id = $1`,
+		attemptID, domain.AttemptStatusCompleted, score, grade,
 	)
 	if err != nil {
 		return fmt.Errorf("complete graded: %w", err)
@@ -145,6 +145,24 @@ func (r *PgAttemptRepository) FindBySessionID(ctx context.Context, sessionID uui
 		result = append(result, a)
 	}
 	return result, rows.Err()
+}
+
+func (r *PgAttemptRepository) GetUserStatistic(ctx context.Context, userID uuid.UUID) (*domain.UserStatistic, error) {
+	var st domain.UserStatistic
+	err := r.db.QueryRowContext(ctx, `
+		SELECT
+		    COUNT(*) FILTER (WHERE status = 'completed'),
+		    COALESCE(AVG(grade) FILTER (WHERE status = 'completed' AND grade IS NOT NULL), 0),
+		    (SELECT COUNT(*) FROM quiz_session qs
+		     JOIN quiz_template qt ON qt.id = qs.quiz_template_id
+		     WHERE qt.author_id = $1 AND qs.status = 'finished')
+		FROM attempt
+		WHERE user_id = $1
+	`, userID).Scan(&st.QuizCountPassed, &st.AvgQuizScore, &st.QuizSessionsConducted)
+	if err != nil {
+		return nil, fmt.Errorf("get user statistic: %w", err)
+	}
+	return &st, nil
 }
 
 func (r *PgAttemptRepository) FindExpiredInProgress(ctx context.Context) ([]domain.Attempt, error) {
