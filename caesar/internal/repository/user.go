@@ -74,16 +74,12 @@ func (s *PgUserStore) GetStatistic(ctx context.Context, id uuid.UUID) (*domain.U
 		    (SELECT COUNT(*) FROM course WHERE owner_id = $1),
 		    (SELECT COUNT(DISTINCT c.id) FROM course c
 		     JOIN class_member cm ON cm.class_id = c.class_id
-		     WHERE cm.user_id = $1 AND cm.role = 'student'),
-		    (SELECT COUNT(*) FROM course_user_item_progress WHERE user_id = $1 AND score IS NOT NULL),
-		    (SELECT COALESCE(AVG(score), 0) FROM course_user_item_progress WHERE user_id = $1 AND score IS NOT NULL)
+		     WHERE cm.user_id = $1 AND cm.role = 'student')
 	`, id).Scan(
 		&st.ClassTeacherCount,
 		&st.StudentCount,
 		&st.CourseTeacherCount,
 		&st.CourseStudentCount,
-		&st.QuizCountPassed,
-		&st.AvgQuizScore,
 	)
 	if err != nil {
 		return nil, err

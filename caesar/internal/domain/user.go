@@ -23,6 +23,4 @@ type UserStatistic struct {
 	StudentCount       int
 	CourseTeacherCount int
 	CourseStudentCount int
-	QuizCountPassed    int
-	AvgQuizScore       float64
 }

@@ -51,6 +51,7 @@ type QuizSession struct {
 	ID                   uuid.UUID
 	QuizTemplateID       uuid.UUID
 	Mode                 SessionMode
+	MaxScore             int
 	TotalTimeLimitSec    *int
 	QuestionTimeLimitSec *int
 	ShuffleQuestions     *bool
@@ -65,6 +66,7 @@ type QuizSession struct {
 type CreateSessionParams struct {
 	QuizTemplateID       uuid.UUID
 	Mode                 SessionMode
+	MaxScore             int
 	TotalTimeLimitSec    *int
 	QuestionTimeLimitSec *int
 	ShuffleQuestions     *bool

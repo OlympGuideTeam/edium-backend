@@ -144,6 +144,7 @@ func (a *App) Router() *gin.Engine {
 
 	api := r.Group("/caesar/v1")
 	api.Use(auth)
+	api.GET("/users/me/statistic", a.UserHandler.GetMeStatistic)
 	api.GET("/users/me", a.UserHandler.GetMe)
 	api.PATCH("/users/me", a.UserHandler.UpdateMe)
 	api.DELETE("/users/me", a.UserHandler.DeleteMe)
