@@ -7,6 +7,13 @@ import (
 	"riddler/internal/domain"
 )
 
+func computeGrade(score float64, maxScore int) float64 {
+	if maxScore <= 0 {
+		return 0
+	}
+	return score / float64(maxScore) * 10.0
+}
+
 // gradeAnswer возвращает набранный балл за ответ.
 // with_free_answer не оценивается автоматически — всегда 0.
 func gradeAnswer(q domain.QuestionWithOptions, answerData map[string]any) float64 {

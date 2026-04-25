@@ -78,6 +78,12 @@ type AttemptReviewResponse struct {
 	Answers    []AnswerReviewResponse `json:"answers"`
 }
 
+type UserStatisticResponse struct {
+	QuizCountPassed       int     `json:"quiz_count_passed"`
+	AvgQuizScore          float64 `json:"avg_quiz_score"`
+	QuizSessionsConducted int     `json:"quiz_sessions_conducted"`
+}
+
 type AttemptResultResponse struct {
 	AttemptID  string                     `json:"attempt_id"`
 	Status     string                     `json:"status"`

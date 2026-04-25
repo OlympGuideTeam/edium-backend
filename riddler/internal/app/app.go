@@ -180,6 +180,8 @@ func (a *App) Router() *gin.Engine {
 		sessions.GET("/:session_id/attempts", a.attemptHandler.ListSessionAttempts)
 	}
 
+	api.GET("/users/me/statistic", a.attemptHandler.GetMeStatistic)
+
 	attempts := api.Group("/attempts")
 	{
 		attempts.POST("/:attempt_id/answers", a.attemptHandler.SubmitAnswer)

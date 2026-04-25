@@ -24,6 +24,7 @@ type quizRepository interface {
 	ListPublished(ctx context.Context, needEvaluationFalseOnly bool) ([]domain.QuizListItem, error)
 	ListByAuthor(ctx context.Context, authorID uuid.UUID) ([]domain.QuizListItem, error)
 	Copy(ctx context.Context, sourceID, newAuthorID uuid.UUID, source domain.QuizSource, courseID *uuid.UUID) (uuid.UUID, error)
+	SumMaxScore(ctx context.Context, quizTemplateID uuid.UUID) (int, error)
 }
 
 type sessionService interface {

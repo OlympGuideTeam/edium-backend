@@ -16,4 +16,5 @@ type attemptService interface {
 	GetAttemptReview(ctx context.Context, attemptID, userID uuid.UUID) (*domain.Attempt, []domain.AnswerWithQuestion, error)
 	GradeSubmission(ctx context.Context, attemptID, submissionID, teacherID uuid.UUID, score float64, feedback *string) error
 	CompleteAttempt(ctx context.Context, attemptID, teacherID uuid.UUID) error
+	GetUserStatistic(ctx context.Context, userID uuid.UUID) (*domain.UserStatistic, error)
 }

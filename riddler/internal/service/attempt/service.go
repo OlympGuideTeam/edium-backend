@@ -45,6 +45,10 @@ func (s *Service) requireSessionOwner(ctx context.Context, sessionID, teacherID 
 	return nil
 }
 
+func (s *Service) GetUserStatistic(ctx context.Context, userID uuid.UUID) (*domain.UserStatistic, error) {
+	return s.attempts.GetUserStatistic(ctx, userID)
+}
+
 func (s *Service) scheduleAttemptScored(ctx context.Context, attempt *domain.Attempt, totalScore float64) {
 	type payload struct {
 		AttemptID  uuid.UUID `json:"attempt_id"`

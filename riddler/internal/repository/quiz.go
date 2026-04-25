@@ -245,6 +245,18 @@ func (r *PgQuizRepository) GetQuestionByID(ctx context.Context, id uuid.UUID) (*
 	return &q, nil
 }
 
+func (r *PgQuizRepository) SumMaxScore(ctx context.Context, quizTemplateID uuid.UUID) (int, error) {
+	var sum int
+	err := r.db.QueryRowContext(ctx,
+		`SELECT COALESCE(SUM(max_score), 0) FROM question WHERE quiz_template_id = $1`,
+		quizTemplateID,
+	).Scan(&sum)
+	if err != nil {
+		return 0, fmt.Errorf("sum max score: %w", err)
+	}
+	return sum, nil
+}
+
 func nullableBytes(b []byte) interface{} {
 	if len(b) == 0 {
 		return nil
