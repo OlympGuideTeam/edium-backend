@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-
+import shutil
 import os
 
 import torch
@@ -81,6 +81,14 @@ class QuizPipeline:
         # self._extraction_adapter = None
         # self._generation_adapter = None
 
+    @staticmethod
+    def _cleanup_stale_caches(cache_base: str, current_slug: str) -> None:
+        """Удаляет quantized-кэши моделей, которые не совпадают с текущей."""
+        for entry in os.scandir(cache_base):
+            if entry.is_dir() and entry.name != current_slug:
+                logger.info("Removing stale quantized cache: %s", entry.path)
+                shutil.rmtree(entry.path, ignore_errors=True)
+
     @property
     def is_loaded(self) -> bool:
         return self._model is not None
@@ -91,6 +99,9 @@ class QuizPipeline:
         token = settings.hf_token or None
         model_slug = settings.model_id.replace("/", "--")
         cache_dir = os.path.join(settings.quantized_model_cache_dir, model_slug) if settings.quantized_model_cache_dir else ""
+
+        if settings.quantized_model_cache_dir and os.path.isdir(settings.quantized_model_cache_dir):
+            self._cleanup_stale_caches(settings.quantized_model_cache_dir, model_slug)
 
         self._tokenizer = AutoTokenizer.from_pretrained(settings.model_id, token=token, trust_remote_code=True)
         if self._tokenizer.pad_token is None:

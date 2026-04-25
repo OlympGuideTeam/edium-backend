@@ -212,13 +212,26 @@ jobs:
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 
+            # Проверка места на диске (минимум 10GB)
+            AVAIL_GB=$(df --output=avail -BG / | tail -1 | tr -d 'G ')
+            echo "Доступно на диске: ${AVAIL_GB}GB"
+            if [ "$AVAIL_GB" -lt 10 ]; then
+              echo "WARN: мало места (${AVAIL_GB}GB), запускаем очистку..."
+              docker image prune -af
+              docker builder prune -f
+              AVAIL_GB=$(df --output=avail -BG / | tail -1 | tr -d 'G ')
+              echo "После очистки: ${AVAIL_GB}GB"
+            fi
+
             # Авторизация в ML Container Registry
             echo '${{ secrets.YC_SA_KEY_JSON_ML }}' | docker login --username json_key --password-stdin cr.yandex
 
             # Обновление образа и перезапуск
             docker compose pull
             docker compose up -d --remove-orphans
-            docker image prune -f
+
+            # Удалить все неиспользуемые образы (не только dangling)
+            docker image prune -af
 
             # Очистка
             rm -rf /tmp/sphinx-deploy
