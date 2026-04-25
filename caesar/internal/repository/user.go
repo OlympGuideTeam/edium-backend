@@ -67,10 +67,8 @@ func (s *PgUserStore) GetStatistic(ctx context.Context, id uuid.UUID) (*domain.U
 	var st domain.UserStatistic
 	err := s.db.QueryRowContext(ctx, `
 		SELECT
-		    (SELECT COUNT(*) FROM class_member WHERE user_id = $1 AND role = 'teacher'),
-		    (SELECT COUNT(*) FROM class_member
-		     WHERE class_id IN (SELECT class_id FROM class_member WHERE user_id = $1 AND role = 'teacher')
-		       AND role = 'student'),
+		    (SELECT COUNT(*) FROM class WHERE owner_id = $1),
+		    (SELECT COALESCE(SUM(student_count), 0) FROM class WHERE owner_id = $1),
 		    (SELECT COUNT(*) FROM course WHERE owner_id = $1),
 		    (SELECT COUNT(DISTINCT c.id) FROM course c
 		     JOIN class_member cm ON cm.class_id = c.class_id
