@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # Inference
     max_new_tokens: int = 2048
-    temperature: float = 0.3
+    temperature: float = 0.6
     top_p: float = 0.9
     max_retries: int = 2
 
