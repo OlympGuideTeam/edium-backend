@@ -1,3 +1,5 @@
+-- Очередь исходящих SMS для Android-шлюза.
+-- Android-приложение поллит pending-записи, отправляет SMS через SmsManager и подтверждает (ack).
 CREATE TABLE sms_task (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     phone        TEXT NOT NULL,

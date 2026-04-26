@@ -1,3 +1,5 @@
+-- Временное хранилище correlation_id → chat_id.
+-- Запись создаётся при запросе OTP, удаляется при получении ответа от Doorman.
 CREATE TABLE pending_otp (
     correlation_id TEXT PRIMARY KEY,
     chat_id        BIGINT NOT NULL,

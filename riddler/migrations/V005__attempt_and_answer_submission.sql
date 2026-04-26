@@ -2,6 +2,8 @@ CREATE TYPE attempt_status AS ENUM ('in_progress', 'grading', 'graded', 'complet
 
 CREATE TYPE final_source AS ENUM ('llm', 'teacher', 'auto');
 
+-- Попытка прохождения квиза конкретным пользователем
+
 CREATE TABLE attempt (
     id             UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id     UUID           NOT NULL REFERENCES quiz_session (id),
@@ -22,6 +24,8 @@ CREATE TRIGGER trg_attempt_updated_at
     BEFORE UPDATE ON attempt
     FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
+
+-- Ответ пользователя на конкретный вопрос в рамках попытки
 
 CREATE TABLE answer_submission (
     id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
