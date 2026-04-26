@@ -55,3 +55,5 @@ flowchart TD
 | **Herald** | Уведомления, Telegram bot, SMS              |
 | **Charon** | Прокси к LLM (DeepSeek / OpenAI)            |
 | **Sphinx** | Генерация квизов по тексту (Python + LLM)   |
+| **Louvre** | Хранение изображений                        |
+
