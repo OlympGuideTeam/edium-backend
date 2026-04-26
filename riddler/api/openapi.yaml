@@ -117,21 +117,23 @@ components:
           type: string
           format: uuid
         type:
-          type: string
-          enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
-        text:
-          type: string
-        image_link:
-          type: string
-          nullable: true
-        order_index:
-          type: integer
-        max_score:
-          type: integer
-        metadata:
-          type: object
-          nullable: true
-          description: |
+           type: string
+           enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
+         text:
+           type: string
+         image_id:
+           type: string
+           format: uuid
+           nullable: true
+           description: UUID изображения из сервиса Louvre
+         order_index:
+           type: integer
+         max_score:
+           type: integer
+         metadata:
+           type: object
+           nullable: true
+           description: |
             Зависит от типа вопроса:
             - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
             - drag: `{"correct_order": ["B", "A", "C"]}`
@@ -158,9 +160,11 @@ components:
           enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
         text:
           type: string
-        image_link:
+        image_id:
           type: string
+          format: uuid
           nullable: true
+          description: UUID изображения из сервиса Louvre
         max_score:
           type: integer
         options:
@@ -690,16 +694,18 @@ paths:
                 - text
                 - answer_options
               properties:
-                type:
-                  type: string
-                  enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
-                text:
-                  type: string
-                  example: Какая столица Франции?
-                image_link:
-                  type: string
-                  nullable: true
-                max_score:
+                 type:
+                   type: string
+                   enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
+                 text:
+                   type: string
+                   example: Какая столица Франции?
+                 image_id:
+                   type: string
+                   format: uuid
+                   nullable: true
+                   example: 550e8400-e29b-41d4-a716-446655440000
+                 max_score:
                   type: integer
                   default: 10
                 metadata:
@@ -965,21 +971,23 @@ paths:
                     type: object
                     required: [type, text, answer_options]
                     properties:
-                      type:
-                        type: string
-                        enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
-                      text:
-                        type: string
-                      image_link:
-                        type: string
-                        nullable: true
-                      metadata:
-                        type: object
-                        nullable: true
-                      max_score:
-                        type: integer
-                        nullable: true
-                      answer_options:
+                       type:
+                         type: string
+                         enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
+                       text:
+                         type: string
+                       image_id:
+                         type: string
+                         format: uuid
+                         nullable: true
+                         description: UUID изображения из сервиса Louvre
+                       metadata:
+                         type: object
+                         nullable: true
+                       max_score:
+                         type: integer
+                         nullable: true
+                       answer_options:
                         type: array
                         items:
                           type: object

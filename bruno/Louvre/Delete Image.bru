@@ -1,0 +1,14 @@
+meta {
+  name: Delete Image
+  type: http
+  seq: 3
+}
+
+delete {
+  url: http://localhost:8086/louvre/v1/images/{{imageId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
