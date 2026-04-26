@@ -23,7 +23,7 @@ type QuestionForStudentResponse struct {
 	ID        string                           `json:"id"`
 	Type      string                           `json:"type"`
 	Text      string                           `json:"text"`
-	ImageLink *string                          `json:"image_link,omitempty"`
+	ImageID   *string                          `json:"image_id,omitempty"`
 	MaxScore  int                              `json:"max_score"`
 	Options   []AnswerOptionForStudentResponse `json:"options,omitempty"`
 	Metadata  map[string]any                   `json:"metadata,omitempty"`

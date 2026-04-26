@@ -95,7 +95,7 @@ func (h *Handler) getQuizAsTeacher(c *gin.Context, quizID, userID uuid.UUID) {
 			ID:         q.ID.String(),
 			Type:       string(q.Type),
 			Text:       q.Text,
-			ImageLink:  q.ImageLink,
+			ImageID:    uuidPtrToString(q.ImageID),
 			OrderIndex: q.OrderIndex,
 			MaxScore:   q.MaxScore,
 			Metadata:   q.Metadata,
@@ -365,7 +365,7 @@ func (h *Handler) CreateTestCourseSessionInline(c *gin.Context) {
 		questions[i] = domain.AddQuestionParams{
 			Type:      domain.QuestionType(q.Type),
 			Text:      q.Text,
-			ImageLink: q.ImageLink,
+			ImageID:   parseNullableUUID(q.ImageID),
 			Metadata:  q.Metadata,
 			MaxScore:  maxScore,
 			Options:   options,
@@ -442,4 +442,31 @@ func (h *Handler) CreateLiveCourseSession(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.CreateSessionResponse{SessionID: sessionID.String()})
+}
+
+func parseUUID(s string) uuid.UUID {
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
+}
+
+func uuidPtrToString(id *uuid.UUID) *string {
+	if id == nil {
+		return nil
+	}
+	s := id.String()
+	return &s
+}
+
+func parseNullableUUID(s *string) *uuid.UUID {
+	if s == nil {
+		return nil
+	}
+	id, err := uuid.Parse(*s)
+	if err != nil {
+		return nil
+	}
+	return &id
 }

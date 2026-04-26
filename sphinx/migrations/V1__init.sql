@@ -1,4 +1,3 @@
--- Inbox: задачи генерации квиза, полученные из NATS
 CREATE TABLE generation_task (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     job_id      UUID        NOT NULL UNIQUE,
@@ -13,7 +12,6 @@ CREATE TABLE generation_task (
     error       TEXT
 );
 
--- Outbox: результаты для публикации обратно в NATS
 CREATE TABLE generation_result (
     id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     job_id       UUID        NOT NULL UNIQUE,

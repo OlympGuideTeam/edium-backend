@@ -24,7 +24,7 @@ type ReorderQuestionsRequest struct {
 type AddQuestionRequest struct {
 	Type          string                `json:"type"           binding:"required"`
 	Text          string                `json:"text"           binding:"required"`
-	ImageLink     *string               `json:"image_link"`
+	ImageID       *string               `json:"image_id"`
 	Metadata      map[string]any        `json:"metadata"`
 	MaxScore      *int                  `json:"max_score"`
 	AnswerOptions []AnswerOptionRequest `json:"answer_options" binding:"required"`
