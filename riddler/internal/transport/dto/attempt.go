@@ -20,13 +20,13 @@ type AnswerOptionForStudentResponse struct {
 }
 
 type QuestionForStudentResponse struct {
-	ID        string                           `json:"id"`
-	Type      string                           `json:"type"`
-	Text      string                           `json:"text"`
-	ImageID   *string                          `json:"image_id,omitempty"`
-	MaxScore  int                              `json:"max_score"`
-	Options   []AnswerOptionForStudentResponse `json:"options,omitempty"`
-	Metadata  map[string]any                   `json:"metadata,omitempty"`
+	ID       string                           `json:"id"`
+	Type     string                           `json:"type"`
+	Text     string                           `json:"text"`
+	ImageID  *string                          `json:"image_id,omitempty"`
+	MaxScore int                              `json:"max_score"`
+	Options  []AnswerOptionForStudentResponse `json:"options,omitempty"`
+	Metadata map[string]any                   `json:"metadata,omitempty"`
 }
 
 type CreateAttemptResponse struct {
