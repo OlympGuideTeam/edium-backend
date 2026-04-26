@@ -16,6 +16,7 @@ jobs:
       herald: ${{ steps.filter.outputs.herald }}
       charon: ${{ steps.filter.outputs.charon }}
       riddler: ${{ steps.filter.outputs.riddler }}
+      louvre: ${{ steps.filter.outputs.louvre }}
       ml: ${{ steps.filter.outputs.ml }}
       infra: ${{ steps.filter.outputs.infra }}
       sphinx: ${{ steps.filter.outputs.sphinx }}
@@ -35,6 +36,8 @@ jobs:
               - 'charon/**'
             riddler:
               - 'riddler/**'
+            louvre:
+              - 'louvre/**'
             ml:
               - 'ml/**'
             infra:
@@ -164,9 +167,9 @@ jobs:
           name: coverage-caesar
           path: caesar/coverage.out
 
-  # ========================
-  # Go — Riddler
-  # ========================
+   # ========================
+   # Go — Riddler
+   # ========================
 
   lint-riddler:
     needs: detect-changes
@@ -216,6 +219,84 @@ jobs:
         with:
           name: coverage-riddler
           path: riddler/coverage.out
+
+  # ========================
+  # Go — Louvre
+  # ========================
+
+  lint-louvre:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.louvre == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: louvre
+          version: v2.11.4
+
+  test-louvre:
+    needs: lint-louvre
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: louvre_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: MINIO
+          MINIO_ROOT_PASSWORD: MINIO
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Создание MinIO bucket
+        run: |
+          docker run --rm --network host minio/mc alias set minio http://localhost:9000 MINIO MINIO || true
+          docker run --rm --network host minio/mc mb minio/edium-images || true
+          docker run --rm --network host minio/mc policy set public minio/edium-images || true
+        env:
+          MINIO_ENDPOINT: http://localhost:9000
+          MINIO_ACCESS_KEY: MINIO
+          MINIO_SECRET_KEY: MINIO
+      - name: Запуск тестов
+        working-directory: louvre
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_DSN: "postgres://test:test@localhost:5432/louvre_test?sslmode=disable"
+          MINIO_ENDPOINT: localhost:9000
+          MINIO_ROOT_USER: MINIO
+          MINIO_ROOT_PASSWORD: MINIO
+          MINIO_BUCKET: edium-images
+          MINIO_USE_SSL: false
+      - name: Загрузка покрытия
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-louvre
+          path: louvre/coverage.out
 
   # ========================
   # Go — Herald
