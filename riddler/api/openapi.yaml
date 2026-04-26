@@ -19,6 +19,10 @@ tags:
     description: Прохождение квиза студентом
   - name: Teachers
     description: Проверка попыток учителем
+  - name: Live
+    description: |
+      Синхронный лайв-режим: лобби, real-time прохождение через WebSocket, итоги.
+      Описание WebSocket-сообщений см. в `x-websocket-events` в корне документа.
 
 components:
   securitySchemes:
@@ -290,6 +294,296 @@ components:
         final_feedback:
           type: string
           nullable: true
+
+    LivePhase:
+      type: string
+      enum: [pending, lobby, question_active, question_locked, completed]
+      description: |
+        Состояние live-сессии:
+        - `pending` — сессия создана, лобби ещё не открыто учителем
+        - `lobby` — учитель открыл лобби, идёт регистрация участников; активен `join_code`
+        - `question_active` — текущий вопрос показан, ученики отвечают
+        - `question_locked` — вопрос закрыт (таймер истёк или все ответили), показ статистики
+        - `completed` — все вопросы пройдены, доступны итоги
+
+    LiveSessionMeta:
+      type: object
+      description: Мета live-сессии. Возвращается при резолве кода и подключении.
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        quiz_template_id:
+          type: string
+          format: uuid
+        quiz_title:
+          type: string
+        question_count:
+          type: integer
+        source:
+          type: string
+          enum: [course, library]
+          description: |
+            - `course` — сессия привязана к модулю курса; могут участвовать только ученики класса
+            - `library` — сессия из публичной библиотеки; могут участвовать неавторизованные пользователи (по коду)
+        phase:
+          $ref: "#/components/schemas/LivePhase"
+        join_code:
+          type: string
+          nullable: true
+          description: |
+            6-значный числовой код. Существует только в фазе `lobby`; деактивируется при переходе в `question_active`.
+            Возвращается только учителю (автору квиза).
+          example: "471829"
+        question_time_limit_sec:
+          type: integer
+          example: 30
+        is_anonymous_allowed:
+          type: boolean
+          description: |
+            true для `source=library` — можно подключиться без JWT, передав `name`.
+            false для `source=course` — требуется JWT, имя берётся из профиля.
+        participants_count:
+          type: integer
+          description: Текущее число подключённых участников
+
+    LiveRosterMember:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+    LiveRoster:
+      type: object
+      description: |
+        Предзагрузка имён участников для course-live. Учитель получает список всех учеников класса
+        (включая ещё не подключившихся) в виде хэш-мапы `user_id → name`, чтобы рисовать в лобби
+        полный список класса и помечать подключившихся по `participant_joined`.
+        Для `source=library` ручка возвращает `409` — хэш-мапы заранее нет, имена несутся в WS-событиях.
+      properties:
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/LiveRosterMember"
+
+    LiveLobbyParticipant:
+      type: object
+      description: |
+        Участник в лобби.
+        - `attempt_id` — id участника в сессии. Единственный идентификатор во всех WS-событиях.
+        - `user_id` — id зарегистрированного пользователя или null (для library-аноним).
+        - `name` — имя из профиля (course) или введённое при join (library).
+      properties:
+        attempt_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+
+    LiveQuestionStatsChoice:
+      type: object
+      description: Статистика для single_choice / multiple_choice — распределение по опциям.
+      properties:
+        kind:
+          type: string
+          enum: [choice]
+        answered_count:
+          type: integer
+        correct_count:
+          type: integer
+        avg_time_ms:
+          type: integer
+          nullable: true
+        distribution:
+          type: array
+          items:
+            type: object
+            properties:
+              option_id:
+                type: string
+                format: uuid
+              count:
+                type: integer
+              is_correct:
+                type: boolean
+
+    LiveQuestionStatsBinary:
+      type: object
+      description: |
+        Статистика для типов без явных опций (with_given_answer, drag, connection) —
+        только агрегаты «верно/неверно/всего».
+      properties:
+        kind:
+          type: string
+          enum: [binary]
+        answered_count:
+          type: integer
+        correct_count:
+          type: integer
+        incorrect_count:
+          type: integer
+        avg_time_ms:
+          type: integer
+          nullable: true
+
+    LiveQuestionStats:
+      oneOf:
+        - $ref: "#/components/schemas/LiveQuestionStatsChoice"
+        - $ref: "#/components/schemas/LiveQuestionStatsBinary"
+      discriminator:
+        propertyName: kind
+        mapping:
+          choice: "#/components/schemas/LiveQuestionStatsChoice"
+          binary: "#/components/schemas/LiveQuestionStatsBinary"
+
+    LiveCorrectAnswer:
+      type: object
+      description: |
+        Эталонный ответ, отдаётся студенту после `question_locked`.
+        Формат соответствует `answer_data` соответствующего типа вопроса:
+        - single_choice: `{"correct_option_id": "uuid"}`
+        - multiple_choice: `{"correct_option_ids": ["uuid", ...]}`
+        - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
+        - drag: `{"correct_order": ["B", "A", "C"]}`
+        - connection: `{"correct_pairs": {"A":"1","B":"2"}}`
+      additionalProperties: true
+
+    LiveStudentResult:
+      type: object
+      description: Личный результат ученика после закрытия вопроса.
+      properties:
+        is_correct:
+          type: boolean
+        score:
+          type: number
+          format: float
+        max_score:
+          type: number
+          format: float
+        time_taken_ms:
+          type: integer
+          nullable: true
+
+    LiveLeaderboardRow:
+      type: object
+      properties:
+        position:
+          type: integer
+        attempt_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        score:
+          type: number
+          format: float
+        is_me:
+          type: boolean
+          description: true для строки текущего ученика (только в `/results/student`)
+
+    LiveResultsStudent:
+      type: object
+      description: |
+        Итоги для ученика. Содержит личные показатели и срез лидерборда:
+        топ-3 участников плюс строку самого ученика, если он не входит в топ-3.
+      properties:
+        my_position:
+          type: integer
+        total_participants:
+          type: integer
+        my_score:
+          type: number
+          format: float
+        max_score:
+          type: number
+          format: float
+        correct_count:
+          type: integer
+        questions_count:
+          type: integer
+        top:
+          type: array
+          description: Топ-3 + строка `is_me=true` если ученик ниже 3-го места (4–5 элементов максимум).
+          items:
+            $ref: "#/components/schemas/LiveLeaderboardRow"
+
+    LiveResultsTeacherQuestion:
+      type: object
+      properties:
+        question_id:
+          type: string
+          format: uuid
+        order_index:
+          type: integer
+        text:
+          type: string
+        type:
+          type: string
+          enum: [single_choice, multiple_choice, with_given_answer, drag, connection]
+        correct_rate:
+          type: number
+          format: float
+          description: Доля верно ответивших (0..1)
+        stats:
+          $ref: "#/components/schemas/LiveQuestionStats"
+
+    LiveResultsTeacherAttempt:
+      type: object
+      properties:
+        position:
+          type: integer
+        attempt_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+        name:
+          type: string
+        score:
+          type: number
+          format: float
+        max_score:
+          type: number
+          format: float
+        correct_count:
+          type: integer
+        answers:
+          type: array
+          description: По каждому вопросу — правильно ли ответил и сколько баллов получил.
+          items:
+            type: object
+            properties:
+              question_id:
+                type: string
+                format: uuid
+              is_correct:
+                type: boolean
+              score:
+                type: number
+                format: float
+
+    LiveResultsTeacher:
+      type: object
+      description: Полные итоги для учителя — агрегаты по вопросам и таблица учеников.
+      properties:
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/LiveResultsTeacherQuestion"
+        leaderboard:
+          type: array
+          description: Все участники, отсортированы от лучшего к худшему.
+          items:
+            $ref: "#/components/schemas/LiveResultsTeacherAttempt"
 
   responses:
     BadRequest:
@@ -1034,6 +1328,12 @@ paths:
         Если не передан — берётся из `quiz.default_settings`, иначе 30 секунд.
         Shuffle и дедлайны не применимы — учитель управляет сессией вручную.
         Публикует событие `riddler.course_session.created` → Caesar создаёт элемент курса.
+
+        **Валидация шаблона квиза:**
+        - `need_evaluation` должен быть `false` — лайв не поддерживает ручную проверку
+        - в шаблоне не должно быть вопросов типа `with_free_answer` — они недоступны в лайве
+
+        Если хотя бы одно условие нарушено, возвращается `422 LIVE_TEMPLATE_INVALID`.
       requestBody:
         required: true
         content:
@@ -1067,6 +1367,334 @@ paths:
                     type: string
                     format: uuid
         "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /sessions/live/library:
+    post:
+      tags: [Live]
+      summary: Создать live-сессию по библиотечному квизу (без курса)
+      operationId: createLiveLibrarySession
+      description: |
+        Создаёт live-сессию по опубликованному `quiz_template` из публичной библиотеки
+        (`source=library`, `is_public=true`). Сессия не привязана к курсу — к ней могут
+        подключаться неавторизованные пользователи по 6-значному коду (`is_anonymous_allowed=true`).
+
+        **Валидация шаблона:** те же правила, что у `/sessions/live`
+        (`need_evaluation=false`, отсутствие `with_free_answer`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quiz_template_id]
+              properties:
+                quiz_template_id:
+                  type: string
+                  format: uuid
+                question_time_limit_sec:
+                  type: integer
+                  nullable: true
+                  description: Переопределяет настройку шаблона; дефолт 30 с
+                  example: 30
+      responses:
+        "200":
+          description: Сессия создана
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
+  /sessions/live/{code}:
+    get:
+      tags: [Live]
+      summary: Резолвить код подключения в session_id
+      operationId: resolveLiveCode
+      description: |
+        Доступно без авторизации (для library-сессий с `is_anonymous_allowed=true`).
+        Код активен только пока сессия в фазе `lobby`. После старта квиза возвращает `410 CODE_EXPIRED`.
+
+        Возвращает мета-информацию о сессии, чтобы клиент мог показать заголовок,
+        число вопросов и форму ввода имени (для library) перед фактическим join.
+      security: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{6}$'
+            example: "471829"
+      responses:
+        "200":
+          description: Найдена активная сессия
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveSessionMeta"
+        "404": {$ref: "#/components/responses/NotFound"}
+        "410":
+          description: Код истёк — лобби закрыто, лайв уже начался или завершён
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sessions/{session_id}/live:
+    get:
+      tags: [Live]
+      summary: Мета live-сессии
+      operationId: getLiveSession
+      description: |
+        Текущее состояние сессии. Учитель (автор квиза) видит `join_code`;
+        ученикам поле `join_code` не возвращается.
+        Использовать для:
+        - учителя — чтобы показать `join_code` на экране лобби
+        - ученика — после `POST /live/join` для отрисовки экрана лобби и проверки фазы
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Мета сессии
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveSessionMeta"
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /sessions/{session_id}/live/join:
+    post:
+      tags: [Live]
+      summary: Присоединиться к live-сессии (создать attempt)
+      operationId: joinLiveSession
+      description: |
+        Создаёт `attempt` для участника и возвращает `attempt_id`
+        и одноразовый `ws_token` для подключения к WebSocket.
+
+        **Доступ:**
+        - `source=course` — обязательно JWT; `user_id` берётся из токена,
+          участником может стать только ученик класса. `name` игнорируется.
+        - `source=library` — JWT опционально. Если без JWT — `name` обязателен;
+          attempt создаётся с `user_id=null` и сохранённым `name`.
+
+        **Когда вызывать:** только в фазе `lobby`. В других фазах — `409 LIVE_NOT_IN_LOBBY`.
+
+        Идемпотентно по `(session_id, user_id)` для course и по `(session_id, ws-сессия)`
+        для аноним-library — повторный вызов возвращает существующий attempt.
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  nullable: true
+                  description: Обязательно для library без JWT (минимум 1 символ, максимум 40)
+                  example: "Вася"
+      responses:
+        "200":
+          description: Присоединение успешно
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  attempt_id:
+                    type: string
+                    format: uuid
+                    description: Идентификатор участника в сессии. Используется во всех WS-событиях.
+                  ws_token:
+                    type: string
+                    description: |
+                      Одноразовый токен (TTL 5 минут). Передаётся как `?token=` при WS-handshake.
+                      Сгорает при первом использовании — повторное подключение требует нового вызова `/live/join`.
+                      Не путать с access-JWT.
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403":
+          description: Не ученик класса (для course-live)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409":
+          description: Сессия не в фазе `lobby`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
+  /sessions/{session_id}/live/roster:
+    get:
+      tags: [Live]
+      summary: Хэш-мапа учеников класса (учитель)
+      operationId: getLiveRoster
+      description: |
+        Только для учителя course-live. Возвращает всех учеников класса,
+        к которому привязан модуль сессии — `user_id → name`.
+
+        Клиент учителя загружает мапу один раз при заходе в сессию, рендерит весь список
+        как «не подключился», и по WS-событию `lobby.participant_joined` подсвечивает
+        присоединившихся по `user_id`.
+
+        Для `source=library` возвращает `409 LIVE_ROSTER_UNAVAILABLE` — заранее списка нет,
+        имена несутся в WS-событиях.
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Список учеников класса
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveRoster"
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409":
+          description: Roster недоступен (library-сессия)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sessions/{session_id}/live/results/student:
+    get:
+      tags: [Live]
+      summary: Итоги live-сессии для ученика
+      operationId: getLiveResultsStudent
+      description: |
+        Доступно только участнику завершённой сессии (фаза `completed`).
+        Возвращает личный балл, итоговую позицию и срез лидерборда — топ-3
+        плюс строку самого ученика (с `is_me=true`), если он не входит в топ-3.
+
+        Для library-аноним аутентификация по `ws_token` через
+        заголовок `Authorization: Bearer <ws_token>`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Итоги
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveResultsStudent"
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409":
+          description: Сессия ещё не завершена
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sessions/{session_id}/live/results/teacher:
+    get:
+      tags: [Live]
+      summary: Итоги live-сессии для учителя
+      operationId: getLiveResultsTeacher
+      description: |
+        Полные итоги: агрегированная статистика по каждому вопросу
+        (распределение, % верных) и таблица всех учеников, отсортированная
+        от лучшего к худшему, с детализацией ответов.
+
+        Доступно автору квиза в фазе `completed`.
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Итоги
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveResultsTeacher"
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409":
+          description: Сессия ещё не завершена
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /sessions/{session_id}/live/ws:
+    get:
+      tags: [Live]
+      summary: WebSocket-стрим лайва (Upgrade)
+      operationId: liveWebSocket
+      description: |
+        Endpoint для WebSocket-handshake. Возвращает `101 Switching Protocols`.
+
+        **Аутентификация:**
+        - Учитель — по access-JWT в `Authorization` заголовке handshake-запроса
+          или `?token=<jwt>` (если клиент не умеет в заголовки на ws).
+        - Ученик — по `ws_token`, полученному от `/live/join`, в `?token=<ws_token>`.
+
+        Сервер определяет роль (`teacher` / `student`) по токену:
+        учитель = автор `quiz_template`, иначе — ученик-владелец `attempt`.
+
+        `ws_token` одноразовый — сгорает при первом handshake. `attempt_id` ученика
+        извлекается из `ws_token` при подключении. На сессию допускается ровно одно
+        активное WS-соединение на `attempt_id`; новое соединение разрешается только после
+        истечения grace period 2 секунды предыдущего коннекта.
+        Учитель допускается ровно в одном соединении — новое вытесняет старое (close `4009`).
+
+        **Описание сообщений** см. в `x-websocket-events` в корне документа.
+      security: []
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema: {type: string, format: uuid}
+        - in: query
+          name: token
+          required: false
+          schema: {type: string}
+          description: JWT (учитель) или ws_token (ученик).
+      responses:
+        "101":
+          description: Switching Protocols — WebSocket установлен
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -1301,3 +1929,256 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
+
+x-websocket-events:
+  description: |
+    Все сообщения — JSON формата `{"type": "<event>", "data": {...}}`.
+    Канал — `GET /sessions/{session_id}/live/ws` (см. paths).
+    Сервер биндит роль (`teacher`/`student`) по токену.
+
+    **Гарантии:**
+    - При (re)connect сервер сразу шлёт `state.snapshot` с актуальной фазой —
+      клиент может не хранить локальное состояние между сессиями.
+    - Все S→C-события идемпотентны: дубль `lobby.participant_joined` для уже
+      известного `attempt_id` клиент игнорирует.
+    - C→S сообщения подтверждаются через `ack`/`error` с тем же `client_msg_id`,
+      если клиент его прислал.
+
+    **Порядок жизненного цикла фаз:**
+    `pending` (создана) → учитель connect & `teacher.start_lobby` →
+    `lobby` (ученики connect & join) → учитель `teacher.start_quiz` →
+    `question_active` → (таймер истёк ИЛИ все ответили) →
+    `question_locked` → учитель `teacher.next_question` →
+    `question_active` (следующий) или `completed` (вопросы кончились).
+
+  serverToClient:
+    state.snapshot:
+      direction: server→client (teacher, student)
+      description: |
+        Полное состояние сессии. Шлётся сразу после WS-handshake и при любом
+        реконнекте. Клиент использует это для восстановления экрана без
+        дополнительных запросов.
+      payload:
+        phase: {$ref: "#/components/schemas/LivePhase"}
+        question_index:
+          type: integer
+          nullable: true
+          description: Номер текущего/последнего вопроса (1-based)
+        question_total:
+          type: integer
+        current_question:
+          oneOf:
+            - $ref: "#/components/schemas/QuestionForStudent"
+            - $ref: "#/components/schemas/QuestionForTeacher"
+          nullable: true
+          description: |
+            Если `phase=question_active` — вопрос с тайм-инфо.
+            Студенту — без правильных ответов, учителю — полный.
+        question_started_at:
+          type: string
+          format: date-time
+          nullable: true
+        question_deadline_at:
+          type: string
+          format: date-time
+          nullable: true
+        time_limit_sec:
+          type: integer
+          nullable: true
+        my_answer:
+          type: object
+          nullable: true
+          description: |
+            Только студенту. Если ученик уже отправил ответ на текущий вопрос —
+            возвращается, чтобы UI показал «вы ответили, ждите».
+        last_question_locked:
+          type: object
+          nullable: true
+          description: |
+            Если `phase=question_locked` — данные закрытого вопроса
+            (correct_answer, stats, my_result у студента) — те же поля,
+            что в событии `question.locked`.
+        lobby_participants:
+          type: array
+          items: {$ref: "#/components/schemas/LiveLobbyParticipant"}
+
+    lobby.participant_joined:
+      direction: server→client (teacher, student)
+      description: |
+        Новый участник в лобби. `name` всегда присутствует (для course берётся из
+        профиля; для library — из `name` при join).
+      payload:
+        attempt_id: {type: string, format: uuid}
+        user_id: {type: string, format: uuid, nullable: true}
+        name: {type: string}
+
+    lobby.participant_left:
+      direction: server→client (teacher, student)
+      description: Участник отключился до старта квиза.
+      payload:
+        attempt_id: {type: string, format: uuid}
+
+    quiz.started:
+      direction: server→client (teacher, student)
+      description: |
+        Учитель нажал «Начать». Клиент закрывает экран лобби и ждёт `question.started`.
+      payload: {}
+
+    question.started:
+      direction: server→client (teacher, student)
+      description: |
+        Показан очередной вопрос. Студенту — без правильных ответов, учителю — полный.
+        Таймер запускается с `started_at`; UI ориентируется на `deadline_at` для синхронизации.
+      payload:
+        question_index: {type: integer}
+        question:
+          oneOf:
+            - $ref: "#/components/schemas/QuestionForStudent"
+            - $ref: "#/components/schemas/QuestionForTeacher"
+        time_limit_sec: {type: integer}
+        started_at: {type: string, format: date-time}
+        deadline_at: {type: string, format: date-time}
+
+    participant.answered:
+      direction: server→client (teacher)
+      description: |
+        Только учителю. Сигнал «ученик X отправил ответ на текущий вопрос».
+        Текст ответа не передаётся — только факт + правильность + время.
+        Используется для UI «ответили / ещё думают».
+      payload:
+        attempt_id: {type: string, format: uuid}
+        question_id: {type: string, format: uuid}
+        is_correct: {type: boolean}
+        time_taken_ms: {type: integer}
+
+    question.stats_tick:
+      direction: server→client (teacher)
+      description: |
+        Только учителю. Промежуточные агрегаты по текущему вопросу.
+        Шлётся не чаще 1 раза в секунду и при каждом новом ответе (с троттлингом).
+      payload:
+        question_id: {type: string, format: uuid}
+        stats: {$ref: "#/components/schemas/LiveQuestionStats"}
+
+    question.locked:
+      direction: server→client (teacher, student)
+      description: |
+        Текущий вопрос закрыт (таймер истёк ИЛИ все ответили). Клиент показывает
+        правильный ответ и статистику. Учитель видит финальные `stats` без `my_result`;
+        студент — `my_result` (правильно/балл/время) + `stats` без распределения,
+        если тип не choice.
+      payload:
+        question_id: {type: string, format: uuid}
+        correct_answer: {$ref: "#/components/schemas/LiveCorrectAnswer"}
+        stats: {$ref: "#/components/schemas/LiveQuestionStats"}
+        my_result:
+          $ref: "#/components/schemas/LiveStudentResult"
+          nullable: true
+          description: Только студенту. null если он не успел ответить.
+
+    quiz.completed:
+      direction: server→client (teacher, student)
+      description: |
+        Все вопросы пройдены, фаза → `completed`. Клиент закрывает WS и идёт за
+        итогами в `/live/results/student` или `/live/results/teacher`.
+      payload: {}
+
+    participant.kicked:
+      direction: server→client (teacher, student)
+      description: |
+        Учитель кикнул участника. Все клиенты получают событие, чтобы убрать его из лобби/списка.
+        Сам кикнутый получает `you_were_kicked` и его соединение закрывается с кодом 4003.
+      payload:
+        attempt_id: {type: string, format: uuid}
+
+    you_were_kicked:
+      direction: server→client (kicked student)
+      description: |
+        Только конкретному кикнутому. После этого сервер закрывает WS с кодом 4003.
+        Клиент должен показать соответствующий экран; повторное подключение к этой сессии
+        запрещено (сервер вернёт 403 на `/live/join`).
+      payload:
+        reason: {type: string, example: "kicked_by_teacher"}
+
+    error:
+      direction: server→client
+      description: |
+        Ошибка операции. Если есть `client_msg_id` — это ack-error на конкретный C→S запрос;
+        иначе — асинхронная ошибка.
+      payload:
+        client_msg_id: {type: string, nullable: true}
+        code:
+          type: string
+          example: "ANSWER_TOO_LATE"
+          description: |
+            Возможные коды:
+            - `ANSWER_TOO_LATE` — попытка отправить ответ после `question_locked`
+            - `ALREADY_ANSWERED` — повторная отправка ответа на тот же вопрос (не разрешена в лайве)
+            - `INVALID_ANSWER_DATA` — некорректный формат
+            - `NOT_IN_LOBBY` — учитель шлёт `start_quiz`, когда фаза не `lobby`
+            - `NOT_IN_QUESTION_LOCKED` — учитель шлёт `next_question`, когда вопрос ещё активен
+            - `REPLACED_BY_OTHER_SESSION` — учитель открыл вторую вкладку; первое соединение закрывается
+        message: {type: string}
+
+    ack:
+      direction: server→client
+      description: |
+        Подтверждение успешной обработки C→S сообщения. Шлётся, если клиент передал `client_msg_id`.
+      payload:
+        client_msg_id: {type: string}
+
+  clientToServer:
+    student.submit_answer:
+      direction: client→server (student)
+      description: |
+        Отправка ответа на текущий вопрос. Принимается только в фазе `question_active`
+        и только один раз за вопрос. Повторный submit → `error: ALREADY_ANSWERED`.
+
+        Когда сервер фиксирует ответ — шлёт `participant.answered` учителю; если
+        ответили все — досрочно переводит фазу в `question_locked`.
+      payload:
+        client_msg_id: {type: string, nullable: true}
+        question_id: {type: string, format: uuid}
+        answer_data:
+          type: object
+          description: |
+            Формат как в `/attempts/{id}/answers`:
+            - single_choice: `{"selected_option_id": "uuid"}`
+            - multiple_choice: `{"selected_option_ids": ["uuid", ...]}`
+            - with_given_answer: `{"text": "Paris"}`
+            - drag: `{"order": ["B", "A", "C"]}`
+            - connection: `{"pairs": {"A": "1"}}`
+
+    teacher.start_lobby:
+      direction: client→server (teacher)
+      description: |
+        Перевод сессии `pending → lobby`. Сервер генерит `join_code` (для library)
+        и начинает принимать `/live/join`. Идемпотентно: повторный вызов в `lobby` — no-op.
+      payload:
+        client_msg_id: {type: string, nullable: true}
+
+    teacher.start_quiz:
+      direction: client→server (teacher)
+      description: |
+        Перевод `lobby → question_active` с показом первого вопроса.
+        Деактивирует `join_code`. После старта новые ученики не подключаются.
+        Допустим только в `lobby`.
+      payload:
+        client_msg_id: {type: string, nullable: true}
+
+    teacher.next_question:
+      direction: client→server (teacher)
+      description: |
+        Перевод из `question_locked` к следующему вопросу или к `completed`,
+        если вопросы закончились. Допустим только в `question_locked`.
+      payload:
+        client_msg_id: {type: string, nullable: true}
+
+    teacher.kick_participant:
+      direction: client→server (teacher)
+      description: |
+        Удаляет участника из сессии. Сервер шлёт `participant.kicked` всем,
+        `you_were_kicked` кикнутому и закрывает его WS. Повторное подключение запрещено.
+      payload:
+        client_msg_id: {type: string, nullable: true}
+        attempt_id: {type: string, format: uuid}
