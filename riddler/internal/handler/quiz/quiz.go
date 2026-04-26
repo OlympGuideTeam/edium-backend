@@ -363,12 +363,12 @@ func (h *Handler) CreateTestCourseSessionInline(c *gin.Context) {
 			options[j] = domain.AddOptionParams{Text: o.Text, IsCorrect: o.IsCorrect}
 		}
 		questions[i] = domain.AddQuestionParams{
-			Type:      domain.QuestionType(q.Type),
-			Text:      q.Text,
-			ImageID:   parseNullableUUID(q.ImageID),
-			Metadata:  q.Metadata,
-			MaxScore:  maxScore,
-			Options:   options,
+			Type:     domain.QuestionType(q.Type),
+			Text:     q.Text,
+			ImageID:  parseNullableUUID(q.ImageID),
+			Metadata: q.Metadata,
+			MaxScore: maxScore,
+			Options:  options,
 		}
 	}
 
@@ -442,14 +442,6 @@ func (h *Handler) CreateLiveCourseSession(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.CreateSessionResponse{SessionID: sessionID.String()})
-}
-
-func parseUUID(s string) uuid.UUID {
-	id, err := uuid.Parse(s)
-	if err != nil {
-		return uuid.Nil
-	}
-	return id
 }
 
 func uuidPtrToString(id *uuid.UUID) *string {

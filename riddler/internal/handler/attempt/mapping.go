@@ -21,13 +21,13 @@ func toQuestionsResponse(questions []domain.QuestionForStudent) []dto.QuestionFo
 			}
 		}
 		out[i] = dto.QuestionForStudentResponse{
-			ID:        q.ID.String(),
-			Type:      string(q.Type),
-			Text:      q.Text,
-			ImageID:   uuidPtrToString(q.ImageID),
-			MaxScore:  q.MaxScore,
-			Options:   options,
-			Metadata:  q.Metadata,
+			ID:       q.ID.String(),
+			Type:     string(q.Type),
+			Text:     q.Text,
+			ImageID:  uuidPtrToString(q.ImageID),
+			MaxScore: q.MaxScore,
+			Options:  options,
+			Metadata: q.Metadata,
 		}
 	}
 	return out

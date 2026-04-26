@@ -93,13 +93,13 @@ type AnswerOptionForStudent struct {
 }
 
 type QuestionForStudent struct {
-	ID        uuid.UUID
-	Type      QuestionType
-	Text      string
-	ImageID   *uuid.UUID
-	MaxScore  int
-	Options   []AnswerOptionForStudent
-	Metadata  map[string]any
+	ID       uuid.UUID
+	Type     QuestionType
+	Text     string
+	ImageID  *uuid.UUID
+	MaxScore int
+	Options  []AnswerOptionForStudent
+	Metadata map[string]any
 }
 
 type QuizStudentView struct {
