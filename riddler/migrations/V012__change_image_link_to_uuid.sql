@@ -1,3 +1,5 @@
+-- Миграция на Louvre: image_link (TEXT) → image_id (UUID)
+-- image_id ссылается на id в сервисе Louvre
 ALTER TABLE question
 DROP COLUMN IF EXISTS image_link;
 
