@@ -19,6 +19,7 @@ flowchart TD
         Riddler["Riddler\nPG · Redis"]
         Doorman["Doorman\nPG · Redis"]
         Herald["Herald\nPG"]
+        Louvre["Louvre\nPG · S3"]
     end
 
     subgraph ml ["ML"]
@@ -29,9 +30,9 @@ flowchart TD
     
 
     Client --> Caddy
-    Caddy --> Doorman & Caesar & Riddler
+    Caddy --> Doorman & Caesar & Riddler & Louvre
 
-    Caesar & Riddler --> Doorman
+    Caesar & Louvre & Riddler --> Doorman
 
     Doorman & Herald & Caesar & Riddler & Charon & Sphinx <-.-> NATS
 
