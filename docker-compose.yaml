@@ -87,6 +87,19 @@ services:
       - "16686:16686"
       - "4317:4317"
 
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+
   nats:
     image: nats:2.10
     restart: unless-stopped
@@ -366,6 +379,68 @@ services:
       riddler-db:
         condition: service_healthy
 
+  louvre:
+    build:
+      context: ./louvre
+      dockerfile: Dockerfile
+    restart: on-failure
+    environment:
+      POSTGRES_DSN: postgres://${LOUVRE_PG_USER}:${LOUVRE_PG_PWD}@louvre-db:5432/${LOUVRE_PG_DB}?sslmode=disable
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET:-edium-images}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      DOORMAN_JWKS_URL: ${DOORMAN_JWKS_URL}
+      OTEL_ENDPOINT: jaeger:4317
+    ports:
+      - "8086:80"
+    depends_on:
+      louvre-db:
+        condition: service_healthy
+      louvre-flyway:
+        condition: service_completed_successfully
+      doorman:
+        condition: service_started
+      minio:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+
+  louvre-db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${LOUVRE_PG_USER}
+      POSTGRES_PASSWORD: ${LOUVRE_PG_PWD}
+      POSTGRES_DB: ${LOUVRE_PG_DB}
+    ports:
+      - "5438:5432"
+    volumes:
+      - louvre_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -D $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  louvre-flyway:
+    image: flyway/flyway:latest
+    restart: "no"
+    command: ["migrate"]
+    environment:
+      - FLYWAY_URL=jdbc:postgresql://louvre-db:5432/${LOUVRE_PG_DB}
+      - FLYWAY_USER=${LOUVRE_PG_USER}
+      - FLYWAY_PASSWORD=${LOUVRE_PG_PWD}
+      - FLYWAY_LOCATIONS=filesystem:/app/migrations
+      - FLYWAY_VALIDATE_MIGRATION_NAMING=true
+      - FLYWAY_BASELINE_ON_MIGRATE=true
+    volumes:
+      - ./louvre/migrations:/app/migrations
+    depends_on:
+      louvre-db:
+        condition: service_healthy
+
   prometheus:
     image: prom/prometheus:v3.3.0
     restart: unless-stopped
@@ -401,5 +476,7 @@ volumes:
   charon_redis_data:
   caesar_db_data:
   riddler_db_data:
+  minio_data:
+  louvre_db_data:
   prometheus_data:
   grafana_data:

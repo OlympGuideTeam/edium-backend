@@ -43,7 +43,7 @@ func (h *Handler) AddQuestion(c *gin.Context) {
 	params := domain.AddQuestionParams{
 		Type:      domain.QuestionType(req.Type),
 		Text:      req.Text,
-		ImageLink: req.ImageLink,
+		ImageID:   parseNullableUUID(req.ImageID),
 		Metadata:  req.Metadata,
 		MaxScore:  maxScore,
 		Options:   options,

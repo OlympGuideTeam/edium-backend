@@ -35,10 +35,10 @@ func (r *PgQuizRepository) AddQuestion(ctx context.Context, params domain.AddQue
 
 	var questionID uuid.UUID
 	err = exec.QueryRowContext(ctx,
-		`INSERT INTO question (quiz_template_id, type, text, image_link, order_index, metadata, max_score)
+		`INSERT INTO question (quiz_template_id, type, text, image_id, order_index, metadata, max_score)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7)
 		 RETURNING id`,
-		params.QuizTemplateID, params.Type, params.Text, params.ImageLink,
+		params.QuizTemplateID, params.Type, params.Text, params.ImageID,
 		orderIndex, nullableBytes(metadataJSON), params.MaxScore,
 	).Scan(&questionID)
 	if err != nil {
@@ -101,7 +101,7 @@ func (r *PgQuizRepository) GetQuestionsWithOptions(ctx context.Context, quizID u
 	exec := db.ExecutorFromContext(ctx, r.db)
 
 	rows, err := exec.QueryContext(ctx,
-		`SELECT id, type, text, image_link, order_index, metadata, max_score
+		`SELECT id, type, text, image_id, order_index, metadata, max_score
 		 FROM question
 		 WHERE quiz_template_id = $1
 		 ORDER BY order_index`,
@@ -118,7 +118,7 @@ func (r *PgQuizRepository) GetQuestionsWithOptions(ctx context.Context, quizID u
 	for rows.Next() {
 		var q domain.QuestionWithOptions
 		var metadataJSON []byte
-		if err := rows.Scan(&q.ID, &q.Type, &q.Text, &q.ImageLink,
+		if err := rows.Scan(&q.ID, &q.Type, &q.Text, &q.ImageID,
 			&q.OrderIndex, &metadataJSON, &q.MaxScore); err != nil {
 			return nil, fmt.Errorf("scan question: %w", err)
 		}

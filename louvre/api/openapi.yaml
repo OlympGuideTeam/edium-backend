@@ -1,0 +1,222 @@
+openapi: "3.0.3"
+info:
+  title: Louvre — сервис изображений
+  version: "1.0.0"
+  description: |
+    Микросервис для загрузки, хранения и выдачи изображений.
+    Все эндпоинты требуют JWT авторизацию через заголовок `Authorization: Bearer <token>`.
+servers:
+  - url: /api/v1
+
+paths:
+  /louvre/v1/images/upload:
+    post:
+      summary: Загрузка изображения
+      description: |
+        Загружает изображение, ресайзит до 1920x1080 если нужно и конвертирует в PNG.
+        Ограничения:
+        - Максимальный размер: 10MB
+        - Допустимые типы: image/jpeg, image/png, image/webp
+        - Лимит: 100 загрузок в час для пользователя
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Изображение для загрузки
+              required:
+                - file
+      responses:
+        "200":
+          description: Изображение успешно загружено
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /louvre/v1/images/{id}:
+    get:
+      summary: Получение изображения
+      description: Возвращает изображение по его ID в бинарном виде
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID изображения
+      responses:
+        "200":
+          description: Изображение (image/png)
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Удаление изображения
+      description: Мягко удаляет изображение (soft delete в БД и физическое удаление из MinIO)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID изображения
+      responses:
+        "200":
+          description: Изображение успешно удалено
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT токен от Doorman
+
+  responses:
+    BadRequest:
+      description: Неверный запрос
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            missingFile:
+              summary: Параметр file отсутствует
+              value:
+                error: "BAD_REQUEST"
+                description: "Неверный запрос"
+                details:
+                  reason: "параметр file обязателен"
+            fileTooLarge:
+              summary: Файл слишком большой
+              value:
+                error: "FILE_TOO_LARGE"
+                description: "Файл слишком большой"
+                details:
+                  reason: "файл слишком большой, максимальный размер 10485760 байт"
+            invalidFileType:
+              summary: Невалидный тип файла
+              value:
+                error: "INVALID_FILE_TYPE"
+                description: "Невалидный тип файла"
+                details:
+                  reason: "невалидный тип файла: image/gif"
+                  allowed_types: "image/jpeg, image/png, image/webp"
+            invalidUUID:
+              summary: Невалидный UUID
+              value:
+                error: "BAD_REQUEST"
+                description: "Неверный запрос"
+                details:
+                  reason: "невалидный UUID"
+
+    Unauthorized:
+      description: Требуется авторизация
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            noToken:
+              summary: Отсутствует заголовок Authorization
+              value:
+                error: "UNAUTHORIZED"
+                description: "Требуется авторизация"
+            invalidToken:
+              summary: Невалидный токен
+              value:
+                error: "UNAUTHORIZED_TOKEN"
+                description: "Невалидный токен"
+
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "NOT_FOUND"
+            description: "Ресурс не найден"
+
+    TooManyRequests:
+      description: Превышен лимит запросов
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "TOO_MANY_UPLOADS"
+            description: "Превышен лимит загрузок"
+            details:
+              reason: "превышен лимит загрузок за час"
+              period: "1 час"
+
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "INTERNAL_ERROR"
+            description: "Внутренняя ошибка сервера"
+            details:
+              reason: "ошибка при обработке изображения"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - description
+      properties:
+        error:
+          type: string
+          description: Код ошибки
+          example: "BAD_REQUEST"
+        description:
+          type: string
+          description: Человеко-читаемое описание ошибки
+          example: "Неверный запрос"
+        details:
+          type: object
+          description: Дополнительная информация об ошибке
+          additionalProperties: true
+          example:
+            reason: "параметр file обязателен"
+
+security:
+  - BearerAuth: []
