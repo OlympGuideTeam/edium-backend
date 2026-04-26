@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"louvre/internal/app"
 	"louvre/internal/config"
 	"louvre/internal/infra/telemetry"
 	"louvre/internal/pkg/logger"
-	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"

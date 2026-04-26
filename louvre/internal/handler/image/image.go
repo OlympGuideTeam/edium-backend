@@ -36,27 +36,27 @@ func (h *Handler) Upload(c *gin.Context) {
 	if err != nil {
 		slog.ErrorContext(c.Request.Context(), "upload image", "err", err)
 
-	errMsg := err.Error()
-	switch {
-	case strings.Contains(errMsg, "файл слишком большой"):
-		httpx.WriteError(c, apperr.ErrFileTooLarge.WithDetails(map[string]any{
-			"reason": errMsg,
-		}))
-	case strings.Contains(errMsg, "невалидный тип файла"):
-		httpx.WriteError(c, apperr.ErrInvalidFileType.WithDetails(map[string]any{
-			"reason": errMsg,
-			"allowed_types": strings.Join([]string{"image/jpeg", "image/png", "image/webp"}, ", "),
-		}))
-	case strings.Contains(errMsg, "превышен лимит загрузок"):
-		httpx.WriteError(c, apperr.ErrTooManyUploads.WithDetails(map[string]any{
-			"reason": errMsg,
-			"period": "1 час",
-		}))
-	default:
-		httpx.WriteError(c, apperr.ErrInternalError.WithDetails(map[string]any{
-			"reason": errMsg,
-		}))
-	}
+		errMsg := err.Error()
+		switch {
+		case strings.Contains(errMsg, "файл слишком большой"):
+			httpx.WriteError(c, apperr.ErrFileTooLarge.WithDetails(map[string]any{
+				"reason": errMsg,
+			}))
+		case strings.Contains(errMsg, "невалидный тип файла"):
+			httpx.WriteError(c, apperr.ErrInvalidFileType.WithDetails(map[string]any{
+				"reason":        errMsg,
+				"allowed_types": strings.Join([]string{"image/jpeg", "image/png", "image/webp"}, ", "),
+			}))
+		case strings.Contains(errMsg, "превышен лимит загрузок"):
+			httpx.WriteError(c, apperr.ErrTooManyUploads.WithDetails(map[string]any{
+				"reason": errMsg,
+				"period": "1 час",
+			}))
+		default:
+			httpx.WriteError(c, apperr.ErrInternalError.WithDetails(map[string]any{
+				"reason": errMsg,
+			}))
+		}
 		return
 	}
 
@@ -81,7 +81,7 @@ func (h *Handler) Download(c *gin.Context) {
 	}
 	defer func() {
 		if closer, ok := reader.(io.Closer); ok {
-			closer.Close()
+			_ = closer.Close()
 		}
 	}()
 

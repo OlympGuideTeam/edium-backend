@@ -40,11 +40,11 @@ type DoormanConfig struct {
 }
 
 type ImageConfig struct {
-	MaxFileSize      int64  `env:"IMAGE_MAX_SIZE" envDefault:"10485760"`
-	MaxWidth         int    `env:"IMAGE_MAX_WIDTH" envDefault:"1920"`
-	MaxHeight        int    `env:"IMAGE_MAX_HEIGHT" envDefault:"1080"`
-	AllowedMimeTypes string `env:"IMAGE_ALLOWED_TYPES" envDefault:"image/jpeg,image/png,image/webp"`
-	MaxUploadsPerHour int `env:"IMAGE_MAX_UPLOADS_PER_HOUR" envDefault:"100"`
+	MaxFileSize       int64  `env:"IMAGE_MAX_SIZE" envDefault:"10485760"`
+	MaxWidth          int    `env:"IMAGE_MAX_WIDTH" envDefault:"1920"`
+	MaxHeight         int    `env:"IMAGE_MAX_HEIGHT" envDefault:"1080"`
+	AllowedMimeTypes  string `env:"IMAGE_ALLOWED_TYPES" envDefault:"image/jpeg,image/png,image/webp"`
+	MaxUploadsPerHour int    `env:"IMAGE_MAX_UPLOADS_PER_HOUR" envDefault:"100"`
 }
 
 func Load() (*Config, error) {

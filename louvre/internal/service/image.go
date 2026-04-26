@@ -68,7 +68,9 @@ func (s *ImageService) Upload(ctx context.Context, fileHeader *multipart.FileHea
 	if err != nil {
 		return fmt.Errorf("открытие файла: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	img, _, err := image.Decode(file)
 	if err != nil {

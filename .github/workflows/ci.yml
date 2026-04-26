@@ -255,40 +255,19 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: MINIO
-          MINIO_ROOT_PASSWORD: MINIO
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - name: Создание MinIO bucket
-        run: |
-          docker run --rm --network host minio/mc alias set minio http://localhost:9000 MINIO MINIO || true
-          docker run --rm --network host minio/mc mb minio/edium-images || true
-          docker run --rm --network host minio/mc policy set public minio/edium-images || true
-        env:
-          MINIO_ENDPOINT: http://localhost:9000
-          MINIO_ACCESS_KEY: MINIO
-          MINIO_SECRET_KEY: MINIO
       - name: Запуск тестов
         working-directory: louvre
         run: go test -race -coverprofile=coverage.out ./...
         env:
           POSTGRES_DSN: "postgres://test:test@localhost:5432/louvre_test?sslmode=disable"
-          MINIO_ENDPOINT: localhost:9000
-          MINIO_ROOT_USER: MINIO
-          MINIO_ROOT_PASSWORD: MINIO
+          MINIO_ENDPOINT: ""
+          MINIO_ROOT_USER: ""
+          MINIO_ROOT_PASSWORD: ""
           MINIO_BUCKET: edium-images
           MINIO_USE_SSL: false
       - name: Загрузка покрытия
