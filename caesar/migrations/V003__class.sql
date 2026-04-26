@@ -24,7 +24,6 @@ CREATE TABLE class_member (
     PRIMARY KEY (class_id, user_id)
 );
 
--- Обновляем счётчик учеников при добавлении/удалении участника
 CREATE OR REPLACE FUNCTION update_class_student_count()
     RETURNS TRIGGER AS $$
 BEGIN

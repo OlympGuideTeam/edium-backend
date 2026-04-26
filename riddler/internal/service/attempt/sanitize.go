@@ -8,11 +8,11 @@ import (
 
 func sanitizeQuestion(q domain.QuestionWithOptions) domain.QuestionForStudent {
 	s := domain.QuestionForStudent{
-		ID:        q.ID,
-		Type:      q.Type,
-		Text:      q.Text,
-		ImageLink: q.ImageLink,
-		MaxScore:  q.MaxScore,
+		ID:       q.ID,
+		Type:     q.Type,
+		Text:     q.Text,
+		ImageID:  q.ImageID,
+		MaxScore: q.MaxScore,
 	}
 
 	switch q.Type {

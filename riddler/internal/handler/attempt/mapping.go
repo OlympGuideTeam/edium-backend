@@ -1,6 +1,8 @@
 package attempt
 
 import (
+	"github.com/google/uuid"
+
 	"riddler/internal/domain"
 	"riddler/internal/transport/dto"
 )
@@ -19,14 +21,22 @@ func toQuestionsResponse(questions []domain.QuestionForStudent) []dto.QuestionFo
 			}
 		}
 		out[i] = dto.QuestionForStudentResponse{
-			ID:        q.ID.String(),
-			Type:      string(q.Type),
-			Text:      q.Text,
-			ImageLink: q.ImageLink,
-			MaxScore:  q.MaxScore,
-			Options:   options,
-			Metadata:  q.Metadata,
+			ID:       q.ID.String(),
+			Type:     string(q.Type),
+			Text:     q.Text,
+			ImageID:  uuidPtrToString(q.ImageID),
+			MaxScore: q.MaxScore,
+			Options:  options,
+			Metadata: q.Metadata,
 		}
 	}
 	return out
+}
+
+func uuidPtrToString(id *uuid.UUID) *string {
+	if id == nil {
+		return nil
+	}
+	s := id.String()
+	return &s
 }

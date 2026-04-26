@@ -7,8 +7,6 @@ CREATE TYPE question_type AS ENUM (
     'connection'
 );
 
--- Шаблон квиза (авторский контент учителя)
-
 CREATE TABLE quiz_template (
     id               UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
     author_id        UUID    NOT NULL,
@@ -29,8 +27,6 @@ CREATE TRIGGER trg_quiz_template_updated_at
     FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 
--- Вопросы квиза
-
 CREATE TABLE question (
     id               UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
     quiz_template_id UUID          NOT NULL REFERENCES quiz_template (id) ON DELETE CASCADE,
@@ -50,8 +46,6 @@ CREATE TRIGGER trg_question_updated_at
     BEFORE UPDATE ON question
     FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
-
--- Варианты ответов на вопрос
 
 CREATE TABLE answer_option (
     id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
