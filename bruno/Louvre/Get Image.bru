@@ -1,0 +1,14 @@
+meta {
+  name: Get Image
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://localhost:8086/louvre/v1/images/{{imageId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

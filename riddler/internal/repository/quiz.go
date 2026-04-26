@@ -143,8 +143,8 @@ func (r *PgQuizRepository) Copy(ctx context.Context, sourceID, newAuthorID uuid.
 			SELECT id, order_index FROM question WHERE quiz_template_id = $1
 		),
 		new_questions AS (
-			INSERT INTO question (quiz_template_id, type, text, image_link, order_index, metadata, max_score)
-			SELECT $2, type, text, image_link, order_index, metadata, max_score
+			INSERT INTO question (quiz_template_id, type, text, image_id, order_index, metadata, max_score)
+			SELECT $2, type, text, image_id, order_index, metadata, max_score
 			FROM question WHERE quiz_template_id = $1
 			RETURNING id, order_index
 		),
@@ -228,10 +228,10 @@ func (r *PgQuizRepository) GetQuestionByID(ctx context.Context, id uuid.UUID) (*
 	var q domain.Question
 	var metaJSON []byte
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, quiz_template_id, type, text, image_link, order_index, metadata, max_score, created_at, updated_at
+		`SELECT id, quiz_template_id, type, text, image_id, order_index, metadata, max_score, created_at, updated_at
 		 FROM question WHERE id = $1`,
 		id,
-	).Scan(&q.ID, &q.QuizTemplateID, &q.Type, &q.Text, &q.ImageLink,
+	).Scan(&q.ID, &q.QuizTemplateID, &q.Type, &q.Text, &q.ImageID,
 		&q.OrderIndex, &metaJSON, &q.MaxScore, &q.CreatedAt, &q.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil

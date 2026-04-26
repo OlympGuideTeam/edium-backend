@@ -41,12 +41,12 @@ func (h *Handler) AddQuestion(c *gin.Context) {
 	}
 
 	params := domain.AddQuestionParams{
-		Type:      domain.QuestionType(req.Type),
-		Text:      req.Text,
-		ImageLink: req.ImageLink,
-		Metadata:  req.Metadata,
-		MaxScore:  maxScore,
-		Options:   options,
+		Type:     domain.QuestionType(req.Type),
+		Text:     req.Text,
+		ImageID:  parseNullableUUID(req.ImageID),
+		Metadata: req.Metadata,
+		MaxScore: maxScore,
+		Options:  options,
 	}
 
 	id, orderIndex, err := h.service.AddQuestion(c.Request.Context(), quizID, userID, params)

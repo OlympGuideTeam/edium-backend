@@ -28,7 +28,7 @@ type QuestionResponse struct {
 	ID         string                 `json:"id"`
 	Type       string                 `json:"type"`
 	Text       string                 `json:"text"`
-	ImageLink  *string                `json:"image_link"`
+	ImageID    *string                `json:"image_id"`
 	OrderIndex int                    `json:"order_index"`
 	MaxScore   int                    `json:"max_score"`
 	Metadata   map[string]any         `json:"metadata,omitempty"`

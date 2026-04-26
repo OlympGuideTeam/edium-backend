@@ -61,7 +61,7 @@ type Question struct {
 	QuizTemplateID uuid.UUID
 	Type           QuestionType
 	Text           string
-	ImageLink      *string
+	ImageID        *uuid.UUID
 	OrderIndex     int
 	Metadata       map[string]any
 	MaxScore       int
@@ -93,13 +93,13 @@ type AnswerOptionForStudent struct {
 }
 
 type QuestionForStudent struct {
-	ID        uuid.UUID
-	Type      QuestionType
-	Text      string
-	ImageLink *string
-	MaxScore  int
-	Options   []AnswerOptionForStudent
-	Metadata  map[string]any
+	ID       uuid.UUID
+	Type     QuestionType
+	Text     string
+	ImageID  *uuid.UUID
+	MaxScore int
+	Options  []AnswerOptionForStudent
+	Metadata map[string]any
 }
 
 type QuizStudentView struct {
@@ -132,7 +132,7 @@ type AddQuestionParams struct {
 	QuizTemplateID uuid.UUID
 	Type           QuestionType
 	Text           string
-	ImageLink      *string
+	ImageID        *uuid.UUID
 	Metadata       map[string]any
 	MaxScore       int
 	Options        []AddOptionParams
