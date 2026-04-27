@@ -7,38 +7,33 @@
 
 # CLAUDE.md — Edium Backend
 
-Образовательная платформа Edium — серверная часть. Go-микросервисы + Python ML-пайплайн.
+Образовательная платформа Edium — серверная часть. Go-микросервисы + Python-сервис генерации.
 
 ## О проекте
 
-Edium — платформа для проведения квизов, контрольных и домашних работ. Автоматизирует создание учебных материалов с помощью OCR и LLM.
+Edium — платформа для проведения квизов, контрольных и домашних работ. Автоматизирует создание учебных материалов с помощью LLM.
 
 **Роли:** student (проходит квизы) и teacher (создаёт квизы, управляет классами)
-
-> **Продуктовые флоу:** карта экранов → сервисы → API-контракт описана в
-> `edium-claude/claude/shared/PRODUCT_FLOWS.md` — читай перед проектированием эндпоинтов.
 
 ## Сервисы
 
 | Сервис | Ответственность |
 |--------|----------------|
 | **Doorman** | Auth: OTP по телефону, JWT (access + refresh), регистрация |
-| **Caesar** | Пользователи, классы, участники классов, курсы, модули курсов |
-| **Riddler** | Квизы, сессии прохождения, результаты, real-time через WebSocket |
-| **Yoda** | Проверочные работы, сабмиты, оценки *(v2)* |
-| **Herald** | Уведомления: OTP через Telegram-бот и VK-бот, push (Firebase) *(v2)* |
-| **Charon** | Прокси к внешним LLM API (OpenAI и др.) |
-| **Sphinx** | Генерация квизов по тексту: параграф/статья → ML → вопросы |
-| **Hawkeye** | OCR: распознавание рукописного текста с фото *(Python, v2)* |
+| **Caesar** | Пользователи, классы, участники классов, курсы, модули, элементы курса, ведомость |
+| **Riddler** | Квизы, тестовые и live-сессии, результаты, real-time через WebSocket |
+| **Herald** | Уведомления: OTP через Telegram-бот, push (Firebase) |
+| **Charon** | Прокси к DeepSeek API (LLM) через NATS |
+| **Sphinx** | Генерация вопросов квиза по тексту (Python + LLM, NATS-воркер) |
+| **Louvre** | Загрузка и хранение изображений (MinIO) |
 
 ## Стек
 
-- **Go 1.22+** — все сервисы кроме Hawkeye
-- **Python** — Hawkeye (OCR) + ML-пайплайн генерации датасета
+- **Go 1.25+** — все сервисы кроме Sphinx
+- **Python** — Sphinx (генерация вопросов) + `ml/` (офлайн-пайплайн датасета)
 - **PostgreSQL** — основные данные (миграции через Flyway)
 - **Redis** — кэш, OTP, rate limiting, WebSocket-сессии
-- **ClickHouse** — аналитика, логи
-- **MinIO** — файловое хранилище (фото работ, аватары)
+- **MinIO** — файловое хранилище (изображения к вопросам)
 - **NATS** — брокер сообщений, Transactional Outbox
 - **Docker Compose** — оркестрация всего стека
 
@@ -47,14 +42,13 @@ Edium — платформа для проведения квизов, конт�
 ```
 edium-backend/
 ├── doorman/        # Auth: OTP, JWT
-├── caesar/         # Пользователи, классы, курсы
-├── riddler/        # Квизы + WebSocket
-├── yoda/           # Работы (v2)
-├── herald/         # Уведомления
-├── charon/         # LLM-прокси
-├── sphinx/         # Генерация квизов по тексту (Python)
-├── hawkeye/        # OCR (Python, v2)
-├── ml/             # Пайплайн генерации квиз-датасета
+├── caesar/         # Пользователи, классы, курсы, ведомость
+├── riddler/        # Квизы + WebSocket live
+├── herald/         # Уведомления (Telegram, Firebase)
+├── charon/         # LLM-прокси (DeepSeek)
+├── sphinx/         # Генерация вопросов по тексту (Python + LLM)
+├── louvre/         # Изображения (MinIO)
+├── ml/             # Офлайн-пайплайн генерации квиз-датасета (не production)
 │   ├── main.py
 │   └── books/
 ├── docker-compose.yaml
@@ -84,13 +78,14 @@ edium-backend/
 **Домен:** `Identity` (id, status: active/blocked/deleted, phone)
 
 **Эндпоинты:**
-- `POST doorman/v1/otp/send` — отправка OTP (повтор через 1 минуту)
-- `POST doorman/v1/otp/verify` — проверка OTP (6-значный код)
-- `POST doorman/v1/auth/register` — регистрация
+- `POST doorman/v1/otp/send` — отправка OTP (канал: `tg` или `sms`; повтор через 3 минуты)
+- `POST doorman/v1/otp/verify` — проверка OTP (6-значный код); возвращает токены или `registration_token`
+- `POST doorman/v1/auth/register` — регистрация нового пользователя (заголовок `X-Reg-Token`)
 - `POST doorman/v1/auth/refresh` — обновление токенов
-- `POST doorman/v1/auth/logout` — выход
+- `POST doorman/v1/auth/logout` — выход (отзыв refresh-токена)
+- `GET doorman/.well-known/jwks.json` — публичные ключи (без `/v1/`)
 
-**Телефон:** regex `^\+[1-9]\d{1,14}$`
+**Телефон:** regex `^\+7\d{10}$` (только +7)
 
 **Воркеры (Transactional Outbox):**
 
@@ -113,7 +108,7 @@ edium-backend/
 
 ## Herald — уведомления
 
-**Задача:** Telegram-бот принимает номер телефона от пользователя и связывает его с `chat_id`. Когда Doorman отправляет OTP, Herald доставляет его в нужный чат.
+**Задача:** Telegram-бот принимает номер телефона от пользователя и связывает его с `chat_id`. Когда Doorman отправляет OTP, Herald доставляет его в нужный чат. Дополнительно отправляет push-уведомления через Firebase Cloud Messaging.
 
 **Флоу:**
 1. Пользователь отправляет контакт боту → `handleContact` → `RequestOTP(chatID, phone)` → сохраняет `PendingOTP{phone, chat_id}` в Redis + создаёт задачу `otp_request` в outbox
@@ -134,23 +129,40 @@ edium-backend/
 
 ## Riddler — квизы и WebSocket
 
-**Типы квизов:**
-- **Синхронный** — все на одном вопросе, учитель видит прогресс, после ответов всех — статистика
-- **Асинхронный** — каждый в своём темпе, учитель видит real-time прогресс
+**Типы сессий:**
+- **test** — асинхронный, каждый в своём темпе, таймер на весь тест (`total_time_limit_sec`)
+- **live** — синхронный, учитель управляет вопросами, таймер на каждый вопрос (`question_time_limit_sec`)
 
-**WebSocket-события:**
-- `participant_joined` / `participant_left` — лобби
-- `quiz_started` — старт квиза
-- `answer_submitted` — ученик ответил
-- `question_stats` — статистика по вопросу (синхронный режим)
-- `participant_disqualified` — кик участника
-- `quiz_completed` — квиз завершён
+**Типы вопросов:** `single_choice`, `multiple_choice`, `with_given_answer`, `with_free_answer`, `drag`, `connection`
 
-**Настройки квиза:** таймер, дедлайн, лимит участников, отложенный старт, вход по QR/коду (6-значный числовой)
+**Live-фазы:** `pending` → `lobby` → `question_active` → `question_locked` → `completed`
 
-## ML-пайплайн (ml/)
+**Источники сессий:**
+- `course` — привязана к модулю курса; только ученики класса, требуется JWT
+- `library` — публичная; анонимный доступ по 6-значному числовому коду (`join_code`)
 
-**Флоу:** `PDF + chapters.txt → Surya OCR / PyMuPDF → GPT-4o-mini → dataset.jsonl`
+**WebSocket-события (server → client):**
+- `state.snapshot` — полное состояние при (ре)коннекте
+- `lobby.participant_joined` / `lobby.participant_left` — лобби
+- `quiz.started` — старт квиза
+- `question.started` — показан очередной вопрос
+- `participant.answered` — ученик ответил (только учителю)
+- `question.stats_tick` — промежуточная статистика (только учителю)
+- `question.locked` — вопрос закрыт, правильный ответ
+- `quiz.completed` — квиз завершён
+- `participant.kicked` / `you_were_kicked` — кик участника
+
+**WebSocket-команды (client → server):**
+- `teacher.start_lobby`, `teacher.start_quiz`, `teacher.next_question`, `teacher.kick_participant`
+- `student.submit_answer`
+
+**Настройки квиза:** таймер, дедлайн (`started_at`/`finished_at`), перемешивание вопросов. Вход в live — по 6-значному числовому `join_code` (только в фазе `lobby`).
+
+## ML-пайплайн (ml/) — офлайн-инструмент
+
+Не является частью production-системы. Используется для подготовки датасета квиз-вопросов.
+
+**Флоу:** `PDF + chapters.txt → PyMuPDF → GPT-4o-mini → dataset.jsonl`
 
 **Запуск:** `cd ml && python main.py --books_dir books/ --output dataset.jsonl`
 
@@ -174,10 +186,11 @@ cd ml && ruff format .
 
 ## Безопасность
 
-- Все эндпоинты (кроме auth) требуют JWT — проверять каждый запрос на сервере
+- Все эндпоинты (кроме auth и `GET /doorman/.well-known/jwks.json`) требуют JWT
+- Для live-сессий ученик аутентифицируется одноразовым `ws_token` (TTL 5 минут, не JWT)
 - Не логировать персональные данные (телефоны, имена)
 - Не хардкодить секреты — только через env
-- Текст вопросов квиза не передавать клиенту до старта сессии
+- Текст вопросов квиза не передавать клиенту до старта сессии / попытки
 
 ## OpenAPI-спецификации
 
@@ -229,6 +242,8 @@ OTLP gRPC endpoint (`OTEL_ENDPOINT`) должен быть в формате `ho
 - **Не добавлять Claude или AI-инструменты в список авторов/contributors** в коде, коммитах или документации
 - **Язык:** комментарии, git-сообщения, документация — на русском
 - **Ошибки Go:** `fmt.Errorf("контекст: %w", err)`
-- **HTTP-коды:** 200, 400, 401, 422, 500
-- **ID:** 8-значный hex (пользователи, классы), 6-значный числовой (быстрые квизы)
+- **HTTP-коды:** 200, 204, 400, 401, 403, 404, 409, 410, 422, 429, 500
+- **ID:** UUID (пользователи, классы, курсы, квизы); 6-значный числовой — `join_code` live-сессии
 - **Миграции:** Flyway, `V{N}__{описание}.sql`, только append-only
+- **OTEL endpoint:** формат `host:port` без схемы — `jaeger:4317`, не `http://jaeger:4317`
+- **Телефон:** только `^\+7\d{10}$`
