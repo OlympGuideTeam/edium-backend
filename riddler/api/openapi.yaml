@@ -123,25 +123,25 @@ components:
         type:
            type: string
            enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
-         text:
+        text:
            type: string
-         image_id:
+        image_id:
            type: string
            format: uuid
            nullable: true
            description: UUID изображения из сервиса Louvre
-         order_index:
+        order_index:
            type: integer
-         max_score:
+        max_score:
            type: integer
-         metadata:
-           type: object
-           nullable: true
-           description: |
-            Зависит от типа вопроса:
-            - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
-            - drag: `{"correct_order": ["B", "A", "C"]}`
-            - connection: `{"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}`
+        metadata:
+            type: object
+            nullable: true
+            description: |
+             Зависит от типа вопроса:
+             - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
+             - drag: `{"correct_order": ["B", "A", "C"]}`
+             - connection: `{"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}`
         options:
           type: array
           items:
@@ -1000,17 +1000,17 @@ paths:
                    nullable: true
                    example: 550e8400-e29b-41d4-a716-446655440000
                  max_score:
-                  type: integer
-                  default: 10
-                metadata:
-                  type: object
-                  nullable: true
-                  description: |
-                    Обязательно для with_given_answer, drag, connection:
-                    - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
-                    - drag: `{"correct_order": ["B", "A", "C"]}`
-                    - connection: `{"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}`
-                answer_options:
+                   type: integer
+                   default: 10
+                 metadata:
+                   type: object
+                   nullable: true
+                   description: |
+                     Обязательно для with_given_answer, drag, connection:
+                     - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
+                     - drag: `{"correct_order": ["B", "A", "C"]}`
+                     - connection: `{"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}`
+                 answer_options:
                   type: array
                   description: Обязательно для single_choice и multiple_choice
                   items:
