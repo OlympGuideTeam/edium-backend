@@ -72,13 +72,12 @@
 ## 3. Фазы сессии
 
 ```
-pending → lobby → question_active ⇄ question_locked → ... → completed
+lobby → question_active ⇄ question_locked → ... → completed
 ```
 
 | Фаза | Когда наступает |
 |------|----------------|
-| `pending` | Сессия создана, лобби ещё не открыто учителем |
-| `lobby` | Учитель отправил `teacher.start_lobby` по WS |
+| `lobby` | Учитель вызвал `POST /sessions/{id}/live/start` |
 | `question_active` | Учитель отправил `teacher.start_quiz` (первый) или `teacher.next_question` (последующие) |
 | `question_locked` | Таймер истёк ИЛИ все активные участники ответили |
 | `completed` | Учитель отправил `teacher.next_question` после последнего вопроса |
@@ -163,7 +162,7 @@ live:code:{join_code}                           STRING  → session_id  (TTL д�
 ### course-live
 
 ```
-POST /riddler/v1/sessions/live
+POST /riddler/v1/sessions/live/course
 Authorization: Bearer <teacher_jwt>
 
 {
@@ -190,51 +189,36 @@ Authorization: Bearer <teacher_jwt>
 ```
 
 **Валидация шаблона (оба варианта):**
-- `need_evaluation` должен быть `false` — лайв не поддерживает ручную проверку.
-- В шаблоне не должно быть вопросов типа `with_free_answer` — они недоступны в лайве.
+- `need_evaluation` должен быть `false`.
 - Ошибка: `422 LIVE_TEMPLATE_INVALID`.
 
 ---
 
 ## 7. Открытие лобби и подключение учителя
 
-### Шаг 1 — учитель открывает экран сессии
+### Шаг 1 — учитель открывает лобби
 
 ```
-GET /riddler/v1/sessions/{session_id}/live
-→ { "phase": "pending", "join_code": null, ... }
+POST /riddler/v1/sessions/{session_id}/live/start
+Authorization: Bearer <teacher_jwt>
+
+→ 200 {
+  "ws_token": "...",
+  "join_code": "471829"
+}
 ```
 
-### Шаг 2 — учитель подключается к WS
+Сервер инициализирует состояние в Redis (фаза `lobby`, join_code), генерирует ws_token (TTL 1 минута).
+
+### Шаг 2 — учитель показывает код и подключается к WS
+
+Учитель отображает `join_code` на экране. Одновременно подключается к WS:
 
 ```
-WS wss://<host>/riddler/v1/sessions/{session_id}/live/ws?token=<teacher_jwt>
+WS wss://<host>/riddler/v1/sessions/{session_id}/live/ws?token=<ws_token>
 ```
 
-Учитель аутентифицируется своим основным JWT (не `ws_token`).
-Сервер сразу присылает `state.snapshot` — клиент рисует экран ожидания.
-
-### Шаг 3 — учитель открывает лобби
-
-Учитель нажимает «Открыть лобби» → клиент отправляет:
-
-```json
-{ "type": "teacher.start_lobby", "data": {} }
-```
-
-Сервер:
-1. Переводит фазу → `lobby` (обновляет Redis).
-2. Генерит `join_code` (6-значный числовой), записывает `live:code:{code} = session_id` с TTL до старта квиза.
-3. Шлёт обновлённый `state.snapshot` учителю (phase=lobby, join_code заполнен).
-
-### Шаг 4 — учитель показывает код
-
-```
-GET /riddler/v1/sessions/{session_id}/live
-→ { "phase": "lobby", "join_code": "471829", ... }
-```
-
-Учитель отображает `join_code` на экране — ученики вводят его в приложении.
+Сервер сразу присылает `state.snapshot` с `phase=lobby`.
 
 ---
 
@@ -273,7 +257,7 @@ GET /riddler/v1/sessions/live/471829
 POST /riddler/v1/sessions/{session_id}/live/join
 
 // course — JWT обязателен, name не нужен
-// library без JWT — name обязателен
+// library — name обязателен всегда (JWT опционально)
 { "name": "Вася" }
 
 → 200 {
@@ -298,20 +282,8 @@ WS wss://<host>/riddler/v1/sessions/{session_id}/live/ws?token=<ws_token>
 
 ## 9. Лобби-экран: учитель видит, кто подключился
 
-### Загрузка списка класса (только course-live)
-
-```
-GET /riddler/v1/sessions/{session_id}/live/roster
-→ {
-  "members": [
-    { "user_id": "a1b2c3d4", "name": "Иван Петров" },
-    { "user_id": "e5f6a7b8", "name": "Мария Соколова" },
-    ...
-  ]
-}
-```
-
-Клиент строит хэш-мапу `user_id → name` и отрисовывает **весь класс** как «ещё не подключился».
+Для course-live клиент уже знает список учеников класса (получен через Caesar).
+Клиент строит хэш-мапу `user_id → name` и отрисовывает весь класс как «ещё не подключился».
 
 ### WS-события в лобби (учитель)
 
@@ -602,7 +574,6 @@ Authorization: Bearer <teacher_jwt>
 
 | Фаза в снапшоте | Экран |
 |-----------------|-------|
-| `pending` | Ожидание открытия лобби (учитель) |
 | `lobby` | Лобби (обе роли) |
 | `question_active` | Активный вопрос. Таймер запускается с поправкой: `remaining = deadline_at - now()`. Если `my_answer != null` — ученик уже ответил, показать состояние ожидания. |
 | `question_locked` | Экран статистики. Поле `last_question_locked` в снапшоте содержит `correct_answer`, `stats`, `my_result`. |
@@ -695,12 +666,11 @@ Grace period 2 секунды гарантирует, что кратковре�
 
 | Ручка | Кто | Когда |
 |-------|-----|-------|
-| `POST /sessions/live` | Учитель | Создание course-live |
+| `POST /sessions/live/course` | Учитель | Создание course-live |
 | `POST /sessions/live/library` | Учитель | Создание library-live |
-| `GET /sessions/live/{code}` | Ученик | Резолв кода → session_id |
-| `GET /sessions/{id}/live` | Оба | Мета сессии (учитель видит `join_code`) |
-| `POST /sessions/{id}/live/join` | Ученик | Войти в лобби, получить `ws_token` |
-| `GET /sessions/{id}/live/roster` | Учитель | Список класса для course-live |
+| `POST /sessions/{id}/live/start` | Учитель | Открыть лобби → `{ws_token, join_code}` |
+| `GET /sessions/live/{code}` | Ученик | Резолв кода → превью сессии |
+| `POST /sessions/{id}/live/join` | Ученик | Войти в лобби → `{attempt_id, ws_token}` |
 | `GET /sessions/{id}/live/ws` | Оба | WebSocket upgrade |
 | `GET /sessions/{id}/live/results/student` | Ученик | Итоги после `completed` |
 | `GET /sessions/{id}/live/results/teacher` | Учитель | Итоги после `completed` |
@@ -709,7 +679,6 @@ Grace period 2 секунды гарантирует, что кратковре�
 
 | Сообщение | Кто | Когда |
 |-----------|-----|-------|
-| `teacher.start_lobby` | Учитель | Открыть лобби (`pending→lobby`) |
 | `teacher.start_quiz` | Учитель | Стартовать квиз (`lobby→question_active`) |
 | `teacher.next_question` | Учитель | Следующий вопрос или завершение |
 | `teacher.kick_participant` | Учитель | Кикнуть ученика |

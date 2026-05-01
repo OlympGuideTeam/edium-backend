@@ -13,15 +13,20 @@ import (
 
 	"riddler/internal/config"
 	attempthandler "riddler/internal/handler/attempt"
+	livehandler "riddler/internal/handler/live"
 	quizhandler "riddler/internal/handler/quiz"
+	testhandler "riddler/internal/handler/test"
 	"riddler/internal/infra/db"
+	infraredis "riddler/internal/infra/redis"
 	"riddler/internal/infra/jwks"
 	natsinf "riddler/internal/infra/nats"
 	"riddler/internal/middleware"
 	"riddler/internal/pkg/metrics"
 	"riddler/internal/repository"
 	attemptsvc "riddler/internal/service/attempt"
+	livesvc "riddler/internal/service/live"
 	quizsvc "riddler/internal/service/quiz"
+	testsvc "riddler/internal/service/test"
 	sessionsvc "riddler/internal/service/session"
 	"riddler/internal/worker"
 )
@@ -29,6 +34,8 @@ import (
 type App struct {
 	quizHandler    *quizhandler.Handler
 	attemptHandler *attempthandler.Handler
+	liveHandler    *livehandler.Handler
+	testHandler    *testhandler.Handler
 	attemptService *attemptsvc.Service
 
 	quizTemplateAttachedPublisher  *worker.QuizTemplateAttachedPublisher
@@ -55,6 +62,11 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	pgdb, err := db.NewDB(cfg.Postgres)
 	if err != nil {
 		return nil, err
+	}
+
+	rdb, err := infraredis.New(cfg.Redis)
+	if err != nil {
+		return nil, fmt.Errorf("redis: %w", err)
 	}
 
 	natsConn, err := natsinf.New(cfg.NATS)
@@ -89,9 +101,14 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	sessionService := sessionsvc.NewService(sessionRepo)
 	quizService := quizsvc.NewService(quizRepo, sessionService, txManager, taskRepo)
 	attemptService := attemptsvc.NewService(attemptRepo, sessionRepo, sessionRepo, quizRepo, quizRepo, txManager, taskRepo)
+	liveRepo := repository.NewLiveRepository(rdb)
+	liveService := livesvc.NewService(quizRepo, sessionRepo, attemptRepo, liveRepo, taskRepo, txManager)
+	testService := testsvc.NewService(quizRepo, sessionRepo, taskRepo, txManager)
 
 	quizHandler := quizhandler.NewHandler(quizService)
 	attemptHandler := attempthandler.NewHandler(attemptService)
+	liveHandler := livehandler.NewHandler(liveService)
+	testHandler := testhandler.NewHandler(testService)
 
 	natsPublisher := natsinf.NewPublisher(natsConn)
 	natsJSPublisher := natsinf.NewJetStreamPublisher(js)
@@ -101,6 +118,8 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	return &App{
 		quizHandler:    quizHandler,
 		attemptHandler: attemptHandler,
+		liveHandler:    liveHandler,
+		testHandler:    testHandler,
 		attemptService: attemptService,
 
 		quizTemplateAttachedPublisher: worker.NewQuizTemplateAttachedPublisher(taskRepo, natsPublisher),
@@ -172,13 +191,22 @@ func (a *App) Router() *gin.Engine {
 
 	sessions := api.Group("/sessions")
 	{
-		sessions.POST("/test", a.quizHandler.CreateTestCourseSession)
+		sessions.POST("/test", a.testHandler.CreateTestCourseSession)
 		sessions.POST("/test/inline", a.quizHandler.CreateTestCourseSessionInline)
-		sessions.POST("/live", a.quizHandler.CreateLiveCourseSession)
+		sessions.POST("/live/course", a.liveHandler.CreateLiveCourseSession)
+		sessions.POST("/live/library", a.liveHandler.CreateLiveLibrarySession)
+		sessions.POST("/:session_id/live/start", a.liveHandler.StartLiveSession)
 		sessions.DELETE("/:session_id", a.quizHandler.DeleteCourseSession)
 		sessions.POST("/:session_id/attempts", a.attemptHandler.CreateAttempt)
 		sessions.GET("/:session_id/attempts", a.attemptHandler.ListSessionAttempts)
 	}
+
+	noAuth := r.Group("/riddler/v1")
+	noAuth.GET("/sessions/live/:code", a.liveHandler.ResolveLiveCode)
+
+	optAuth := r.Group("/riddler/v1")
+	optAuth.Use(middleware.OptionalAuth(a.jwksClient))
+	optAuth.POST("/sessions/:session_id/live/join", a.liveHandler.JoinLiveSession)
 
 	api.GET("/users/me/statistic", a.attemptHandler.GetMeStatistic)
 

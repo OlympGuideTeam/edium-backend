@@ -50,6 +50,7 @@ type QuizTemplate struct {
 	Source           QuizSource
 	NeedEvaluation   bool
 	QuestionCount    int
+	MaxScore         int
 	CourseID         *uuid.UUID
 	LibrarySessionID *uuid.UUID
 	CreatedAt        time.Time

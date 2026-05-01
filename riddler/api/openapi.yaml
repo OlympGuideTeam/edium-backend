@@ -1326,22 +1326,16 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
 
-  /sessions/live:
+  /sessions/live/course:
     post:
-      tags: [Sessions]
+      tags: [Live]
       summary: Создать live-сессию (для курса)
       operationId: createLiveCourseSession
       description: |
-        Основной таймер — `question_time_limit_sec` (автопереход после N секунд на вопросе).
-        Если не передан — берётся из `quiz.default_settings`, иначе 30 секунд.
-        Shuffle и дедлайны не применимы — учитель управляет сессией вручную.
+        Создаёт live-сессию для квиза курса (`source=course`). Квиз должен принадлежать
+        вызывающему и иметь `need_evaluation=false`.
         Публикует событие `riddler.course_session.created` → Caesar создаёт элемент курса.
-
-        **Валидация шаблона квиза:**
-        - `need_evaluation` должен быть `false` — лайв не поддерживает ручную проверку
-        - в шаблоне не должно быть вопросов типа `with_free_answer` — они недоступны в лайве
-
-        Если хотя бы одно условие нарушено, возвращается `422 LIVE_TEMPLATE_INVALID`.
+        Лобби открывается отдельно через `POST /sessions/{id}/live/start`.
       requestBody:
         required: true
         content:
@@ -1385,12 +1379,10 @@ paths:
       summary: Создать live-сессию по библиотечному квизу (без курса)
       operationId: createLiveLibrarySession
       description: |
-        Создаёт live-сессию по опубликованному `quiz_template` из публичной библиотеки
-        (`source=library`, `is_public=true`). Сессия не привязана к курсу — к ней могут
-        подключаться неавторизованные пользователи по 6-значному коду (`is_anonymous_allowed=true`).
-
-        **Валидация шаблона:** те же правила, что у `/sessions/live`
-        (`need_evaluation=false`, отсутствие `with_free_answer`).
+        Создаёт live-сессию по опубликованному квизу (`source=library`, `is_public=true`).
+        Сессия не привязана к курсу. Анонимный вход разрешён (`is_anonymous_allowed=true`).
+        Квиз должен принадлежать вызывающему и иметь `need_evaluation=false`.
+        Лобби открывается через `POST /sessions/{id}/live/start`.
       requestBody:
         required: true
         content:
@@ -1427,14 +1419,11 @@ paths:
   /sessions/live/{code}:
     get:
       tags: [Live]
-      summary: Резолвить код подключения в session_id
+      summary: Резолвить код подключения
       operationId: resolveLiveCode
       description: |
-        Доступно без авторизации (для library-сессий с `is_anonymous_allowed=true`).
-        Код активен только пока сессия в фазе `lobby`. После старта квиза возвращает `410 CODE_EXPIRED`.
-
-        Возвращает мета-информацию о сессии, чтобы клиент мог показать заголовок,
-        число вопросов и форму ввода имени (для library) перед фактическим join.
+        Без авторизации. Ученик вводит 6-значный код → получает `session_id` и базовую инфу
+        для превью-экрана перед join. Код активен только в фазе `lobby`.
       security: []
       parameters:
         - name: code
@@ -1450,26 +1439,38 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LiveSessionMeta"
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+                  quiz_title:
+                    type: string
+                  question_count:
+                    type: integer
+                  is_anonymous_allowed:
+                    type: boolean
         "404": {$ref: "#/components/responses/NotFound"}
         "410":
-          description: Код истёк — лобби закрыто, лайв уже начался или завершён
+          description: Код истёк
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /sessions/{session_id}/live:
-    get:
+  /sessions/{session_id}/live/start:
+    post:
       tags: [Live]
-      summary: Мета live-сессии
-      operationId: getLiveSession
+      summary: Открыть лобби и получить ws_token (учитель)
+      operationId: startLiveSession
       description: |
-        Текущее состояние сессии. Учитель (автор квиза) видит `join_code`;
-        ученикам поле `join_code` не возвращается.
-        Использовать для:
-        - учителя — чтобы показать `join_code` на экране лобби
-        - ученика — после `POST /live/join` для отрисовки экрана лобби и проверки фазы
+        Инициализирует лобби: генерирует `join_code`, записывает состояние в Redis,
+        возвращает `ws_token` для подключения учителя к WebSocket.
+
+        Для `source=course` — только автор квиза.
+        Для `source=library` — без ограничений (квиз публичный).
+
+        `ws_token` одноразовый, TTL 1 минута.
       parameters:
         - in: path
           name: session_id
@@ -1477,11 +1478,17 @@ paths:
           schema: {type: string, format: uuid}
       responses:
         "200":
-          description: Мета сессии
+          description: Лобби открыто
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LiveSessionMeta"
+                type: object
+                properties:
+                  ws_token:
+                    type: string
+                  join_code:
+                    type: string
+                    example: "471829"
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
@@ -1489,22 +1496,16 @@ paths:
   /sessions/{session_id}/live/join:
     post:
       tags: [Live]
-      summary: Присоединиться к live-сессии (создать attempt)
+      summary: Присоединиться к live-сессии (ученик)
       operationId: joinLiveSession
       description: |
-        Создаёт `attempt` для участника и возвращает `attempt_id`
-        и одноразовый `ws_token` для подключения к WebSocket.
+        Создаёт attempt и возвращает ws_token для подключения к WebSocket.
+        Только в фазе `lobby`.
 
-        **Доступ:**
-        - `source=course` — обязательно JWT; `user_id` берётся из токена,
-          участником может стать только ученик класса. `name` игнорируется.
-        - `source=library` — JWT опционально. Если без JWT — `name` обязателен;
-          attempt создаётся с `user_id=null` и сохранённым `name`.
+        - `source=course` — JWT обязателен. Идемпотентно по `(session_id, user_id)`.
+        - `source=library` — JWT опционально. `name` обязателен всегда (учитель видит имена участников).
 
-        **Когда вызывать:** только в фазе `lobby`. В других фазах — `409 LIVE_NOT_IN_LOBBY`.
-
-        Идемпотентно по `(session_id, user_id)` для course и по `(session_id, ws-сессия)`
-        для аноним-library — повторный вызов возвращает существующий attempt.
+        `ws_token` одноразовый, TTL 1 минута.
       security:
         - bearerAuth: []
         - {}
@@ -1523,7 +1524,7 @@ paths:
                 name:
                   type: string
                   nullable: true
-                  description: Обязательно для library без JWT (минимум 1 символ, максимум 40)
+                  description: Обязательно для source=library (всегда, даже с JWT)
                   example: "Вася"
       responses:
         "200":
@@ -1536,62 +1537,14 @@ paths:
                   attempt_id:
                     type: string
                     format: uuid
-                    description: Идентификатор участника в сессии. Используется во всех WS-событиях.
                   ws_token:
                     type: string
-                    description: |
-                      Одноразовый токен (TTL 5 минут). Передаётся как `?token=` при WS-handshake.
-                      Сгорает при первом использовании — повторное подключение требует нового вызова `/live/join`.
-                      Не путать с access-JWT.
         "400": {$ref: "#/components/responses/BadRequest"}
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403":
-          description: Не ученик класса (для course-live)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404": {$ref: "#/components/responses/NotFound"}
-        "409":
-          description: Сессия не в фазе `lobby`
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "422": {$ref: "#/components/responses/UnprocessableEntity"}
-
-  /sessions/{session_id}/live/roster:
-    get:
-      tags: [Live]
-      summary: Хэш-мапа учеников класса (учитель)
-      operationId: getLiveRoster
-      description: |
-        Только для учителя course-live. Возвращает всех учеников класса,
-        к которому привязан модуль сессии — `user_id → name`.
-
-        Клиент учителя загружает мапу один раз при заходе в сессию, рендерит весь список
-        как «не подключился», и по WS-событию `lobby.participant_joined` подсвечивает
-        присоединившихся по `user_id`.
-
-        Для `source=library` возвращает `409 LIVE_ROSTER_UNAVAILABLE` — заранее списка нет,
-        имена несутся в WS-событиях.
-      parameters:
-        - in: path
-          name: session_id
-          required: true
-          schema: {type: string, format: uuid}
-      responses:
-        "200":
-          description: Список учеников класса
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LiveRoster"
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "409":
-          description: Roster недоступен (library-сессия)
+          description: Сессия не в фазе lobby
           content:
             application/json:
               schema:
@@ -1672,23 +1625,15 @@ paths:
       summary: WebSocket-стрим лайва (Upgrade)
       operationId: liveWebSocket
       description: |
-        Endpoint для WebSocket-handshake. Возвращает `101 Switching Protocols`.
+        WebSocket-handshake. Возвращает `101 Switching Protocols`.
 
-        **Аутентификация:**
-        - Учитель — по access-JWT в `Authorization` заголовке handshake-запроса
-          или `?token=<jwt>` (если клиент не умеет в заголовки на ws).
-        - Ученик — по `ws_token`, полученному от `/live/join`, в `?token=<ws_token>`.
+        **Аутентификация — одинаковая для всех:**
+        `?token=<ws_token>` — одноразовый токен из `/live/start` (учитель) или `/live/join` (ученик).
+        Роль (`teacher`/`student`) закодирована в самом токене в Redis.
+        Токен сгорает при первом handshake.
 
-        Сервер определяет роль (`teacher` / `student`) по токену:
-        учитель = автор `quiz_template`, иначе — ученик-владелец `attempt`.
-
-        `ws_token` одноразовый — сгорает при первом handshake. `attempt_id` ученика
-        извлекается из `ws_token` при подключении. На сессию допускается ровно одно
-        активное WS-соединение на `attempt_id`; новое соединение разрешается только после
-        истечения grace period 2 секунды предыдущего коннекта.
-        Учитель допускается ровно в одном соединении — новое вытесняет старое (close `4009`).
-
-        **Описание сообщений** см. в `x-websocket-events` в корне документа.
+        На сессию — одно активное WS-соединение на участника. Grace period 2 секунды при разрыве.
+        Новое соединение учителя вытесняет старое (close `4009`).
       security: []
       parameters:
         - in: path
@@ -2157,20 +2102,12 @@ x-websocket-events:
             - drag: `{"order": ["B", "A", "C"]}`
             - connection: `{"pairs": {"A": "1"}}`
 
-    teacher.start_lobby:
-      direction: client→server (teacher)
-      description: |
-        Перевод сессии `pending → lobby`. Сервер генерит `join_code` (для library)
-        и начинает принимать `/live/join`. Идемпотентно: повторный вызов в `lobby` — no-op.
-      payload:
-        client_msg_id: {type: string, nullable: true}
-
     teacher.start_quiz:
       direction: client→server (teacher)
       description: |
-        Перевод `lobby → question_active` с показом первого вопроса.
-        Деактивирует `join_code`. После старта новые ученики не подключаются.
-        Допустим только в `lobby`.
+        Старт квиза: `lobby → question_active`, показ первого вопроса.
+        Деактивирует `join_code` — новые участники больше не могут войти.
+        Допустим только в фазе `lobby`.
       payload:
         client_msg_id: {type: string, nullable: true}
 

@@ -6,6 +6,51 @@ import (
 	"github.com/google/uuid"
 )
 
+type LiveSource string
+
+const (
+	LiveSourceCourse  LiveSource = "course"
+	LiveSourceLibrary LiveSource = "library"
+)
+
+type LivePhase string
+
+const (
+	LivePhasePending        LivePhase = "pending"
+	LivePhaseLobby          LivePhase = "lobby"
+	LivePhaseQuestionActive LivePhase = "question_active"
+	LivePhaseQuestionLocked LivePhase = "question_locked"
+	LivePhaseCompleted      LivePhase = "completed"
+)
+
+type LiveSessionMeta struct {
+	SessionID            uuid.UUID
+	QuizTemplateID       uuid.UUID
+	AuthorID             uuid.UUID
+	QuizTitle            string
+	QuestionCount        int
+	Source               LiveSource
+	Phase                LivePhase
+	JoinCode             *string
+	QuestionTimeLimitSec int
+	IsAnonymousAllowed   bool
+	ParticipantsCount    int
+}
+
+type LiveParticipant struct {
+	AttemptID uuid.UUID
+	UserID    *uuid.UUID
+	Name      *string
+	Status    string
+}
+
+type LiveAnswer struct {
+	AnswerData  map[string]any
+	IsCorrect   bool
+	Score       float64
+	TimeTakenMs int64
+}
+
 type SessionMode string
 
 const (
@@ -51,6 +96,7 @@ type QuizSession struct {
 	ID                   uuid.UUID
 	QuizTemplateID       uuid.UUID
 	Mode                 SessionMode
+	Source               LiveSource
 	MaxScore             int
 	TotalTimeLimitSec    *int
 	QuestionTimeLimitSec *int
@@ -66,6 +112,7 @@ type QuizSession struct {
 type CreateSessionParams struct {
 	QuizTemplateID       uuid.UUID
 	Mode                 SessionMode
+	Source               LiveSource
 	MaxScore             int
 	TotalTimeLimitSec    *int
 	QuestionTimeLimitSec *int

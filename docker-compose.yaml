@@ -328,6 +328,7 @@ services:
     restart: on-failure
     environment:
       POSTGRES_DSN: postgres://${RIDDLER_PG_USER}:${RIDDLER_PG_PWD}@riddler-db:5432/${RIDDLER_PG_DB}?sslmode=disable
+      REDIS_URL: redis://:${RIDDLER_REDIS_PWD}@riddler-redis:6379/0
       NATS_URL: nats://riddler:${NATS_PASSWORD_RIDDLER}@nats:4222
       DOORMAN_JWKS_URL: ${DOORMAN_JWKS_URL}
       OTEL_ENDPOINT: jaeger:4317
@@ -335,6 +336,8 @@ services:
       - "8085:80"
     depends_on:
       riddler-db:
+        condition: service_healthy
+      riddler-redis:
         condition: service_healthy
       riddler-flyway:
         condition: service_completed_successfully
@@ -344,6 +347,24 @@ services:
         condition: service_started
       jaeger:
         condition: service_started
+
+  riddler-redis:
+    image: redis:8
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${RIDDLER_REDIS_PWD}
+    command: >
+      sh -c 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes'
+    ports:
+      - "6384:6379"
+    volumes:
+      - riddler_redis_data:/data
+    healthcheck:
+      test: >
+        sh -c 'redis-cli -a "$$REDIS_PASSWORD" ping | grep -q PONG'
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   riddler-db:
     image: postgres:17
@@ -476,6 +497,7 @@ volumes:
   charon_redis_data:
   caesar_db_data:
   riddler_db_data:
+  riddler_redis_data:
   minio_data:
   louvre_db_data:
   prometheus_data:

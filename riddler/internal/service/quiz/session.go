@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -17,112 +16,7 @@ const (
 	defaultTestTotalTimeLimitPerQuestion = 60
 )
 
-type courseSessionCreatedPayload struct {
-	SessionID            uuid.UUID  `json:"session_id"`
-	ModuleID             uuid.UUID  `json:"module_id"`
-	QuizTemplateID       *uuid.UUID `json:"quiz_template_id,omitempty"`
-	CourseID             *uuid.UUID `json:"course_id,omitempty"`
-	Title                string     `json:"title"`
-	Mode                 string     `json:"mode"`
-	TotalTimeLimitSec    *int       `json:"total_time_limit_sec,omitempty"`
-	QuestionTimeLimitSec *int       `json:"question_time_limit_sec,omitempty"`
-	ShuffleQuestions     *bool      `json:"shuffle_questions,omitempty"`
-	StartedAt            *time.Time `json:"started_at,omitempty"`
-	FinishedAt           *time.Time `json:"finished_at,omitempty"`
-}
 
-func (s *Service) CreateTestCourseSession(ctx context.Context, quizTemplateID, moduleID uuid.UUID, p domain.CreateTestCourseSessionParams) (uuid.UUID, error) {
-	quiz, err := s.quizzes.GetByID(ctx, quizTemplateID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("get quiz: %w", err)
-	}
-	if quiz == nil {
-		return uuid.Nil, fmt.Errorf("quiz not found")
-	}
-
-	maxScore, err := s.quizzes.SumMaxScore(ctx, quizTemplateID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("sum max score: %w", err)
-	}
-
-	params := s.buildTestCourseSessionParams(quizTemplateID, quiz, p)
-	params.MaxScore = maxScore
-
-	var sessionID uuid.UUID
-	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
-		var innerErr error
-		sessionID, innerErr = s.sessions.Create(ctx, params)
-		if innerErr != nil {
-			return fmt.Errorf("create session: %w", innerErr)
-		}
-		qtID := quizTemplateID
-		eventPayload, _ := json.Marshal(courseSessionCreatedPayload{
-			SessionID:         sessionID,
-			ModuleID:          moduleID,
-			QuizTemplateID:    &qtID,
-			CourseID:          quiz.CourseID,
-			Title:             quiz.Title,
-			Mode:              string(params.Mode),
-			TotalTimeLimitSec: params.TotalTimeLimitSec,
-			ShuffleQuestions:  params.ShuffleQuestions,
-			StartedAt:         params.StartedAt,
-			FinishedAt:        params.FinishedAt,
-		})
-		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeCourseSessionCreatedPublisher, eventPayload); innerErr != nil {
-			return fmt.Errorf("schedule course_session.created: %w", innerErr)
-		}
-		return nil
-	})
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return sessionID, nil
-}
-
-func (s *Service) CreateLiveCourseSession(ctx context.Context, quizTemplateID, moduleID uuid.UUID, p domain.CreateLiveCourseSessionParams) (uuid.UUID, error) {
-	quiz, err := s.quizzes.GetByID(ctx, quizTemplateID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("get quiz: %w", err)
-	}
-	if quiz == nil {
-		return uuid.Nil, fmt.Errorf("quiz not found")
-	}
-
-	maxScore, err := s.quizzes.SumMaxScore(ctx, quizTemplateID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("sum max score: %w", err)
-	}
-
-	params := s.buildLiveCourseSessionParams(quizTemplateID, quiz, p)
-	params.MaxScore = maxScore
-
-	var sessionID uuid.UUID
-	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
-		var innerErr error
-		sessionID, innerErr = s.sessions.Create(ctx, params)
-		if innerErr != nil {
-			return fmt.Errorf("create session: %w", innerErr)
-		}
-		qtID := quizTemplateID
-		eventPayload, _ := json.Marshal(courseSessionCreatedPayload{
-			SessionID:            sessionID,
-			ModuleID:             moduleID,
-			QuizTemplateID:       &qtID,
-			CourseID:             quiz.CourseID,
-			Title:                quiz.Title,
-			Mode:                 string(params.Mode),
-			QuestionTimeLimitSec: params.QuestionTimeLimitSec,
-		})
-		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeCourseSessionCreatedPublisher, eventPayload); innerErr != nil {
-			return fmt.Errorf("schedule course_session.created: %w", innerErr)
-		}
-		return nil
-	})
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return sessionID, nil
-}
 
 func (s *Service) CreateTestCourseSessionInline(ctx context.Context, authorID uuid.UUID, p domain.CreateTestCourseSessionInlineParams) (uuid.UUID, uuid.UUID, error) {
 	var quizTemplateID, sessionID uuid.UUID
@@ -166,6 +60,7 @@ func (s *Service) CreateTestCourseSessionInline(ctx context.Context, authorID uu
 		sessionParams := domain.CreateSessionParams{
 			QuizTemplateID:    quizTemplateID,
 			Mode:              domain.SessionModeTest,
+			Source:            domain.LiveSourceCourse,
 			MaxScore:          inlineMaxScore,
 			TotalTimeLimitSec: totalLimit,
 			ShuffleQuestions:  p.ShuffleQuestions,
@@ -190,7 +85,7 @@ func (s *Service) CreateTestCourseSessionInline(ctx context.Context, authorID uu
 
 		qtID := quizTemplateID
 		cID := p.CourseID
-		sessionCreatedPayload, _ := json.Marshal(courseSessionCreatedPayload{
+		sessionCreatedPayload, _ := json.Marshal(domain.CourseSessionCreatedPayload{
 			SessionID:         sessionID,
 			ModuleID:          p.ModuleID,
 			QuizTemplateID:    &qtID,
@@ -273,12 +168,8 @@ func (s *Service) DeleteCourseSession(ctx context.Context, sessionID, authorID u
 }
 
 func (s *Service) createLibrarySession(ctx context.Context, quiz *domain.QuizTemplate) error {
-	maxScore, err := s.quizzes.SumMaxScore(ctx, quiz.ID)
-	if err != nil {
-		return fmt.Errorf("sum max score: %w", err)
-	}
 	params := s.buildLibrarySessionParams(quiz)
-	params.MaxScore = maxScore
+	params.MaxScore = quiz.MaxScore
 	sessionID, err := s.sessions.Create(ctx, params)
 	if err != nil {
 		return fmt.Errorf("create library session: %w", err)
@@ -307,29 +198,12 @@ func (s *Service) buildTestCourseSessionParams(quizTemplateID uuid.UUID, quiz *d
 	return domain.CreateSessionParams{
 		QuizTemplateID:    quizTemplateID,
 		Mode:              domain.SessionModeTest,
+		Source:            domain.LiveSourceCourse,
 		TotalTimeLimitSec: totalLimit,
 		ShuffleQuestions:  shuffle,
 		Status:            domain.SessionStatusActive,
 		StartedAt:         p.StartedAt,
 		FinishedAt:        p.FinishedAt,
-	}
-}
-
-func (s *Service) buildLiveCourseSessionParams(quizTemplateID uuid.UUID, quiz *domain.QuizTemplate, p domain.CreateLiveCourseSessionParams) domain.CreateSessionParams {
-	questionLimit := p.QuestionTimeLimitSec
-	if questionLimit == nil {
-		questionLimit = quiz.DefaultSettings.QuestionTimeLimitSec
-	}
-	if questionLimit == nil {
-		v := defaultLiveQuestionTimeLimitSec
-		questionLimit = &v
-	}
-
-	return domain.CreateSessionParams{
-		QuizTemplateID:       quizTemplateID,
-		Mode:                 domain.SessionModeLive,
-		QuestionTimeLimitSec: questionLimit,
-		Status:               domain.SessionStatusNotStarted,
 	}
 }
 
@@ -343,6 +217,7 @@ func (s *Service) buildLibrarySessionParams(quiz *domain.QuizTemplate) domain.Cr
 	return domain.CreateSessionParams{
 		QuizTemplateID:    quiz.ID,
 		Mode:              domain.SessionModeTest,
+		Source:            domain.LiveSourceLibrary,
 		TotalTimeLimitSec: totalLimit,
 		ShuffleQuestions:  quiz.DefaultSettings.ShuffleQuestions,
 		Status:            domain.SessionStatusActive,

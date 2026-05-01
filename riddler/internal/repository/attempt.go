@@ -57,8 +57,10 @@ func (r *PgAttemptRepository) GetByID(ctx context.Context, id uuid.UUID) (*domai
 	if err != nil {
 		return nil, fmt.Errorf("get attempt: %w", err)
 	}
-	if err := json.Unmarshal(orderJSON, &a.QuestionOrder); err != nil {
-		return nil, fmt.Errorf("unmarshal question_order: %w", err)
+	if len(orderJSON) > 0 {
+		if err := json.Unmarshal(orderJSON, &a.QuestionOrder); err != nil {
+			return nil, fmt.Errorf("unmarshal question_order: %w", err)
+		}
 	}
 	return &a, nil
 }
@@ -163,6 +165,36 @@ func (r *PgAttemptRepository) GetUserStatistic(ctx context.Context, userID uuid.
 		return nil, fmt.Errorf("get user statistic: %w", err)
 	}
 	return &st, nil
+}
+
+func (r *PgAttemptRepository) CreateLiveAttempt(ctx context.Context, sessionID uuid.UUID, userID *uuid.UUID, name *string) (uuid.UUID, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	var id uuid.UUID
+	err := exec.QueryRowContext(ctx,
+		`INSERT INTO attempt (session_id, user_id, name) VALUES ($1, $2, $3) RETURNING id`,
+		sessionID, userID, name,
+	).Scan(&id)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("insert live attempt: %w", err)
+	}
+	return id, nil
+}
+
+func (r *PgAttemptRepository) GetBySessionAndUser(ctx context.Context, sessionID, userID uuid.UUID) (*domain.Attempt, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	var a domain.Attempt
+	err := exec.QueryRowContext(ctx,
+		`SELECT id, session_id, user_id, status, score, grade, started_at, finished_at
+		 FROM attempt WHERE session_id = $1 AND user_id = $2 LIMIT 1`,
+		sessionID, userID,
+	).Scan(&a.ID, &a.SessionID, &a.UserID, &a.Status, &a.Score, &a.Grade, &a.StartedAt, &a.FinishedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get attempt by session and user: %w", err)
+	}
+	return &a, nil
 }
 
 func (r *PgAttemptRepository) FindExpiredInProgress(ctx context.Context) ([]domain.Attempt, error) {
