@@ -61,6 +61,112 @@ func (h *Handler) JoinLiveSession(c *gin.Context) {
 	})
 }
 
+func (h *Handler) GetLiveResultsStudent(c *gin.Context) {
+	sessionID, err := uuid.Parse(c.Param("session_id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+	attemptID, err := uuid.Parse(c.Query("attempt_id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	res, err := h.svc.GetLiveResultsStudent(c.Request.Context(), sessionID, attemptID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	top := make([]dto.LiveLeaderboardRow, len(res.Top))
+	for i, p := range res.Top {
+		row := dto.LiveLeaderboardRow{
+			Position:  p.Position,
+			AttemptID: p.AttemptID.String(),
+			Score:     p.Score,
+			IsMe:      p.AttemptID == attemptID,
+		}
+		if p.UserID != nil {
+			s := p.UserID.String()
+			row.UserID = &s
+		}
+		row.Name = p.Name
+		top[i] = row
+	}
+
+	c.JSON(http.StatusOK, dto.LiveResultsStudentResponse{
+		MyPosition:        res.MyPosition,
+		TotalParticipants: res.TotalParticipants,
+		MyScore:           res.MyScore,
+		MaxScore:          res.MaxScore,
+		CorrectCount:      res.CorrectCount,
+		QuestionsCount:    res.QuestionsCount,
+		Top:               top,
+	})
+}
+
+func (h *Handler) GetLiveResultsTeacher(c *gin.Context) {
+	authorID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+	sessionID, err := uuid.Parse(c.Param("session_id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	res, err := h.svc.GetLiveResultsTeacher(c.Request.Context(), sessionID, authorID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	questions := make([]dto.LiveQuestionResult, len(res.Questions))
+	for i, q := range res.Questions {
+		qr := dto.LiveQuestionResult{
+			QuestionID:    q.QuestionID.String(),
+			OrderIndex:    q.OrderIndex,
+			Text:          q.Text,
+			Type:          q.Type,
+			CorrectRate:   q.CorrectRate,
+			AnsweredCount: q.AnsweredCount,
+			CorrectCount:  q.CorrectCount,
+			AvgTimesMs:    q.AvgTimesMs,
+		}
+		for _, d := range q.Distribution {
+			qr.Distribution = append(qr.Distribution, dto.LiveOptionStat{
+				OptionID:  d.OptionID.String(),
+				Count:     d.Count,
+				IsCorrect: d.IsCorrect,
+			})
+		}
+		questions[i] = qr
+	}
+
+	leaderboard := make([]dto.LiveResultsTeacherAttempt, len(res.Leaderboard))
+	for i, p := range res.Leaderboard {
+		row := dto.LiveResultsTeacherAttempt{
+			Position:     p.Position,
+			AttemptID:    p.AttemptID.String(),
+			Score:        p.Score,
+			CorrectCount: p.CorrectCount,
+		}
+		if p.UserID != nil {
+			s := p.UserID.String()
+			row.UserID = &s
+		}
+		row.Name = p.Name
+		leaderboard[i] = row
+	}
+
+	c.JSON(http.StatusOK, dto.LiveResultsTeacherResponse{
+		Questions:   questions,
+		Leaderboard: leaderboard,
+	})
+}
+
 func (h *Handler) ResolveLiveCode(c *gin.Context) {
 	code := c.Param("code")
 

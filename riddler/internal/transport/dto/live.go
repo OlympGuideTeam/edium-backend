@@ -40,6 +40,57 @@ type ResolveLiveCodeResponse struct {
 	IsAnonymousAllowed bool   `json:"is_anonymous_allowed"`
 }
 
+type LiveLeaderboardRow struct {
+	Position  int     `json:"position"`
+	AttemptID string  `json:"attempt_id"`
+	UserID    *string `json:"user_id,omitempty"`
+	Name      *string `json:"name,omitempty"`
+	Score     float64 `json:"score"`
+	IsMe      bool    `json:"is_me,omitempty"`
+}
+
+type LiveResultsStudentResponse struct {
+	MyPosition        int                  `json:"my_position"`
+	TotalParticipants int                  `json:"total_participants"`
+	MyScore           float64              `json:"my_score"`
+	MaxScore          float64              `json:"max_score"`
+	CorrectCount      int                  `json:"correct_count"`
+	QuestionsCount    int                  `json:"questions_count"`
+	Top               []LiveLeaderboardRow `json:"top"`
+}
+
+type LiveOptionStat struct {
+	OptionID  string `json:"option_id"`
+	Count     int    `json:"count"`
+	IsCorrect bool   `json:"is_correct"`
+}
+
+type LiveQuestionResult struct {
+	QuestionID    string           `json:"question_id"`
+	OrderIndex    int              `json:"order_index"`
+	Text          string           `json:"text"`
+	Type          string           `json:"type"`
+	CorrectRate   float64          `json:"correct_rate"`
+	AnsweredCount int              `json:"answered_count"`
+	CorrectCount  int              `json:"correct_count"`
+	AvgTimesMs    *int             `json:"avg_time_ms,omitempty"`
+	Distribution  []LiveOptionStat `json:"distribution,omitempty"`
+}
+
+type LiveResultsTeacherAttempt struct {
+	Position     int                  `json:"position"`
+	AttemptID    string               `json:"attempt_id"`
+	UserID       *string              `json:"user_id,omitempty"`
+	Name         *string              `json:"name,omitempty"`
+	Score        float64              `json:"score"`
+	CorrectCount int                  `json:"correct_count"`
+}
+
+type LiveResultsTeacherResponse struct {
+	Questions   []LiveQuestionResult        `json:"questions"`
+	Leaderboard []LiveResultsTeacherAttempt `json:"leaderboard"`
+}
+
 type JoinLiveSessionRequest struct {
 	Name *string `json:"name"`
 }

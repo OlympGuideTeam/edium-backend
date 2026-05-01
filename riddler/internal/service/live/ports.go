@@ -18,11 +18,14 @@ type quizRepository interface {
 type sessionRepository interface {
 	Create(ctx context.Context, p domain.CreateSessionParams) (uuid.UUID, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizSession, error)
+	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.SessionStatus) error
 }
 
 type attemptRepository interface {
 	CreateLiveAttempt(ctx context.Context, sessionID uuid.UUID, userID *uuid.UUID, name *string) (uuid.UUID, error)
 	GetBySessionAndUser(ctx context.Context, sessionID, userID uuid.UUID) (*domain.Attempt, error)
+	GetLiveLeaderboard(ctx context.Context, sessionID uuid.UUID) ([]domain.LiveParticipantResult, error)
+	GetLiveSessionAnswers(ctx context.Context, sessionID uuid.UUID) ([]repository.LiveSessionAnswer, error)
 }
 
 type liveRepository interface {
