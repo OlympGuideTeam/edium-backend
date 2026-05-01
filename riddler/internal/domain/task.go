@@ -33,6 +33,20 @@ const (
 	TaskTypeGradingCompleted          TaskType = "grading_completed"
 )
 
+type CourseSessionCreatedPayload struct {
+	SessionID            uuid.UUID  `json:"session_id"`
+	ModuleID             uuid.UUID  `json:"module_id"`
+	QuizTemplateID       *uuid.UUID `json:"quiz_template_id,omitempty"`
+	CourseID             *uuid.UUID `json:"course_id,omitempty"`
+	Title                string     `json:"title"`
+	Mode                 string     `json:"mode"`
+	TotalTimeLimitSec    *int       `json:"total_time_limit_sec,omitempty"`
+	QuestionTimeLimitSec *int       `json:"question_time_limit_sec,omitempty"`
+	ShuffleQuestions     *bool      `json:"shuffle_questions,omitempty"`
+	StartedAt            *time.Time `json:"started_at,omitempty"`
+	FinishedAt           *time.Time `json:"finished_at,omitempty"`
+}
+
 type Task struct {
 	ID       uuid.UUID
 	Type     TaskType

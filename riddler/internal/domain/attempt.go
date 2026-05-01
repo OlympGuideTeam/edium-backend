@@ -13,6 +13,7 @@ const (
 	AttemptStatusGrading    AttemptStatus = "grading"
 	AttemptStatusGraded     AttemptStatus = "graded"
 	AttemptStatusCompleted  AttemptStatus = "completed"
+	AttemptStatusKicked     AttemptStatus = "kicked"
 )
 
 type FinalSource string
