@@ -256,58 +256,6 @@ func (h *Handler) CopyQuiz(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.CreateQuizResponse{ID: newID.String()})
 }
 
-func (h *Handler) CreateTestCourseSession(c *gin.Context) {
-	_, ok := userIDFromCtx(c)
-	if !ok {
-		return
-	}
-
-	var req dto.CreateTestSessionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		httpx.WriteError(c, apperr.ErrBadRequest)
-		return
-	}
-
-	quizTemplateID, err := uuid.Parse(req.QuizTemplateID)
-	if err != nil {
-		httpx.WriteError(c, apperr.ErrBadID)
-		return
-	}
-	moduleID, err := uuid.Parse(req.ModuleID)
-	if err != nil {
-		httpx.WriteError(c, apperr.ErrBadID)
-		return
-	}
-
-	params := domain.CreateTestCourseSessionParams{
-		TotalTimeLimitSec: req.TotalTimeLimitSec,
-		ShuffleQuestions:  req.ShuffleQuestions,
-	}
-	if req.StartedAt != nil {
-		t, err := time.Parse(time.RFC3339, *req.StartedAt)
-		if err != nil {
-			httpx.WriteError(c, apperr.ErrBadRequest)
-			return
-		}
-		params.StartedAt = &t
-	}
-	if req.FinishedAt != nil {
-		t, err := time.Parse(time.RFC3339, *req.FinishedAt)
-		if err != nil {
-			httpx.WriteError(c, apperr.ErrBadRequest)
-			return
-		}
-		params.FinishedAt = &t
-	}
-
-	sessionID, err := h.service.CreateTestCourseSession(c.Request.Context(), quizTemplateID, moduleID, params)
-	if err != nil {
-		httpx.WriteError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, dto.CreateSessionResponse{SessionID: sessionID.String()})
-}
 
 func (h *Handler) DeleteCourseSession(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
@@ -410,39 +358,6 @@ func (h *Handler) CreateTestCourseSessionInline(c *gin.Context) {
 	})
 }
 
-func (h *Handler) CreateLiveCourseSession(c *gin.Context) {
-	_, ok := userIDFromCtx(c)
-	if !ok {
-		return
-	}
-
-	var req dto.CreateLiveSessionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		httpx.WriteError(c, apperr.ErrBadRequest)
-		return
-	}
-
-	quizTemplateID, err := uuid.Parse(req.QuizTemplateID)
-	if err != nil {
-		httpx.WriteError(c, apperr.ErrBadID)
-		return
-	}
-	moduleID, err := uuid.Parse(req.ModuleID)
-	if err != nil {
-		httpx.WriteError(c, apperr.ErrBadID)
-		return
-	}
-
-	sessionID, err := h.service.CreateLiveCourseSession(c.Request.Context(), quizTemplateID, moduleID, domain.CreateLiveCourseSessionParams{
-		QuestionTimeLimitSec: req.QuestionTimeLimitSec,
-	})
-	if err != nil {
-		httpx.WriteError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, dto.CreateSessionResponse{SessionID: sessionID.String()})
-}
 
 func uuidPtrToString(id *uuid.UUID) *string {
 	if id == nil {

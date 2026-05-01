@@ -8,6 +8,7 @@ import (
 type Config struct {
 	App      AppConfig
 	Postgres PostgresConfig
+	Redis    RedisConfig
 	NATS     NATSConfig
 	OTel     OTelConfig
 	Doorman  DoormanConfig
@@ -28,6 +29,10 @@ type NATSConfig struct {
 type OTelConfig struct {
 	Endpoint    string `env:"OTEL_ENDPOINT" envDefault:"jaeger:4317"`
 	ServiceName string `env:"OTEL_SERVICE_NAME" envDefault:"riddler"`
+}
+
+type RedisConfig struct {
+	URL string `env:"REDIS_URL,required"`
 }
 
 type DoormanConfig struct {

@@ -25,11 +25,11 @@ func (r *PgSessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*domai
 
 	var s domain.QuizSession
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, quiz_template_id, mode, status, max_score, total_time_limit_sec, question_time_limit_sec,
+		`SELECT id, quiz_template_id, mode, source, status, max_score, total_time_limit_sec, question_time_limit_sec,
 		        shuffle_questions, started_at, finished_at
 		 FROM quiz_session WHERE id = $1`,
 		id,
-	).Scan(&s.ID, &s.QuizTemplateID, &s.Mode, &s.Status, &s.MaxScore,
+	).Scan(&s.ID, &s.QuizTemplateID, &s.Mode, &s.Source, &s.Status, &s.MaxScore,
 		&s.TotalTimeLimitSec, &s.QuestionTimeLimitSec, &s.ShuffleQuestions,
 		&s.StartedAt, &s.FinishedAt)
 	if err == sql.ErrNoRows {
@@ -56,12 +56,13 @@ func (r *PgSessionRepository) Create(ctx context.Context, p domain.CreateSession
 	var id uuid.UUID
 	err := exec.QueryRowContext(ctx,
 		`INSERT INTO quiz_session
-		 (quiz_template_id, mode, max_score, total_time_limit_sec, question_time_limit_sec,
+		 (quiz_template_id, mode, source, max_score, total_time_limit_sec, question_time_limit_sec,
 		  shuffle_questions, status, settings, started_at, finished_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, now()), $10)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, now()), $11)
 		 RETURNING id`,
 		p.QuizTemplateID,
 		p.Mode,
+		p.Source,
 		p.MaxScore,
 		p.TotalTimeLimitSec,
 		p.QuestionTimeLimitSec,

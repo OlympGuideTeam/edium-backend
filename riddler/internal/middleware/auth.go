@@ -24,6 +24,18 @@ func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	return id, ok
 }
 
+// OptionalAuth пытается извлечь user_id из JWT. Если токена нет или он невалиден — продолжает без ошибки.
+func OptionalAuth(keys *jwks.Client) gin.HandlerFunc {
+	strict := Auth(keys)
+	return func(c *gin.Context) {
+		if c.GetHeader("Authorization") != "" {
+			strict(c)
+			return
+		}
+		c.Next()
+	}
+}
+
 // Auth проверяет JWT из заголовка Authorization и прокидывает user_id в контекст.
 func Auth(keys *jwks.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
