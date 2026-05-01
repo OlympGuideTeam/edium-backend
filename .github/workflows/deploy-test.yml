@@ -532,11 +532,11 @@ jobs:
             mkdir -p /opt/edium/prometheus
             cp /tmp/edium-deploy/infra/prometheus/alerts.yml /opt/edium/prometheus/alerts.yml
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar /opt/edium/migrations/riddler
-            cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
-            cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
-            cp -r /tmp/edium-deploy/charon/migrations/* /opt/edium/migrations/charon/
-            cp -r /tmp/edium-deploy/caesar/migrations/* /opt/edium/migrations/caesar/
-            cp -r /tmp/edium-deploy/riddler/migrations/* /opt/edium/migrations/riddler/
+            # Полная синхронизация: простой cp .../* не удаляет на сервере переименованные/удалённые миграции
+            for svc in doorman herald charon caesar riddler; do
+              find "/opt/edium/migrations/$svc" -mindepth 1 -delete
+              cp -r "/tmp/edium-deploy/$svc/migrations/." "/opt/edium/migrations/$svc/"
+            done
             mkdir -p /opt/edium/nats
             cp /tmp/edium-deploy/infra/compose/prod/nats/nats-server.conf /opt/edium/nats/nats-server.conf
 
@@ -702,11 +702,11 @@ jobs:
             mkdir -p /opt/edium/prometheus
             cp /tmp/edium-deploy/infra/prometheus/alerts.yml /opt/edium/prometheus/alerts.yml
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar /opt/edium/migrations/riddler
-            cp -r /tmp/edium-deploy/doorman/migrations/* /opt/edium/migrations/doorman/
-            cp -r /tmp/edium-deploy/herald/migrations/* /opt/edium/migrations/herald/
-            cp -r /tmp/edium-deploy/charon/migrations/* /opt/edium/migrations/charon/
-            cp -r /tmp/edium-deploy/caesar/migrations/* /opt/edium/migrations/caesar/
-            cp -r /tmp/edium-deploy/riddler/migrations/* /opt/edium/migrations/riddler/
+            # Полная синхронизация: простой cp .../* не удаляет на сервере переименованные/удалённые миграции
+            for svc in doorman herald charon caesar riddler; do
+              find "/opt/edium/migrations/$svc" -mindepth 1 -delete
+              cp -r "/tmp/edium-deploy/$svc/migrations/." "/opt/edium/migrations/$svc/"
+            done
             mkdir -p /opt/edium/nats
             cp /tmp/edium-deploy/infra/compose/prod/nats/nats-server.conf /opt/edium/nats/nats-server.conf
 
