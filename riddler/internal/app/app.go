@@ -196,6 +196,7 @@ func (a *App) Router() *gin.Engine {
 		sessions.POST("/live/course", a.liveHandler.CreateLiveCourseSession)
 		sessions.POST("/live/library", a.liveHandler.CreateLiveLibrarySession)
 		sessions.POST("/:session_id/live/start", a.liveHandler.StartLiveSession)
+		sessions.GET("/:session_id/live/results/teacher", a.liveHandler.GetLiveResultsTeacher)
 		sessions.DELETE("/:session_id", a.quizHandler.DeleteCourseSession)
 		sessions.POST("/:session_id/attempts", a.attemptHandler.CreateAttempt)
 		sessions.GET("/:session_id/attempts", a.attemptHandler.ListSessionAttempts)
@@ -203,6 +204,7 @@ func (a *App) Router() *gin.Engine {
 
 	noAuth := r.Group("/riddler/v1")
 	noAuth.GET("/sessions/live/:code", a.liveHandler.ResolveLiveCode)
+	noAuth.GET("/sessions/:session_id/live/results/student", a.liveHandler.GetLiveResultsStudent)
 
 	optAuth := r.Group("/riddler/v1")
 	optAuth.Use(middleware.OptionalAuth(a.jwksClient))

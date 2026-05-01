@@ -495,9 +495,10 @@ UI ориентируется на `deadline_at` для синхронизаци
 
 ## 17. Итоговый экран ученика
 
+Без авторизации — идентификатор передаётся в query:
+
 ```
-GET /riddler/v1/sessions/{session_id}/live/results/student
-Authorization: Bearer <access_jwt>   // или ws_token для library-анонима
+GET /riddler/v1/sessions/{session_id}/live/results/student?attempt_id=<uuid>
 
 → 200 {
   "my_position": 3,
@@ -510,8 +511,7 @@ Authorization: Bearer <access_jwt>   // или ws_token для library-анон�
     { "position": 1, "attempt_id": "...", "name": "Мария Соколова", "score": 128, "is_me": false },
     { "position": 2, "attempt_id": "...", "name": "Артём Ким",       "score": 121, "is_me": false },
     { "position": 3, "attempt_id": "...", "name": "Вы",              "score": 118, "is_me": true  }
-    // если моя позиция > 3, добавляется строка is_me=true:
-    // { "position": 7, "attempt_id": "...", "name": "Вася", "score": 80, "is_me": true }
+    // если позиция > 3 — добавляется строка is_me=true в конец
   ]
 }
 ```
@@ -522,9 +522,11 @@ UI: мой ранг крупно + балл + топ-3 с подсветкой `
 
 ## 18. Итоговый экран учителя
 
+Для course-live — JWT обязателен (только автор квиза). Для library-live — без ограничений.
+
 ```
 GET /riddler/v1/sessions/{session_id}/live/results/teacher
-Authorization: Bearer <teacher_jwt>
+Authorization: Bearer <teacher_jwt>   // обязателен для course-live
 
 → 200 {
   "questions": [

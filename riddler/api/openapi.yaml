@@ -1556,28 +1556,38 @@ paths:
       summary: Итоги live-сессии для ученика
       operationId: getLiveResultsStudent
       description: |
-        Доступно только участнику завершённой сессии (фаза `completed`).
-        Возвращает личный балл, итоговую позицию и срез лидерборда — топ-3
-        плюс строку самого ученика (с `is_me=true`), если он не входит в топ-3.
-
-        Для library-аноним аутентификация по `ws_token` через
-        заголовок `Authorization: Bearer <ws_token>`.
-      security:
-        - bearerAuth: []
+        Без авторизации — идентификатор участника передаётся через `?attempt_id=`.
+        Доступно только после завершения сессии (`status=finished`).
+        Возвращает позицию, личный балл и топ-3 лидерборда (+ строка ученика если он ниже 3-го).
+      security: []
       parameters:
         - in: path
           name: session_id
           required: true
           schema: {type: string, format: uuid}
+        - in: query
+          name: attempt_id
+          required: true
+          schema: {type: string, format: uuid}
+          description: UUID attempt'а участника, полученный при /live/join
       responses:
         "200":
           description: Итоги
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LiveResultsStudent"
-        "401": {$ref: "#/components/responses/Unauthorized"}
-        "403": {$ref: "#/components/responses/Forbidden"}
+                type: object
+                properties:
+                  my_position: {type: integer}
+                  total_participants: {type: integer}
+                  my_score: {type: number, format: float}
+                  max_score: {type: number, format: float}
+                  correct_count: {type: integer}
+                  questions_count: {type: integer}
+                  top:
+                    type: array
+                    items: {$ref: "#/components/schemas/LiveLeaderboardRow"}
+        "400": {$ref: "#/components/responses/BadRequest"}
         "404": {$ref: "#/components/responses/NotFound"}
         "409":
           description: Сессия ещё не завершена
@@ -1592,11 +1602,10 @@ paths:
       summary: Итоги live-сессии для учителя
       operationId: getLiveResultsTeacher
       description: |
-        Полные итоги: агрегированная статистика по каждому вопросу
-        (распределение, % верных) и таблица всех учеников, отсортированная
-        от лучшего к худшему, с детализацией ответов.
-
-        Доступно автору квиза в фазе `completed`.
+        Полные итоги: статистика по каждому вопросу (распределение, % верных, avg_time_ms)
+        и лидерборд всех участников по убыванию баллов.
+        Доступно после завершения сессии (`status=finished`).
+        Для course-live — только автору квиза. Для library-live — без ограничений.
       parameters:
         - in: path
           name: session_id
@@ -1608,7 +1617,40 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LiveResultsTeacher"
+                type: object
+                properties:
+                  questions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        question_id: {type: string, format: uuid}
+                        order_index: {type: integer}
+                        text: {type: string}
+                        type: {type: string}
+                        correct_rate: {type: number, format: float}
+                        answered_count: {type: integer}
+                        correct_count: {type: integer}
+                        avg_time_ms: {type: integer, nullable: true}
+                        distribution:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              option_id: {type: string, format: uuid}
+                              count: {type: integer}
+                              is_correct: {type: boolean}
+                  leaderboard:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        position: {type: integer}
+                        attempt_id: {type: string, format: uuid}
+                        user_id: {type: string, format: uuid, nullable: true}
+                        name: {type: string, nullable: true}
+                        score: {type: number, format: float}
+                        correct_count: {type: integer}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}

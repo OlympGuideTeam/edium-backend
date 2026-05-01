@@ -78,6 +78,18 @@ func (r *PgSessionRepository) Create(ctx context.Context, p domain.CreateSession
 	return id, nil
 }
 
+func (r *PgSessionRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status domain.SessionStatus) error {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	_, err := exec.ExecContext(ctx,
+		`UPDATE quiz_session SET status = $2, updated_at = now() WHERE id = $1`,
+		id, status,
+	)
+	if err != nil {
+		return fmt.Errorf("update session status: %w", err)
+	}
+	return nil
+}
+
 func (r *PgSessionRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx, `DELETE FROM quiz_session WHERE id = $1`, id)

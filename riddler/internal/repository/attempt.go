@@ -197,6 +197,82 @@ func (r *PgAttemptRepository) GetBySessionAndUser(ctx context.Context, sessionID
 	return &a, nil
 }
 
+func (r *PgAttemptRepository) GetLiveLeaderboard(ctx context.Context, sessionID uuid.UUID) ([]domain.LiveParticipantResult, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	rows, err := exec.QueryContext(ctx,
+		`SELECT
+		    a.id,
+		    a.user_id,
+		    a.name,
+		    COALESCE(a.score, 0),
+		    COUNT(s.id) FILTER (WHERE s.final_score > 0),
+		    RANK() OVER (ORDER BY COALESCE(a.score, 0) DESC)
+		 FROM attempt a
+		 LEFT JOIN answer_submission s ON s.attempt_id = a.id
+		 WHERE a.session_id = $1 AND a.status = 'completed'
+		 GROUP BY a.id
+		 ORDER BY 6 ASC`,
+		sessionID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get live leaderboard: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.LiveParticipantResult
+	for rows.Next() {
+		var p domain.LiveParticipantResult
+		var userID *uuid.UUID
+		var name *string
+		if err := rows.Scan(&p.AttemptID, &userID, &name, &p.Score, &p.CorrectCount, &p.Position); err != nil {
+			return nil, fmt.Errorf("scan leaderboard row: %w", err)
+		}
+		p.UserID = userID
+		p.Name = name
+		result = append(result, p)
+	}
+	return result, rows.Err()
+}
+
+type LiveSessionAnswer struct {
+	AttemptID   uuid.UUID
+	QuestionID  uuid.UUID
+	QuestionType string
+	AnswerData  map[string]any
+	FinalScore  float64
+	TimeTakenMs *int
+}
+
+func (r *PgAttemptRepository) GetLiveSessionAnswers(ctx context.Context, sessionID uuid.UUID) ([]LiveSessionAnswer, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	rows, err := exec.QueryContext(ctx,
+		`SELECT s.attempt_id, s.question_id, q.type, s.answer_data, COALESCE(s.final_score, 0), s.time_taken_ms
+		 FROM answer_submission s
+		 JOIN attempt a ON a.id = s.attempt_id
+		 JOIN question q ON q.id = s.question_id
+		 WHERE a.session_id = $1 AND a.status = 'completed'`,
+		sessionID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get live session answers: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []LiveSessionAnswer
+	for rows.Next() {
+		var a LiveSessionAnswer
+		var dataJSON []byte
+		if err := rows.Scan(&a.AttemptID, &a.QuestionID, &a.QuestionType, &dataJSON, &a.FinalScore, &a.TimeTakenMs); err != nil {
+			return nil, fmt.Errorf("scan session answer: %w", err)
+		}
+		if err := json.Unmarshal(dataJSON, &a.AnswerData); err != nil {
+			return nil, fmt.Errorf("unmarshal answer_data: %w", err)
+		}
+		result = append(result, a)
+	}
+	return result, rows.Err()
+}
+
 func (r *PgAttemptRepository) FindExpiredInProgress(ctx context.Context) ([]domain.Attempt, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 

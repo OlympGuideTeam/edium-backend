@@ -51,6 +51,22 @@ type LiveAnswer struct {
 	TimeTakenMs int64
 }
 
+type LiveParticipantResult struct {
+	Position     int
+	AttemptID    uuid.UUID
+	UserID       *uuid.UUID
+	Name         *string
+	Score        float64
+	CorrectCount int
+	Answers      []LiveAnswerResult
+}
+
+type LiveAnswerResult struct {
+	QuestionID uuid.UUID
+	IsCorrect  bool
+	Score      float64
+}
+
 type SessionMode string
 
 const (
