@@ -256,7 +256,6 @@ func (h *Handler) CopyQuiz(c *gin.Context) {
 	c.JSON(http.StatusOK, dto.CreateQuizResponse{ID: newID.String()})
 }
 
-
 func (h *Handler) DeleteCourseSession(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
 	if !ok {
@@ -357,7 +356,6 @@ func (h *Handler) CreateTestCourseSessionInline(c *gin.Context) {
 		SessionID:      sessionID.String(),
 	})
 }
-
 
 func uuidPtrToString(id *uuid.UUID) *string {
 	if id == nil {

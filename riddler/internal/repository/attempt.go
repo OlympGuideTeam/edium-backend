@@ -235,12 +235,12 @@ func (r *PgAttemptRepository) GetLiveLeaderboard(ctx context.Context, sessionID 
 }
 
 type LiveSessionAnswer struct {
-	AttemptID   uuid.UUID
-	QuestionID  uuid.UUID
+	AttemptID    uuid.UUID
+	QuestionID   uuid.UUID
 	QuestionType string
-	AnswerData  map[string]any
-	FinalScore  float64
-	TimeTakenMs *int
+	AnswerData   map[string]any
+	FinalScore   float64
+	TimeTakenMs  *int
 }
 
 func (r *PgAttemptRepository) GetLiveSessionAnswers(ctx context.Context, sessionID uuid.UUID) ([]LiveSessionAnswer, error) {

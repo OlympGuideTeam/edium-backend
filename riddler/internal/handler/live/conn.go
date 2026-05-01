@@ -47,7 +47,7 @@ func (c *Conn) send(msg []byte) {
 func (c *Conn) closeWS() {
 	c.closeOnce.Do(func() {
 		close(c.done)
-		c.ws.Close()
+		_ = c.ws.Close()
 	})
 }
 

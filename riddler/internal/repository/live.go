@@ -33,13 +33,13 @@ func keyWsToken(sessionID uuid.UUID, token string) string {
 	return fmt.Sprintf("live:%s:ws_token:%s", sessionID, token)
 }
 
-func keyCode(code string) string              { return fmt.Sprintf("live:code:%s", code) }
-func keyMeta(sid uuid.UUID) string            { return fmt.Sprintf("live:%s:meta", sid) }
-func keyPhase(sid uuid.UUID) string           { return fmt.Sprintf("live:%s:phase", sid) }
-func keyParticipants(sid uuid.UUID) string    { return fmt.Sprintf("live:%s:participants", sid) }
-func keyCurrentQIdx(sid uuid.UUID) string     { return fmt.Sprintf("live:%s:current_q_idx", sid) }
+func keyCode(code string) string               { return fmt.Sprintf("live:code:%s", code) }
+func keyMeta(sid uuid.UUID) string             { return fmt.Sprintf("live:%s:meta", sid) }
+func keyPhase(sid uuid.UUID) string            { return fmt.Sprintf("live:%s:phase", sid) }
+func keyParticipants(sid uuid.UUID) string     { return fmt.Sprintf("live:%s:participants", sid) }
+func keyCurrentQIdx(sid uuid.UUID) string      { return fmt.Sprintf("live:%s:current_q_idx", sid) }
 func keyCurrentQDeadline(sid uuid.UUID) string { return fmt.Sprintf("live:%s:current_q_deadline", sid) }
-func keyAnswers(sid, qid uuid.UUID) string    { return fmt.Sprintf("live:%s:answers:%s", sid, qid) }
+func keyAnswers(sid, qid uuid.UUID) string     { return fmt.Sprintf("live:%s:answers:%s", sid, qid) }
 
 type sessionMeta struct {
 	AuthorID             string `json:"author_id"`

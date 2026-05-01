@@ -63,7 +63,7 @@ func (h *Handler) WebSocket(c *gin.Context) {
 	} else {
 		kicked, err := h.svc.IsKicked(c.Request.Context(), sessionID, attemptID)
 		if err != nil || kicked {
-			ws.Close()
+			_ = ws.Close()
 			return
 		}
 		h.connectStudent(c.Request.Context(), conn, room, sessionID)
