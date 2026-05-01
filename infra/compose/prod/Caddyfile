@@ -3,6 +3,9 @@ edium.online, www.edium.online {
         header Content-Type application/json
         respond `{"webcredentials":{"apps":["FV7B395QF2.online.edium.app"]}}`
     }
+    # Статические юридические страницы (сборка landing: public/terms, public/privacy)
+    redir /terms /terms/ 308
+    redir /privacy /privacy/ 308
     handle {
         root * /srv/landing
         file_server
