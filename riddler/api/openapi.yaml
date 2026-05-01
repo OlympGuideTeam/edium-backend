@@ -301,11 +301,10 @@ components:
 
     LivePhase:
       type: string
-      enum: [pending, lobby, question_active, question_locked, completed]
+      enum: [lobby, question_active, question_locked, completed]
       description: |
         Состояние live-сессии:
-        - `pending` — сессия создана, лобби ещё не открыто учителем
-        - `lobby` — учитель открыл лобби, идёт регистрация участников; активен `join_code`
+        - `lobby` — учитель открыл лобби через `/live/start`, идёт регистрация участников; активен `join_code`
         - `question_active` — текущий вопрос показан, ученики отвечают
         - `question_locked` — вопрос закрыт (таймер истёк или все ответили), показ статистики
         - `completed` — все вопросы пройдены, доступны итоги
@@ -1684,9 +1683,9 @@ paths:
           schema: {type: string, format: uuid}
         - in: query
           name: token
-          required: false
+          required: true
           schema: {type: string}
-          description: JWT (учитель) или ws_token (ученик).
+          description: ws_token из `/live/start` (учитель) или `/live/join` (ученик). Одноразовый, TTL 1 минута.
       responses:
         "101":
           description: Switching Protocols — WebSocket установлен
@@ -1940,10 +1939,10 @@ x-websocket-events:
       если клиент его прислал.
 
     **Порядок жизненного цикла фаз:**
-    `pending` (создана) → учитель connect & `teacher.start_lobby` →
-    `lobby` (ученики connect & join) → учитель `teacher.start_quiz` →
-    `question_active` → (таймер истёк ИЛИ все ответили) →
-    `question_locked` → учитель `teacher.next_question` →
+    Учитель `POST /live/start` → `lobby` (ученики connect & join) →
+    учитель `teacher.start_quiz` → `question_active` →
+    (таймер истёк ИЛИ все ответили) → `question_locked` →
+    учитель `teacher.next_question` →
     `question_active` (следующий) или `completed` (вопросы кончились).
 
   serverToClient:

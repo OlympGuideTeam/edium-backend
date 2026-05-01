@@ -20,7 +20,7 @@ func (s *Service) JoinLiveSession(ctx context.Context, sessionID uuid.UUID, user
 		return uuid.Nil, "", apperr.ErrSessionNotFound
 	}
 
-	phase, err := s.live.GetPhase(ctx, sessionID)
+	phase, err := s.liveSession.GetPhase(ctx, sessionID)
 	if err != nil {
 		return uuid.Nil, "", fmt.Errorf("get phase: %w", err)
 	}
@@ -42,7 +42,7 @@ func (s *Service) JoinLiveSession(ctx context.Context, sessionID uuid.UUID, user
 			return uuid.Nil, "", fmt.Errorf("check existing attempt: %w", err)
 		}
 		if existing != nil {
-			kicked, err := s.live.IsKicked(ctx, sessionID, existing.ID)
+			kicked, err := s.liveParticip.IsKicked(ctx, sessionID, existing.ID)
 			if err != nil {
 				return uuid.Nil, "", fmt.Errorf("check kicked: %w", err)
 			}
@@ -50,7 +50,7 @@ func (s *Service) JoinLiveSession(ctx context.Context, sessionID uuid.UUID, user
 				return uuid.Nil, "", apperr.ErrLiveKicked
 			}
 
-			wsToken, err = s.live.IssueWsToken(ctx, sessionID, repository.WsTokenPayload{
+			wsToken, err = s.liveTokens.IssueWsToken(ctx, sessionID, repository.WsTokenPayload{
 				Role:      domain.RoleStudent,
 				AttemptID: existing.ID.String(),
 			})
@@ -72,11 +72,11 @@ func (s *Service) JoinLiveSession(ctx context.Context, sessionID uuid.UUID, user
 		Name:      name,
 		Status:    "connected",
 	}
-	if err = s.live.AddParticipant(ctx, sessionID, participant); err != nil {
+	if err = s.liveParticip.AddParticipant(ctx, sessionID, participant); err != nil {
 		return uuid.Nil, "", fmt.Errorf("add participant: %w", err)
 	}
 
-	wsToken, err = s.live.IssueWsToken(ctx, sessionID, repository.WsTokenPayload{
+	wsToken, err = s.liveTokens.IssueWsToken(ctx, sessionID, repository.WsTokenPayload{
 		Role:      domain.RoleStudent,
 		AttemptID: attemptID.String(),
 	})

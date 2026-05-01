@@ -117,12 +117,12 @@ func (s *Service) StartLiveSession(ctx context.Context, sessionID, callerID uuid
 		return "", "", apperr.ErrQuizForbidden
 	}
 
-	joinCode, err = s.live.InitSession(ctx, sessionID, quiz, *session.QuestionTimeLimitSec, session.Source, callerID)
+	joinCode, err = s.liveSession.InitSession(ctx, sessionID, quiz, *session.QuestionTimeLimitSec, session.Source, callerID)
 	if err != nil {
 		return "", "", fmt.Errorf("init session: %w", err)
 	}
 
-	wsToken, err = s.live.IssueWsToken(ctx, sessionID, repository.WsTokenPayload{
+	wsToken, err = s.liveTokens.IssueWsToken(ctx, sessionID, repository.WsTokenPayload{
 		Role:   domain.RoleTeacher,
 		UserID: callerID.String(),
 	})
@@ -134,7 +134,7 @@ func (s *Service) StartLiveSession(ctx context.Context, sessionID, callerID uuid
 }
 
 func (s *Service) ResolveLiveCode(ctx context.Context, code string) (*domain.LiveSessionMeta, error) {
-	sessionID, err := s.live.ResolveCode(ctx, code)
+	sessionID, err := s.liveSession.ResolveCode(ctx, code)
 	if err != nil {
 		return nil, fmt.Errorf("resolve code: %w", err)
 	}
@@ -142,7 +142,7 @@ func (s *Service) ResolveLiveCode(ctx context.Context, code string) (*domain.Liv
 		return nil, apperr.ErrLiveCodeExpired
 	}
 
-	meta, err := s.live.GetSessionMeta(ctx, sessionID)
+	meta, err := s.liveSession.GetSessionMeta(ctx, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("get session meta: %w", err)
 	}

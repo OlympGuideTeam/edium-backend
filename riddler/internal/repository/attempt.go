@@ -273,6 +273,61 @@ func (r *PgAttemptRepository) GetLiveSessionAnswers(ctx context.Context, session
 	return result, rows.Err()
 }
 
+type BulkSubmission struct {
+	AttemptID   uuid.UUID
+	QuestionID  uuid.UUID
+	AnswerData  map[string]any
+	FinalScore  float64
+	TimeTakenMs int64
+}
+
+func (r *PgAttemptRepository) BulkInsertSubmissions(ctx context.Context, submissions []BulkSubmission) error {
+	if len(submissions) == 0 {
+		return nil
+	}
+	exec := db.ExecutorFromContext(ctx, r.db)
+	for _, s := range submissions {
+		data, err := json.Marshal(s.AnswerData)
+		if err != nil {
+			return fmt.Errorf("marshal answer_data: %w", err)
+		}
+		_, err = exec.ExecContext(ctx,
+			`INSERT INTO answer_submission (attempt_id, question_id, answer_data, final_score, time_taken_ms)
+			 VALUES ($1, $2, $3, $4, $5)
+			 ON CONFLICT (attempt_id, question_id) DO NOTHING`,
+			s.AttemptID, s.QuestionID, data, s.FinalScore, s.TimeTakenMs,
+		)
+		if err != nil {
+			return fmt.Errorf("insert submission: %w", err)
+		}
+	}
+	return nil
+}
+
+func (r *PgAttemptRepository) CompleteLive(ctx context.Context, attemptID uuid.UUID, score float64) error {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	_, err := exec.ExecContext(ctx,
+		`UPDATE attempt SET status = $2, score = $3, finished_at = now(), updated_at = now() WHERE id = $1`,
+		attemptID, domain.AttemptStatusCompleted, score,
+	)
+	if err != nil {
+		return fmt.Errorf("complete live attempt: %w", err)
+	}
+	return nil
+}
+
+func (r *PgAttemptRepository) SetKicked(ctx context.Context, attemptID uuid.UUID) error {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	_, err := exec.ExecContext(ctx,
+		`UPDATE attempt SET status = $2, updated_at = now() WHERE id = $1`,
+		attemptID, domain.AttemptStatusKicked,
+	)
+	if err != nil {
+		return fmt.Errorf("set kicked: %w", err)
+	}
+	return nil
+}
+
 func (r *PgAttemptRepository) FindExpiredInProgress(ctx context.Context) ([]domain.Attempt, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 

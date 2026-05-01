@@ -52,27 +52,25 @@
 
 ### course-live
 
-- Создаётся через `POST /sessions/live` (с `module_id`).
+- Создаётся через `POST /sessions/live/course` (с `module_id`).
 - Участвовать могут **только ученики класса**, к которому относится модуль.
 - Авторизация: JWT обязателен.
-- Имена участников берутся из профиля Caesar.
-- Учитель заранее загружает весь список класса (`GET /sessions/{id}/live/roster`) и видит,
-  кто из класса подключился, а кто нет.
+- Имена участников передаются при `/live/join`; учитель видит их через WS-события.
 
 ### library-live
 
 - Создаётся через `POST /sessions/live/library` (без курса).
 - Участвовать могут **любые пользователи** по `join_code` — в том числе **без авторизации**.
 - Неавторизованный пользователь вводит имя при входе в лобби; `user_id=null`, `name` сохраняется в `attempt`.
-- Зарегистрированный пользователь может войти с JWT — тогда имя берётся из профиля.
-- Roster (`GET .../live/roster`) недоступен — учитель видит участников только по WS-событиям.
+- Зарегистрированный пользователь может войти с JWT — тогда имя берётся из запроса (обязательно).
+- Учитель видит участников только по WS-событиям `lobby.participant_joined`.
 
 ---
 
 ## 3. Фазы сессии
 
 ```
-lobby → question_active ⇄ question_locked → ... → completed
+lobby → question_active ⇄ question_locked → completed
 ```
 
 | Фаза | Когда наступает |
@@ -132,8 +130,8 @@ live:code:{join_code}                           STRING  → session_id  (TTL д�
 
 ### ws_token как одноразовый пропуск
 
-- `POST /live/join` выдаёт `ws_token` и записывает его в `live:{session_id}:ws_tokens`
-  с TTL 5 минут.
+- `/live/start` и `/live/join` выдают `ws_token` — хранится в Redis
+  с TTL 1 минута.
 - При WS-handshake сервер **удаляет** токен из Redis — он сгорает сразу при использовании.
 - Повторное подключение с тем же токеном → `401 WS_TOKEN_INVALID`.
 - Чтобы зайти с другого устройства, нужно заново вызвать `POST /live/join`,
@@ -266,7 +264,7 @@ POST /riddler/v1/sessions/{session_id}/live/join
 }
 ```
 
-**После получения `ws_token`** клиент немедленно подключается к WS — токен живёт 5 минут:
+**После получения `ws_token`** клиент немедленно подключается к WS — токен живёт 1 минуту:
 
 ```
 WS wss://<host>/riddler/v1/sessions/{session_id}/live/ws?token=<ws_token>
@@ -637,7 +635,6 @@ Grace period 2 секунды гарантирует, что кратковре�
 |--------|-------|----------|
 | 422 | `LIVE_TEMPLATE_INVALID` | Шаблон содержит `with_free_answer` или `need_evaluation=true` |
 | 409 | `LIVE_NOT_IN_LOBBY` | Попытка join вне фазы `lobby` |
-| 409 | `LIVE_ROSTER_UNAVAILABLE` | GET roster для library-сессии |
 | 409 | `LIVE_NOT_COMPLETED` | GET results до завершения |
 | 410 | `CODE_EXPIRED` | `join_code` деактивирован |
 | 401 | `WS_TOKEN_INVALID` | `ws_token` уже использован или истёк |
