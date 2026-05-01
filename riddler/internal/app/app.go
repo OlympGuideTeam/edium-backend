@@ -102,7 +102,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	quizService := quizsvc.NewService(quizRepo, sessionService, txManager, taskRepo)
 	attemptService := attemptsvc.NewService(attemptRepo, sessionRepo, sessionRepo, quizRepo, quizRepo, txManager, taskRepo)
 	liveRepo := repository.NewLiveRepository(rdb)
-	liveService := livesvc.NewService(quizRepo, sessionRepo, attemptRepo, liveRepo, taskRepo, txManager)
+	liveService := livesvc.NewService(quizRepo, sessionRepo, attemptRepo, liveRepo, liveRepo, liveRepo, liveRepo, taskRepo, txManager)
 	testService := testsvc.NewService(quizRepo, sessionRepo, taskRepo, txManager)
 
 	quizHandler := quizhandler.NewHandler(quizService)
@@ -205,6 +205,7 @@ func (a *App) Router() *gin.Engine {
 	noAuth := r.Group("/riddler/v1")
 	noAuth.GET("/sessions/live/:code", a.liveHandler.ResolveLiveCode)
 	noAuth.GET("/sessions/:session_id/live/results/student", a.liveHandler.GetLiveResultsStudent)
+	noAuth.GET("/sessions/:session_id/live/ws", a.liveHandler.WebSocket)
 
 	optAuth := r.Group("/riddler/v1")
 	optAuth.Use(middleware.OptionalAuth(a.jwksClient))

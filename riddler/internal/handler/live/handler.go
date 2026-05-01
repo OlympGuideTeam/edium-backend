@@ -14,10 +14,11 @@ import (
 
 type Handler struct {
 	svc liveService
+	hub *Hub
 }
 
 func NewHandler(svc liveService) *Handler {
-	return &Handler{svc: svc}
+	return &Handler{svc: svc, hub: newHub()}
 }
 
 func userIDFromCtx(c *gin.Context) (uuid.UUID, bool) {
