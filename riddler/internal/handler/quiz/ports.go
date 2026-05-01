@@ -21,9 +21,7 @@ type quizService interface {
 	ListQuizzes(ctx context.Context, role domain.Role) ([]domain.QuizListItem, error)
 	ListMyQuizzes(ctx context.Context, authorID uuid.UUID) ([]domain.QuizListItem, error)
 	CopyQuiz(ctx context.Context, quizID, authorID uuid.UUID, attachToCourse *uuid.UUID) (uuid.UUID, error)
-	CreateTestCourseSession(ctx context.Context, quizTemplateID, moduleID uuid.UUID, p domain.CreateTestCourseSessionParams) (uuid.UUID, error)
 	CreateTestCourseSessionInline(ctx context.Context, authorID uuid.UUID, p domain.CreateTestCourseSessionInlineParams) (uuid.UUID, uuid.UUID, error)
-	CreateLiveCourseSession(ctx context.Context, quizTemplateID, moduleID uuid.UUID, p domain.CreateLiveCourseSessionParams) (uuid.UUID, error)
 	DeleteCourseSession(ctx context.Context, sessionID, authorID uuid.UUID) error
 	GenerateQuestions(ctx context.Context, quizID, authorID uuid.UUID, text string) (uuid.UUID, error)
 }

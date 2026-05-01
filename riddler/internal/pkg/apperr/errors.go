@@ -44,6 +44,15 @@ var (
 	ErrSubmissionNotFound = New("SUBMISSION_NOT_FOUND", "Ответ не найден", http.StatusNotFound)
 	ErrScoreInvalid       = New("VALIDATION_ERROR", "Оценка должна быть неотрицательной", http.StatusUnprocessableEntity)
 
+	// Live-сессии
+	ErrLiveTemplateInvalid = New("LIVE_TEMPLATE_INVALID", "Шаблон не подходит для лайва: содержит with_free_answer или need_evaluation=true", http.StatusUnprocessableEntity)
+	ErrLiveNotInLobby      = New("LIVE_NOT_IN_LOBBY", "Сессия не в фазе lobby", http.StatusConflict)
+	ErrLiveNotCompleted    = New("LIVE_NOT_COMPLETED", "Сессия ещё не завершена", http.StatusConflict)
+	ErrLiveCodeExpired     = New("CODE_EXPIRED", "Код устарел — лобби закрыто или лайв уже начался", http.StatusGone)
+	ErrWsTokenInvalid      = New("WS_TOKEN_INVALID", "ws_token недействителен или уже использован", http.StatusUnauthorized)
+	ErrLiveKicked          = New("FORBIDDEN", "Участник кикнут из сессии", http.StatusForbidden)
+	ErrLiveNotLibrary      = New("FORBIDDEN", "Квиз не является публичным библиотечным", http.StatusForbidden)
+
 	// Вопросы
 	ErrQuestionNotFound        = New("QUESTION_NOT_FOUND", "Вопрос не найден", http.StatusNotFound)
 	ErrQuestionInvalidType     = New("VALIDATION_ERROR", "Неизвестный тип вопроса", http.StatusUnprocessableEntity)
