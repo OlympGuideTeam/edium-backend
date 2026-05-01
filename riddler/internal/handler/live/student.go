@@ -77,7 +77,7 @@ func (h *Handler) handleSubmitAnswer(ctx context.Context, conn *Conn, room *Sess
 }
 
 var (
-	statsTickMu    sync.Mutex
+	statsTickMu      sync.Mutex
 	statsTickPending = make(map[uuid.UUID]bool)
 )
 

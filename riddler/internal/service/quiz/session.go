@@ -16,8 +16,6 @@ const (
 	defaultTestTotalTimeLimitPerQuestion = 60
 )
 
-
-
 func (s *Service) CreateTestCourseSessionInline(ctx context.Context, authorID uuid.UUID, p domain.CreateTestCourseSessionInlineParams) (uuid.UUID, uuid.UUID, error) {
 	var quizTemplateID, sessionID uuid.UUID
 
@@ -178,33 +176,6 @@ func (s *Service) createLibrarySession(ctx context.Context, quiz *domain.QuizTem
 		return fmt.Errorf("set library session: %w", err)
 	}
 	return nil
-}
-
-func (s *Service) buildTestCourseSessionParams(quizTemplateID uuid.UUID, quiz *domain.QuizTemplate, p domain.CreateTestCourseSessionParams) domain.CreateSessionParams {
-	totalLimit := p.TotalTimeLimitSec
-	if totalLimit == nil {
-		totalLimit = quiz.DefaultSettings.TotalTimeLimitSec
-	}
-	if totalLimit == nil {
-		v := quiz.QuestionCount * defaultTestTotalTimeLimitPerQuestion
-		totalLimit = &v
-	}
-
-	shuffle := p.ShuffleQuestions
-	if shuffle == nil {
-		shuffle = quiz.DefaultSettings.ShuffleQuestions
-	}
-
-	return domain.CreateSessionParams{
-		QuizTemplateID:    quizTemplateID,
-		Mode:              domain.SessionModeTest,
-		Source:            domain.LiveSourceCourse,
-		TotalTimeLimitSec: totalLimit,
-		ShuffleQuestions:  shuffle,
-		Status:            domain.SessionStatusActive,
-		StartedAt:         p.StartedAt,
-		FinishedAt:        p.FinishedAt,
-	}
 }
 
 func (s *Service) buildLibrarySessionParams(quiz *domain.QuizTemplate) domain.CreateSessionParams {

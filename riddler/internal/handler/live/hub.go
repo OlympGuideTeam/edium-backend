@@ -125,9 +125,3 @@ func (r *SessionRoom) setTimer(cancel func()) {
 	r.timerCancel = cancel
 	r.mu.Unlock()
 }
-
-func (r *SessionRoom) currentQuestion() domain.QuestionWithOptions {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return r.questions[r.questionIdx]
-}

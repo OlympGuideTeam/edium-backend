@@ -27,11 +27,11 @@ type TeacherResults struct {
 }
 
 type QuestionResult struct {
-	QuestionID   uuid.UUID
-	OrderIndex   int
-	Text         string
-	Type         string
-	CorrectRate  float64
+	QuestionID    uuid.UUID
+	OrderIndex    int
+	Text          string
+	Type          string
+	CorrectRate   float64
 	AnsweredCount int
 	CorrectCount  int
 	AvgTimesMs    *int
@@ -196,7 +196,8 @@ func buildQuestionResults(questions []domain.QuestionWithOptions, answers []repo
 	}
 
 	results := make([]QuestionResult, 0, len(questions))
-	for _, q := range questions {
+	for i := range questions {
+		q := &questions[i]
 		st := statsMap[q.ID]
 		qr := QuestionResult{
 			QuestionID: q.ID,

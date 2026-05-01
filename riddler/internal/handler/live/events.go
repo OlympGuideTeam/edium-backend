@@ -33,12 +33,12 @@ type evtLobbyParticipant struct {
 }
 
 type evtStateSnapshot struct {
-	Phase            string                `json:"phase"`
-	Participants     []evtLobbyParticipant `json:"participants,omitempty"`
-	CurrentQuestion  *evtQuestion          `json:"current_question,omitempty"`
-	QuestionIdx      int                   `json:"question_idx,omitempty"`
-	TimeLimitSec     int                   `json:"time_limit_sec,omitempty"`
-	DeadlineAt       string                `json:"deadline_at,omitempty"`
+	Phase           string                `json:"phase"`
+	Participants    []evtLobbyParticipant `json:"participants,omitempty"`
+	CurrentQuestion *evtQuestion          `json:"current_question,omitempty"`
+	QuestionIdx     int                   `json:"question_idx,omitempty"`
+	TimeLimitSec    int                   `json:"time_limit_sec,omitempty"`
+	DeadlineAt      string                `json:"deadline_at,omitempty"`
 }
 
 type evtAnswerOption struct {
@@ -48,13 +48,13 @@ type evtAnswerOption struct {
 }
 
 type evtQuestion struct {
-	ID       string           `json:"id"`
-	Type     string           `json:"type"`
-	Text     string           `json:"text"`
-	ImageID  *string          `json:"image_id,omitempty"`
-	MaxScore int              `json:"max_score"`
+	ID       string            `json:"id"`
+	Type     string            `json:"type"`
+	Text     string            `json:"text"`
+	ImageID  *string           `json:"image_id,omitempty"`
+	MaxScore int               `json:"max_score"`
 	Options  []evtAnswerOption `json:"options,omitempty"`
-	Metadata map[string]any   `json:"metadata,omitempty"`
+	Metadata map[string]any    `json:"metadata,omitempty"`
 }
 
 type evtQuestionStarted struct {
@@ -85,10 +85,10 @@ type evtMyResult struct {
 }
 
 type evtQuestionLocked struct {
-	QuestionID   string          `json:"question_id"`
+	QuestionID   string               `json:"question_id"`
 	Stats        evtQuestionStatsTick `json:"stats"`
-	Distribution []evtOptionStat `json:"distribution,omitempty"`
-	MyResult     *evtMyResult    `json:"my_result,omitempty"`
+	Distribution []evtOptionStat      `json:"distribution,omitempty"`
+	MyResult     *evtMyResult         `json:"my_result,omitempty"`
 }
 
 type evtParticipantKicked struct {

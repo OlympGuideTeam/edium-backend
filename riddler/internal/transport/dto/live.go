@@ -78,12 +78,12 @@ type LiveQuestionResult struct {
 }
 
 type LiveResultsTeacherAttempt struct {
-	Position     int                  `json:"position"`
-	AttemptID    string               `json:"attempt_id"`
-	UserID       *string              `json:"user_id,omitempty"`
-	Name         *string              `json:"name,omitempty"`
-	Score        float64              `json:"score"`
-	CorrectCount int                  `json:"correct_count"`
+	Position     int     `json:"position"`
+	AttemptID    string  `json:"attempt_id"`
+	UserID       *string `json:"user_id,omitempty"`
+	Name         *string `json:"name,omitempty"`
+	Score        float64 `json:"score"`
+	CorrectCount int     `json:"correct_count"`
 }
 
 type LiveResultsTeacherResponse struct {

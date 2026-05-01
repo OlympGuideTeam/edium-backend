@@ -65,7 +65,8 @@ func (s *Service) collectSubmissions(ctx context.Context, sessionID, attemptID u
 	submissions := make([]repository.BulkSubmission, 0, len(questions))
 	var totalScore float64
 
-	for _, q := range questions {
+	for i := range questions {
+		q := &questions[i]
 		ans, err := s.liveAnswers.GetAnswer(ctx, sessionID, q.ID, attemptID)
 		if err != nil {
 			return nil, 0, fmt.Errorf("get answer: %w", err)
