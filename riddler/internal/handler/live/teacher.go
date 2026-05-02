@@ -3,6 +3,7 @@ package live
 import (
 	"context"
 	"encoding/json"
+	"math/rand/v2"
 	"time"
 
 	"github.com/google/uuid"
@@ -167,9 +168,41 @@ func buildQuestion(q domain.QuestionWithOptions, withCorrect bool) evtQuestion {
 		Options:  opts,
 		Metadata: q.Metadata,
 	}
+	if !withCorrect {
+		eq.Metadata = sanitizeMetadataForStudent(q)
+	}
 	if q.ImageID != nil {
 		s := q.ImageID.String()
 		eq.ImageID = &s
 	}
 	return eq
+}
+
+func sanitizeMetadataForStudent(q domain.QuestionWithOptions) map[string]any {
+	switch q.Type {
+	case domain.QuestionTypeDrag:
+		if order, ok := q.Metadata["correct_order"].([]any); ok {
+			items := make([]any, len(order))
+			copy(items, order)
+			rand.Shuffle(len(items), func(i, j int) { items[i], items[j] = items[j], items[i] })
+			return map[string]any{"items": items}
+		}
+		return nil
+
+	case domain.QuestionTypeConnection:
+		meta := make(map[string]any)
+		if left, ok := q.Metadata["left"]; ok {
+			meta["left"] = left
+		}
+		if right, ok := q.Metadata["right"].([]any); ok {
+			shuffled := make([]any, len(right))
+			copy(shuffled, right)
+			rand.Shuffle(len(shuffled), func(i, j int) { shuffled[i], shuffled[j] = shuffled[j], shuffled[i] })
+			meta["right"] = shuffled
+		}
+		return meta
+
+	default:
+		return nil
+	}
 }
