@@ -41,6 +41,44 @@ func (s *Service) GetModule(ctx context.Context, moduleID, userID uuid.UUID) (*d
 	return m, nil
 }
 
+// GetModuleRoster возвращает учеников класса, в котором лежит модуль.
+// Используется учителем для предзагрузки списка участников лобби live-сессии.
+func (s *Service) GetModuleRoster(ctx context.Context, moduleID, userID uuid.UUID) ([]domain.ClassMember, error) {
+	m, err := s.courses.GetModuleByID(ctx, moduleID)
+	if err != nil {
+		return nil, fmt.Errorf("getModuleByID: %w", err)
+	}
+	if m == nil {
+		return nil, apperr.ErrModuleNotFound
+	}
+
+	c, err := s.getCourse(ctx, m.CourseID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, ok, err := s.classes.GetMemberRole(ctx, c.ClassID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("getMemberRole: %w", err)
+	}
+	if !ok {
+		return nil, apperr.ErrCourseNotMember
+	}
+
+	members, err := s.classes.GetMembersForDetail(ctx, c.ClassID)
+	if err != nil {
+		return nil, fmt.Errorf("getMembers: %w", err)
+	}
+
+	students := make([]domain.ClassMember, 0, len(members))
+	for _, m := range members {
+		if m.Role == domain.ClassMemberRoleStudent {
+			students = append(students, m)
+		}
+	}
+	return students, nil
+}
+
 func (s *Service) CreateModule(ctx context.Context, courseID, userID uuid.UUID, title string) (uuid.UUID, error) {
 	if strings.TrimSpace(title) == "" {
 		return uuid.Nil, apperr.ErrCourseEmptyTitle

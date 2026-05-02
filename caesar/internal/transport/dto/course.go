@@ -58,6 +58,10 @@ type ModuleDetailResponse struct {
 	Items        []CourseItemDTO `json:"items"`
 }
 
+type ModuleRosterResponse struct {
+	Members []MemberShort `json:"members"`
+}
+
 type CourseDraftDTO struct {
 	ID             string          `json:"id"`
 	QuizTemplateID string          `json:"quiz_template_id"`
