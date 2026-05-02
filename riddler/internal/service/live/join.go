@@ -20,22 +20,11 @@ func (s *Service) JoinLiveSession(ctx context.Context, sessionID uuid.UUID, user
 		return uuid.Nil, "", apperr.ErrSessionNotFound
 	}
 
-	phase, err := s.liveSession.GetPhase(ctx, sessionID)
-	if err != nil {
-		return uuid.Nil, "", fmt.Errorf("get phase: %w", err)
-	}
-	if phase != domain.LivePhaseLobby {
-		return uuid.Nil, "", apperr.ErrLiveNotInLobby
-	}
-
 	if session.Source == domain.LiveSourceCourse && userID == nil {
 		return uuid.Nil, "", apperr.ErrUnauthorized
 	}
-	if session.Source == domain.LiveSourceLibrary && (name == nil || *name == "") {
-		return uuid.Nil, "", apperr.ErrBadRequest
-	}
 
-	// идемпотентность для course: если у юзера уже есть attempt — возвращаем его
+	// реконнект: если у участника уже есть attempt — выдать новый ws_token без проверки фазы
 	if userID != nil {
 		existing, err := s.attempts.GetBySessionAndUser(ctx, sessionID, *userID)
 		if err != nil {
@@ -59,6 +48,19 @@ func (s *Service) JoinLiveSession(ctx context.Context, sessionID uuid.UUID, user
 			}
 			return existing.ID, wsToken, nil
 		}
+	}
+
+	// новый участник — только в фазе lobby
+	phase, err := s.liveSession.GetPhase(ctx, sessionID)
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("get phase: %w", err)
+	}
+	if phase != domain.LivePhaseLobby {
+		return uuid.Nil, "", apperr.ErrLiveNotInLobby
+	}
+
+	if session.Source == domain.LiveSourceLibrary && (name == nil || *name == "") {
+		return uuid.Nil, "", apperr.ErrBadRequest
 	}
 
 	attemptID, err = s.attempts.CreateLiveAttempt(ctx, sessionID, userID, name)
