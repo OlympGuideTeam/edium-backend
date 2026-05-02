@@ -64,7 +64,10 @@ func (h *Handler) handleSubmitAnswer(ctx context.Context, conn *Conn, room *Sess
 	}
 
 	room.sendTeacher(encodeMsg("participant.answered", evtParticipantAnswered{
-		AttemptID: conn.attemptID.String(),
+		AttemptID:   conn.attemptID.String(),
+		QuestionID:  questionID.String(),
+		IsCorrect:   isCorrect,
+		TimeTakenMs: timeTakenMs,
 	}))
 
 	h.sendStatsTick(ctx, room, sessionID, questionID)
@@ -96,12 +99,20 @@ func (h *Handler) sendStatsTick(ctx context.Context, room *SessionRoom, sessionI
 		delete(statsTickPending, sessionID)
 		statsTickMu.Unlock()
 
-		answered, _ := h.svc.GetAnsweredCount(ctx, sessionID, questionID)
+		room.mu.RLock()
+		idx := room.questionIdx
+		questions := room.questions
+		room.mu.RUnlock()
+
+		if idx >= len(questions) || questions[idx].ID != questionID {
+			return
+		}
+
+		allAnswers, _ := h.svc.GetAllAnswers(ctx, sessionID, questionID)
 		connected := room.connectedCount()
-		room.sendTeacher(encodeMsg("question.stats_tick", evtQuestionStatsTick{
-			AnsweredCount:  answered,
-			ConnectedCount: connected,
-		}))
+		stats, distribution := buildStats(questions[idx], allAnswers, connected)
+		stats.Distribution = distribution
+		room.sendTeacher(encodeMsg("question.stats_tick", stats))
 	}()
 }
 
@@ -120,64 +131,27 @@ func (h *Handler) lockQuestion(ctx context.Context, room *SessionRoom, sessionID
 	}
 
 	q := questions[idx]
-	answered, _ := h.svc.GetAnsweredCount(ctx, sessionID, q.ID)
 	connected := room.connectedCount()
 
 	allAnswers, _ := h.svc.GetAllAnswers(ctx, sessionID, q.ID)
-
-	var distribution []evtOptionStat
-	if q.Type == domain.QuestionTypeSingleChoice || q.Type == domain.QuestionTypeMultipleChoice {
-		optCount := make(map[string]int)
-		for _, ans := range allAnswers {
-			if id, ok := ans.AnswerData["selected_option_id"].(string); ok {
-				optCount[id]++
-			}
-			if ids, ok := ans.AnswerData["selected_option_ids"].([]any); ok {
-				for _, v := range ids {
-					if id, ok := v.(string); ok {
-						optCount[id]++
-					}
-				}
-			}
-		}
-		for _, opt := range q.Options {
-			distribution = append(distribution, evtOptionStat{
-				OptionID:  opt.ID.String(),
-				Count:     optCount[opt.ID.String()],
-				IsCorrect: opt.IsCorrect,
-			})
-		}
-	}
-
-	correctN, incorrectN := 0, 0
-	for _, ans := range allAnswers {
-		if ans.IsCorrect {
-			correctN++
-		} else {
-			incorrectN++
-		}
-	}
-
-	stats := evtQuestionStatsTick{
-		AnsweredCount:  answered,
-		ConnectedCount: connected,
-		CorrectCount:   correctN,
-		IncorrectCount: incorrectN,
-	}
+	stats, distribution := buildStats(q, allAnswers, connected)
+	correctAnswer := buildCorrectAnswer(q)
 
 	room.sendTeacher(encodeMsg("question.locked", evtQuestionLocked{
-		QuestionID:   q.ID.String(),
-		Stats:        stats,
-		Distribution: distribution,
+		QuestionID:    q.ID.String(),
+		Stats:         stats,
+		Distribution:  distribution,
+		CorrectAnswer: correctAnswer,
 	}))
 
 	room.mu.RLock()
 	for attemptID, c := range room.students {
 		ans := allAnswers[attemptID]
 		c.send(encodeMsg("question.locked", evtQuestionLocked{
-			QuestionID:   q.ID.String(),
-			Stats:        stats,
-			Distribution: distribution,
+			QuestionID:    q.ID.String(),
+			Stats:         stats,
+			Distribution:  distribution,
+			CorrectAnswer: correctAnswer,
 			MyResult: &evtMyResult{
 				IsCorrect: ans.IsCorrect,
 				Score:     ans.Score,
