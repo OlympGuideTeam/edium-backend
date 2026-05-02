@@ -71,6 +71,8 @@ type evtParticipantAnswered struct {
 type evtQuestionStatsTick struct {
 	AnsweredCount  int `json:"answered_count"`
 	ConnectedCount int `json:"connected_count"`
+	CorrectCount   int `json:"correct_count,omitempty"`
+	IncorrectCount int `json:"incorrect_count,omitempty"`
 }
 
 type evtOptionStat struct {
