@@ -339,6 +339,7 @@ WS wss://<host>/riddler/v1/sessions/{session_id}/live/ws?token=<ws_token>
 ```json
 { "type": "question.started", "data": {
     "question_index": 1,
+    "question_total": 12,
     "question": {
         "id": "uuid",
         "type": "single_choice",
@@ -352,7 +353,6 @@ WS wss://<host>/riddler/v1/sessions/{session_id}/live/ws?token=<ws_token>
         "max_score": 10
     },
     "time_limit_sec": 30,
-    "started_at": "2024-01-01T12:00:00Z",
     "deadline_at": "2024-01-01T12:00:30Z"
 }}
 ```
@@ -403,26 +403,28 @@ UI ориентируется на `deadline_at` для синхронизаци
 }}
 ```
 
-Убрать ученика из списка «ещё думают», добавить в «ответили».
+Убрать ученика из списка «ещё думают», добавить в «ответили». Поля `is_correct` и `time_taken_ms` позволяют сразу обновить per-student индикаторы без ожидания `question.stats_tick`.
 
 ```json
 { "type": "question.stats_tick", "data": {
     "question_id": "uuid",
-    "stats": {
-        "kind": "choice",
-        "answered_count": 18,
-        "correct_count": 10,
-        "avg_time_ms": 21000,
-        "distribution": [
-            { "option_id": "uuid-a", "count": 3,  "is_correct": false },
-            { "option_id": "uuid-b", "count": 10, "is_correct": true  },
-            { "option_id": "uuid-c", "count": 4,  "is_correct": false },
-            { "option_id": "uuid-d", "count": 1,  "is_correct": false }
-        ]
-    }
+    "kind": "choice",
+    "answered_count": 18,
+    "connected_count": 24,
+    "correct_count": 10,
+    "incorrect_count": 8,
+    "avg_time_ms": 21000,
+    "distribution": [
+        { "option_id": "uuid-a", "count": 3,  "is_correct": false },
+        { "option_id": "uuid-b", "count": 10, "is_correct": true  },
+        { "option_id": "uuid-c", "count": 4,  "is_correct": false },
+        { "option_id": "uuid-d", "count": 1,  "is_correct": false }
+    ]
 }}
 ```
 
+Поле `kind` — `"choice"` (single/multiple_choice) или `"binary"` (остальные типы).
+При `kind="binary"` поле `distribution` отсутствует.
 Приходит не чаще 1 раза в секунду — клиент просто перерисовывает текущие значения.
 
 ---
@@ -438,29 +440,43 @@ UI ориентируется на `deadline_at` для синхронизаци
 ```json
 { "type": "question.locked", "data": {
     "question_id": "uuid",
-    "correct_answer": { "correct_option_id": "uuid-b" },
     "stats": {
+        "question_id": "uuid",
         "kind": "choice",
         "answered_count": 24,
+        "connected_count": 24,
         "correct_count": 14,
-        "distribution": [...]
+        "incorrect_count": 10,
+        "avg_time_ms": 19500
     },
-    "my_result": {
-        "is_correct": true,
-        "score": 10,
-        "max_score": 10,
-        "time_taken_ms": 8400
-    }
+    "distribution": [
+        { "option_id": "uuid-a", "count": 4,  "is_correct": false },
+        { "option_id": "uuid-b", "count": 14, "is_correct": true  },
+        { "option_id": "uuid-c", "count": 5,  "is_correct": false },
+        { "option_id": "uuid-d", "count": 1,  "is_correct": false }
+    ],
+    "correct_answer": { "correct_option_id": "uuid-b" },
+    "my_result": { "is_correct": true, "score": 10 }
 }}
 ```
 
-- `my_result=null` — если ученик не успел ответить.
-- **`single_choice` / `multiple_choice`**: показать распределение по опциям.
-- **Остальные типы**: только агрегаты (`correct_count` / `incorrect_count`).
+- `my_result=null` — если ученик не успел ответить до закрытия вопроса.
+- `distribution` присутствует только при `kind="choice"`.
+- `correct_answer` — структура зависит от типа вопроса (см. ниже).
 
 ### Учитель получает
 
-То же, без поля `my_result`. Финальная `stats` вместо промежуточных тиков.
+То же, без поля `my_result`. Финальные `stats` и `distribution` вместо промежуточных тиков.
+
+### Структура `correct_answer` по типам вопросов
+
+| Тип | Поле | Пример |
+|-----|------|--------|
+| `single_choice` | `correct_option_id` | `{"correct_option_id": "uuid-b"}` |
+| `multiple_choice` | `correct_option_ids` | `{"correct_option_ids": ["uuid-b", "uuid-d"]}` |
+| `with_given_answer` | `correct_answers` | `{"correct_answers": ["Paris", "Париж"]}` |
+| `drag` | `correct_order` | `{"correct_order": ["B", "A", "C"]}` |
+| `connection` | `correct_pairs` | `{"correct_pairs": {"A": "1", "B": "2"}}` |
 
 ---
 
@@ -572,11 +588,14 @@ Authorization: Bearer <teacher_jwt>   // обязателен для course-live
 При любом (ре)коннекте сервер сразу шлёт **`state.snapshot`** — клиент восстанавливает
 нужный экран без дополнительных запросов.
 
+Снапшот всегда содержит поле `question_total` — общее число вопросов сессии.
+Оно нужно для прогресс-бара «Вопрос X / Y» при реконнекте в середине квиза.
+
 | Фаза в снапшоте | Экран |
 |-----------------|-------|
 | `lobby` | Лобби (обе роли) |
-| `question_active` | Активный вопрос. Таймер запускается с поправкой: `remaining = deadline_at - now()`. Если `my_answer != null` — ученик уже ответил, показать состояние ожидания. |
-| `question_locked` | Экран статистики. Поле `last_question_locked` в снапшоте содержит `correct_answer`, `stats`, `my_result`. |
+| `question_active` | Активный вопрос. `question_total` в снапшоте. Таймер: `remaining = deadline_at - now()`. Если ученик уже ответил — показать состояние ожидания. |
+| `question_locked` | Экран статистики. Поле `last_question_locked` в снапшоте содержит `correct_answer`, `stats`, `distribution`, `my_result`. |
 | `completed` | Переход на экран итогов. |
 
 **Механизм реконнекта (ученик):**
