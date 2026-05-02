@@ -53,6 +53,35 @@ func (h *Handler) GetModule(c *gin.Context) {
 	})
 }
 
+func (h *Handler) GetModuleRoster(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	moduleID, err := uuid.Parse(c.Param("moduleId"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	members, err := h.service.GetModuleRoster(c.Request.Context(), moduleID, userID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	resp := dto.ModuleRosterResponse{Members: make([]dto.MemberShort, 0, len(members))}
+	for _, m := range members {
+		resp.Members = append(resp.Members, dto.MemberShort{
+			ID:      m.UserID.String(),
+			Name:    m.Name,
+			Surname: m.Surname,
+		})
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func (h *Handler) CreateModule(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
 	if !ok {
