@@ -45,9 +45,16 @@ variable "databases" {
   }))
 }
 
+variable "default_user_conn_limit" {
+  description = "Лимит соединений на пользователя, если в записи не задан conn_limit (Managed PG: сумма по всем юзерам + системные ≤ max_connections)"
+  type        = number
+  default     = 8
+}
+
 variable "users" {
-  description = "Пользователи: имя → {password}"
+  description = "Пользователи: имя → {password, conn_limit?}"
   type = map(object({
-    password = string
+    password   = string
+    conn_limit = optional(number)
   }))
 }
