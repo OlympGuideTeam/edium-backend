@@ -168,7 +168,11 @@ func (h *Handler) buildSnapshot(ctx context.Context, conn *Conn, room *SessionRo
 		phase = meta.Phase
 	}
 
-	snap := evtStateSnapshot{Phase: string(phase)}
+	questionTotal := 0
+	if meta != nil {
+		questionTotal = meta.QuestionCount
+	}
+	snap := evtStateSnapshot{Phase: string(phase), QuestionTotal: questionTotal}
 
 	switch phase {
 	case domain.LivePhaseLobby:
