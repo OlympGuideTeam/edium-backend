@@ -101,6 +101,32 @@ variable "riddler_pg_password_prod" {
   sensitive   = true
 }
 
+# --- Louvre ---
+
+variable "louvre_pg_password_test" {
+  description = "Пароль PostgreSQL для Louvre (test)"
+  type        = string
+  sensitive   = true
+}
+
+variable "louvre_pg_password_prod" {
+  description = "Пароль PostgreSQL для Louvre (prod)"
+  type        = string
+  sensitive   = true
+}
+
+variable "louvre_bucket_test_name" {
+  description = "Имя бакета Yandex Object Storage для Louvre (test); имя глобально уникально в облаке"
+  type        = string
+  default     = "edium-louvre-images-test"
+}
+
+variable "louvre_bucket_prod_name" {
+  description = "Имя бакета Yandex Object Storage для Louvre (prod)"
+  type        = string
+  default     = "edium-louvre-images-prod"
+}
+
 variable "redis_password" {
   description = "Пароль Redis"
   type        = string

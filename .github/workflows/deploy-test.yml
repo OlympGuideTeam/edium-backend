@@ -9,6 +9,7 @@ on:
       - "charon/**"
       - "caesar/**"
       - "riddler/**"
+      - "louvre/**"
       - "infra/compose/test/**"
       - "infra/compose/prod/nats/**"
       - "infra/grafana/**"
@@ -36,6 +37,7 @@ jobs:
       charon: ${{ steps.filter.outputs.charon }}
       caesar: ${{ steps.filter.outputs.caesar }}
       riddler: ${{ steps.filter.outputs.riddler }}
+      louvre: ${{ steps.filter.outputs.louvre }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -52,6 +54,10 @@ jobs:
               - 'caesar/**'
             riddler:
               - 'riddler/**'
+            louvre:
+              - 'louvre/**'
+              - 'infra/compose/test/docker-compose.yml'
+              - 'infra/compose/prod/docker-compose.yml'
 
   # ========================
   # Go — Doorman
@@ -477,21 +483,45 @@ jobs:
 
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
+  build-louvre:
+    needs: [detect-changes]
+    if: github.event_name == 'push' && needs.detect-changes.outputs.louvre == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-louvre
+          TAG=main-${GITHUB_SHA::7}
+
+          docker build -t ${IMAGE}:${TAG} louvre/
+          docker push ${IMAGE}:${TAG}
+
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
+
   # ========================
   # Deploy на test VM
   # ========================
 
   deploy-test:
     # ВРЕМЕННО: lint и test отключены, depends только на build-джобах
-    # needs: [test-doorman, test-herald, test-charon, test-caesar, test-riddler, build-doorman, build-herald, build-charon, build-caesar, build-riddler]
-    needs: [build-doorman, build-herald, build-charon, build-caesar, build-riddler]
+    # needs: [test-doorman, test-herald, test-charon, test-caesar, test-riddler, build-doorman, build-herald, build-charon, build-caesar, build-riddler, build-louvre]
+    needs: [build-doorman, build-herald, build-charon, build-caesar, build-riddler, build-louvre]
     if: |
       always() &&
       (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') &&
       (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') &&
       (needs.build-charon.result == 'success' || needs.build-charon.result == 'skipped') &&
       (needs.build-caesar.result == 'success' || needs.build-caesar.result == 'skipped') &&
-      (needs.build-riddler.result == 'success' || needs.build-riddler.result == 'skipped')
+      (needs.build-riddler.result == 'success' || needs.build-riddler.result == 'skipped') &&
+      (needs.build-louvre.result == 'success' || needs.build-louvre.result == 'skipped')
     runs-on: ubuntu-latest
     environment: test
     steps:
@@ -503,7 +533,7 @@ jobs:
           host: ${{ secrets.TEST_VM_HOST }}
           username: deploy
           key: ${{ secrets.TEST_VM_SSH_KEY }}
-          source: "infra/compose/test/docker-compose.yml,infra/compose/test/Caddyfile,infra/compose/test/vector.yaml,infra/compose/test/prometheus.yml,infra/compose/test/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/,riddler/migrations/"
+          source: "infra/compose/test/docker-compose.yml,infra/compose/test/Caddyfile,infra/compose/test/vector.yaml,infra/compose/test/prometheus.yml,infra/compose/test/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/,riddler/migrations/,louvre/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -531,9 +561,9 @@ jobs:
             cp /tmp/edium-deploy/infra/alertmanager/alertmanager.yml /opt/edium/alertmanager/alertmanager.yml
             mkdir -p /opt/edium/prometheus
             cp /tmp/edium-deploy/infra/prometheus/alerts.yml /opt/edium/prometheus/alerts.yml
-            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar /opt/edium/migrations/riddler
+            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar /opt/edium/migrations/riddler /opt/edium/migrations/louvre
             # Полная синхронизация: простой cp .../* не удаляет на сервере переименованные/удалённые миграции
-            for svc in doorman herald charon caesar riddler; do
+            for svc in doorman herald charon caesar riddler louvre; do
               find "/opt/edium/migrations/$svc" -mindepth 1 -delete
               cp -r "/tmp/edium-deploy/$svc/migrations/." "/opt/edium/migrations/$svc/"
             done
@@ -566,6 +596,15 @@ jobs:
             RIDDLER_PG_USER=${{ secrets.RIDDLER_PG_USER }}
             RIDDLER_PG_PWD=${{ secrets.RIDDLER_PG_PWD }}
             RIDDLER_PG_DB=${{ secrets.RIDDLER_PG_DB }}
+            RIDDLER_REDIS_PWD=${{ secrets.RIDDLER_REDIS_PWD }}
+            LOUVRE_PG_USER=${{ secrets.LOUVRE_PG_USER }}
+            LOUVRE_PG_PWD=${{ secrets.LOUVRE_PG_PWD }}
+            LOUVRE_PG_DB=${{ secrets.LOUVRE_PG_DB }}
+            LOUVRE_MINIO_ENDPOINT=${{ secrets.LOUVRE_MINIO_ENDPOINT }}
+            LOUVRE_MINIO_ACCESS_KEY=${{ secrets.LOUVRE_MINIO_ACCESS_KEY }}
+            LOUVRE_MINIO_SECRET_KEY=${{ secrets.LOUVRE_MINIO_SECRET_KEY }}
+            LOUVRE_MINIO_BUCKET=${{ secrets.LOUVRE_MINIO_BUCKET }}
+            LOUVRE_MINIO_USE_SSL=${{ secrets.LOUVRE_MINIO_USE_SSL }}
             CHARON_PG_USER=${{ secrets.CHARON_PG_USER }}
             CHARON_PG_PWD=${{ secrets.CHARON_PG_PWD }}
             CHARON_PG_DB=${{ secrets.CHARON_PG_DB }}
@@ -673,7 +712,7 @@ jobs:
           host: ${{ secrets.PROD_VM_HOST }}
           username: deploy
           key: ${{ secrets.PROD_VM_SSH_KEY }}
-          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/prometheus.yml,infra/compose/prod/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/,riddler/migrations/"
+          source: "infra/compose/prod/docker-compose.yml,infra/compose/prod/Caddyfile,infra/compose/prod/vector.yaml,infra/compose/prod/prometheus.yml,infra/compose/prod/clickhouse/,infra/compose/prod/nats/nats-server.conf,infra/grafana/,infra/alertmanager/,infra/prometheus/,doorman/migrations/,herald/migrations/,charon/migrations/,caesar/migrations/,riddler/migrations/,louvre/migrations/"
           target: /tmp/edium-deploy/
           strip_components: 0
 
@@ -701,9 +740,9 @@ jobs:
             cp /tmp/edium-deploy/infra/alertmanager/alertmanager.yml /opt/edium/alertmanager/alertmanager.yml
             mkdir -p /opt/edium/prometheus
             cp /tmp/edium-deploy/infra/prometheus/alerts.yml /opt/edium/prometheus/alerts.yml
-            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar /opt/edium/migrations/riddler
+            mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar /opt/edium/migrations/riddler /opt/edium/migrations/louvre
             # Полная синхронизация: простой cp .../* не удаляет на сервере переименованные/удалённые миграции
-            for svc in doorman herald charon caesar riddler; do
+            for svc in doorman herald charon caesar riddler louvre; do
               find "/opt/edium/migrations/$svc" -mindepth 1 -delete
               cp -r "/tmp/edium-deploy/$svc/migrations/." "/opt/edium/migrations/$svc/"
             done
@@ -737,6 +776,15 @@ jobs:
             RIDDLER_PG_USER=${{ secrets.RIDDLER_PG_USER }}
             RIDDLER_PG_PWD=${{ secrets.RIDDLER_PG_PWD }}
             RIDDLER_PG_DB=${{ secrets.RIDDLER_PG_DB }}
+            RIDDLER_REDIS_PWD=${{ secrets.RIDDLER_REDIS_PWD }}
+            LOUVRE_PG_USER=${{ secrets.LOUVRE_PG_USER }}
+            LOUVRE_PG_PWD=${{ secrets.LOUVRE_PG_PWD }}
+            LOUVRE_PG_DB=${{ secrets.LOUVRE_PG_DB }}
+            LOUVRE_MINIO_ENDPOINT=${{ secrets.LOUVRE_MINIO_ENDPOINT }}
+            LOUVRE_MINIO_ACCESS_KEY=${{ secrets.LOUVRE_MINIO_ACCESS_KEY }}
+            LOUVRE_MINIO_SECRET_KEY=${{ secrets.LOUVRE_MINIO_SECRET_KEY }}
+            LOUVRE_MINIO_BUCKET=${{ secrets.LOUVRE_MINIO_BUCKET }}
+            LOUVRE_MINIO_USE_SSL=${{ secrets.LOUVRE_MINIO_USE_SSL }}
             CHARON_PG_USER=${{ secrets.CHARON_PG_USER }}
             CHARON_PG_PWD=${{ secrets.CHARON_PG_PWD }}
             CHARON_PG_DB=${{ secrets.CHARON_PG_DB }}
