@@ -149,7 +149,21 @@ func (h *Handler) lockQuestion(ctx context.Context, room *SessionRoom, sessionID
 		}
 	}
 
-	stats := evtQuestionStatsTick{AnsweredCount: answered, ConnectedCount: connected}
+	correctN, incorrectN := 0, 0
+	for _, ans := range allAnswers {
+		if ans.IsCorrect {
+			correctN++
+		} else {
+			incorrectN++
+		}
+	}
+
+	stats := evtQuestionStatsTick{
+		AnsweredCount:  answered,
+		ConnectedCount: connected,
+		CorrectCount:   correctN,
+		IncorrectCount: incorrectN,
+	}
 
 	room.sendTeacher(encodeMsg("question.locked", evtQuestionLocked{
 		QuestionID:   q.ID.String(),
