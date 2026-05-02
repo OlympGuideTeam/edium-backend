@@ -48,4 +48,5 @@ type txRunner interface {
 type classAccessor interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.ClassListItem, error)
 	GetMemberRole(ctx context.Context, classID, userID uuid.UUID) (domain.ClassMemberRole, bool, error)
+	GetMembersForDetail(ctx context.Context, classID uuid.UUID) ([]domain.ClassMember, error)
 }
