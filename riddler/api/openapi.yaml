@@ -121,27 +121,27 @@ components:
           type: string
           format: uuid
         type:
-           type: string
-           enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
+          type: string
+          enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
         text:
-           type: string
+          type: string
         image_id:
-           type: string
-           format: uuid
-           nullable: true
-           description: UUID изображения из сервиса Louvre
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID изображения из сервиса Louvre
         order_index:
-           type: integer
+          type: integer
         max_score:
-           type: integer
+          type: integer
         metadata:
-            type: object
-            nullable: true
-            description: |
-             Зависит от типа вопроса:
-             - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
-             - drag: `{"correct_order": ["B", "A", "C"]}`
-             - connection: `{"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}`
+          type: object
+          nullable: true
+          description: |
+            Зависит от типа вопроса:
+            - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
+            - drag: `{"correct_order": ["B", "A", "C"]}`
+            - connection: `{"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}`
         options:
           type: array
           items:
@@ -390,6 +390,17 @@ components:
         name:
           type: string
 
+    LiveOptionStat:
+      type: object
+      properties:
+        option_id:
+          type: string
+          format: uuid
+        count:
+          type: integer
+        is_correct:
+          type: boolean
+
     LiveQuestionStatsChoice:
       type: object
       description: Статистика для single_choice / multiple_choice — распределение по опциям.
@@ -397,9 +408,16 @@ components:
         kind:
           type: string
           enum: [choice]
+        question_id:
+          type: string
+          format: uuid
         answered_count:
           type: integer
+        connected_count:
+          type: integer
         correct_count:
+          type: integer
+        incorrect_count:
           type: integer
         avg_time_ms:
           type: integer
@@ -407,15 +425,7 @@ components:
         distribution:
           type: array
           items:
-            type: object
-            properties:
-              option_id:
-                type: string
-                format: uuid
-              count:
-                type: integer
-              is_correct:
-                type: boolean
+            $ref: "#/components/schemas/LiveOptionStat"
 
     LiveQuestionStatsBinary:
       type: object
@@ -426,7 +436,12 @@ components:
         kind:
           type: string
           enum: [binary]
+        question_id:
+          type: string
+          format: uuid
         answered_count:
+          type: integer
+        connected_count:
           type: integer
         correct_count:
           type: integer
@@ -467,12 +482,6 @@ components:
         score:
           type: number
           format: float
-        max_score:
-          type: number
-          format: float
-        time_taken_ms:
-          type: integer
-          nullable: true
 
     LiveLeaderboardRow:
       type: object
@@ -987,29 +996,29 @@ paths:
                 - text
                 - answer_options
               properties:
-                 type:
-                   type: string
-                   enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
-                 text:
-                   type: string
-                   example: Какая столица Франции?
-                 image_id:
-                   type: string
-                   format: uuid
-                   nullable: true
-                   example: 550e8400-e29b-41d4-a716-446655440000
-                 max_score:
-                   type: integer
-                   default: 10
-                 metadata:
-                   type: object
-                   nullable: true
-                   description: |
-                     Обязательно для with_given_answer, drag, connection:
-                     - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
-                     - drag: `{"correct_order": ["B", "A", "C"]}`
-                     - connection: `{"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}`
-                 answer_options:
+                type:
+                  type: string
+                  enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
+                text:
+                  type: string
+                  example: Какая столица Франции?
+                image_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  example: 550e8400-e29b-41d4-a716-446655440000
+                max_score:
+                  type: integer
+                  default: 10
+                metadata:
+                  type: object
+                  nullable: true
+                  description: |
+                    Обязательно для with_given_answer, drag, connection:
+                    - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
+                    - drag: `{"correct_order": ["B", "A", "C"]}`
+                    - connection: `{"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}`
+                answer_options:
                   type: array
                   description: Обязательно для single_choice и multiple_choice
                   items:
@@ -1264,23 +1273,23 @@ paths:
                     type: object
                     required: [type, text, answer_options]
                     properties:
-                       type:
-                         type: string
-                         enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
-                       text:
-                         type: string
-                       image_id:
-                         type: string
-                         format: uuid
-                         nullable: true
-                         description: UUID изображения из сервиса Louvre
-                       metadata:
-                         type: object
-                         nullable: true
-                       max_score:
-                         type: integer
-                         nullable: true
-                       answer_options:
+                      type:
+                        type: string
+                        enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
+                      text:
+                        type: string
+                      image_id:
+                        type: string
+                        format: uuid
+                        nullable: true
+                        description: UUID изображения из сервиса Louvre
+                      metadata:
+                        type: object
+                        nullable: true
+                      max_score:
+                        type: integer
+                        nullable: true
+                      answer_options:
                         type: array
                         items:
                           type: object
@@ -2022,15 +2031,16 @@ x-websocket-events:
       direction: server→client (teacher, student)
       description: |
         Показан очередной вопрос. Студенту — без правильных ответов, учителю — полный.
-        Таймер запускается с `started_at`; UI ориентируется на `deadline_at` для синхронизации.
+        UI ориентируется на `deadline_at` для точной синхронизации таймера с сервером.
+        `question_total` нужен для прогресс-бара «Вопрос X / Y».
       payload:
         question_index: {type: integer}
+        question_total: {type: integer}
         question:
           oneOf:
             - $ref: "#/components/schemas/QuestionForStudent"
             - $ref: "#/components/schemas/QuestionForTeacher"
         time_limit_sec: {type: integer}
-        started_at: {type: string, format: date-time}
         deadline_at: {type: string, format: date-time}
 
     participant.answered:
@@ -2049,22 +2059,30 @@ x-websocket-events:
       direction: server→client (teacher)
       description: |
         Только учителю. Промежуточные агрегаты по текущему вопросу.
-        Шлётся не чаще 1 раза в секунду и при каждом новом ответе (с троттлингом).
+        Шлётся не чаще 1 раза в секунду (дебаунс). Данные идут плоско — payload IS stats.
+        При `kind=choice` включает `distribution`; при `kind=binary` — только агрегаты.
       payload:
-        question_id: {type: string, format: uuid}
-        stats: {$ref: "#/components/schemas/LiveQuestionStats"}
+        $ref: "#/components/schemas/LiveQuestionStats"
 
     question.locked:
       direction: server→client (teacher, student)
       description: |
         Текущий вопрос закрыт (таймер истёк ИЛИ все ответили). Клиент показывает
-        правильный ответ и статистику. Учитель видит финальные `stats` без `my_result`;
-        студент — `my_result` (правильно/балл/время) + `stats` без распределения,
-        если тип не choice.
+        правильный ответ и статистику.
+        - `stats` — финальные агрегаты (без `distribution` внутри).
+        - `distribution` — на верхнем уровне, только при `kind=choice`.
+        - `correct_answer` — структура зависит от типа вопроса (см. `LiveCorrectAnswer`).
+        - `my_result` — только студенту; `null` если не успел ответить.
       payload:
         question_id: {type: string, format: uuid}
-        correct_answer: {$ref: "#/components/schemas/LiveCorrectAnswer"}
         stats: {$ref: "#/components/schemas/LiveQuestionStats"}
+        distribution:
+          type: array
+          nullable: true
+          description: Только при kind=choice.
+          items:
+            $ref: "#/components/schemas/LiveOptionStat"
+        correct_answer: {$ref: "#/components/schemas/LiveCorrectAnswer"}
         my_result:
           $ref: "#/components/schemas/LiveStudentResult"
           nullable: true

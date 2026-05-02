@@ -92,17 +92,24 @@ func (h *Handler) startQuestion(ctx context.Context, room *SessionRoom, sessionI
 
 	room.broadcastAll(encodeMsg("quiz.started", nil))
 
+	questionTotal := len(questions)
+	if meta != nil && meta.QuestionCount > 0 {
+		questionTotal = meta.QuestionCount
+	}
+
 	room.sendTeacher(encodeMsg("question.started", evtQuestionStarted{
-		QuestionIdx:  idx,
-		Question:     buildQuestion(q, true),
-		TimeLimitSec: timeLimitSec,
-		DeadlineAt:   deadline.UTC().Format(time.RFC3339),
+		QuestionIdx:   idx,
+		QuestionTotal: questionTotal,
+		Question:      buildQuestion(q, true),
+		TimeLimitSec:  timeLimitSec,
+		DeadlineAt:    deadline.UTC().Format(time.RFC3339),
 	}))
 	room.broadcastStudents(encodeMsg("question.started", evtQuestionStarted{
-		QuestionIdx:  idx,
-		Question:     buildQuestion(q, false),
-		TimeLimitSec: timeLimitSec,
-		DeadlineAt:   deadline.UTC().Format(time.RFC3339),
+		QuestionIdx:   idx,
+		QuestionTotal: questionTotal,
+		Question:      buildQuestion(q, false),
+		TimeLimitSec:  timeLimitSec,
+		DeadlineAt:    deadline.UTC().Format(time.RFC3339),
 	}))
 
 	timerCtx, cancel := context.WithCancel(ctx)
