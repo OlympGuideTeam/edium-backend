@@ -45,4 +45,11 @@ resource "yandex_compute_instance" "this" {
   scheduling_policy {
     preemptible = var.preemptible
   }
+
+  # Смена «последнего» образа ubuntu-2204-lts не должна пересоздавать VM без явного намерения
+  lifecycle {
+    ignore_changes = [
+      boot_disk[0].initialize_params[0].image_id,
+    ]
+  }
 }

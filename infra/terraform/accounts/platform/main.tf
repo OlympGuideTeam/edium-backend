@@ -101,6 +101,8 @@ module "postgres" {
     "caesar_prod"  = { owner = "caesar_prod" }
     "riddler_test" = { owner = "riddler_test" }
     "riddler_prod" = { owner = "riddler_prod" }
+    "louvre_test"  = { owner = "louvre_test" }
+    "louvre_prod"  = { owner = "louvre_prod" }
     "sphinx"       = { owner = "sphinx" }
   }
 
@@ -115,6 +117,8 @@ module "postgres" {
     "caesar_prod"  = { password = var.caesar_pg_password_prod }
     "riddler_test" = { password = var.riddler_pg_password_test }
     "riddler_prod" = { password = var.riddler_pg_password_prod }
+    "louvre_test"  = { password = var.louvre_pg_password_test }
+    "louvre_prod"  = { password = var.louvre_pg_password_prod }
     "sphinx"       = { password = var.sphinx_pg_password }
   }
 }
@@ -129,6 +133,16 @@ module "redis" {
   subnet_id          = module.vpc.subnet_ids["edium-prod"]
   password           = var.redis_password
   security_group_ids = [module.vpc.db_security_group_id]
+}
+
+# --- Object Storage (Louvre — изображения квизов, S3 API) ---
+
+module "louvre_storage" {
+  source = "../../modules/louvre-storage"
+
+  folder_id        = var.folder_id
+  bucket_test_name = var.louvre_bucket_test_name
+  bucket_prod_name = var.louvre_bucket_prod_name
 }
 
 # --- Доступ к PG из ML-аккаунта (Sphinx GPU VM) ---

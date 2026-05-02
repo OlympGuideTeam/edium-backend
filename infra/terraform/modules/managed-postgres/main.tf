@@ -13,6 +13,7 @@ resource "yandex_mdb_postgresql_cluster" "this" {
     }
 
     postgresql_config = {
+      # Для пресета Managed PG верхняя граница часто 400; нагрузку на лимит снижаем conn_limit у пользователей
       max_connections = 400
     }
   }
@@ -39,7 +40,7 @@ resource "yandex_mdb_postgresql_user" "users" {
   cluster_id = yandex_mdb_postgresql_cluster.this.id
   name       = each.key
   password   = each.value.password
-  conn_limit = 30
+  conn_limit = coalesce(each.value.conn_limit, var.default_user_conn_limit)
 }
 
 # Потом БД с owner

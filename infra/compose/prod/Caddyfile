@@ -26,6 +26,9 @@ api.edium.online {
     handle /riddler/v1/* {
         reverse_proxy riddler:80
     }
+    handle /louvre/v1/* {
+        reverse_proxy louvre:80
+    }
     handle {
         respond "Not Found" 404
     }
