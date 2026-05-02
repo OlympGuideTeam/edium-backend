@@ -211,6 +211,7 @@ services:
     environment:
       APP_PORT: "80"
       POSTGRES_DSN: "postgres://${RIDDLER_PG_USER}:${RIDDLER_PG_PWD}@${PG_HOST}:6432/${RIDDLER_PG_DB}?sslmode=require"
+      REDIS_URL: "redis://:${RIDDLER_REDIS_PWD}@${REDIS_HOST}:6379/2"
       NATS_URL: "nats://riddler:${NATS_PASSWORD_RIDDLER}@nats:4222"
       DOORMAN_JWKS_URL: "http://doorman/doorman/v1/.well-known/jwks.json"
       OTEL_ENDPOINT: "jaeger:4317"
@@ -246,6 +247,54 @@ services:
       FLYWAY_BASELINE_ON_MIGRATE: "true"
     volumes:
       - ./migrations/riddler:/app/migrations
+    networks:
+      - edium
+
+  louvre:
+    image: cr.yandex/${YC_REGISTRY_ID}/edium-louvre:${IMAGE_TAG:-latest}
+    restart: always
+    environment:
+      APP_PORT: "80"
+      POSTGRES_DSN: "postgres://${LOUVRE_PG_USER}:${LOUVRE_PG_PWD}@${PG_HOST}:6432/${LOUVRE_PG_DB}?sslmode=require"
+      MINIO_ENDPOINT: ${LOUVRE_MINIO_ENDPOINT}
+      MINIO_ROOT_USER: ${LOUVRE_MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${LOUVRE_MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${LOUVRE_MINIO_BUCKET:-edium-images}
+      MINIO_USE_SSL: ${LOUVRE_MINIO_USE_SSL:-false}
+      DOORMAN_JWKS_URL: "http://doorman/doorman/v1/.well-known/jwks.json"
+      OTEL_ENDPOINT: "jaeger:4317"
+    depends_on:
+      louvre-flyway:
+        condition: service_completed_successfully
+      doorman:
+        condition: service_started
+      jaeger:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - edium
+
+  louvre-flyway:
+    image: flyway/flyway:12.2.0
+    restart: "no"
+    command: ["migrate"]
+    environment:
+      FLYWAY_URL: "jdbc:postgresql://${PG_HOST}:6432/${LOUVRE_PG_DB}?sslmode=require"
+      FLYWAY_USER: ${LOUVRE_PG_USER}
+      FLYWAY_PASSWORD: ${LOUVRE_PG_PWD}
+      FLYWAY_LOCATIONS: "filesystem:/app/migrations"
+      FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+    volumes:
+      - ./migrations/louvre:/app/migrations
     networks:
       - edium
 
