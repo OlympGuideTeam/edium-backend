@@ -562,6 +562,39 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /caesar/v1/modules/{moduleId}/roster:
+    get:
+      summary: Список учеников класса для модуля
+      operationId: getModuleRoster
+      tags: [Modules]
+      description: |
+        Возвращает учеников класса, к которому относится курс модуля. Используется учителем для
+        предзагрузки списка участников лобби live-сессии Riddler: клиент строит хэш-мапу
+        `user_id → имя` и отрисовывает весь класс, помечая подключившихся по WS-событию
+        `lobby.participant_joined`. Доступно только учителю/владельцу класса.
+      parameters:
+        - $ref: "#/components/parameters/ModuleId"
+      responses:
+        "200":
+          description: Список учеников
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MemberShort"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # ─── Элементы модуля ───────────────────────────────────────────────
 
   /caesar/v1/items/{itemId}:
