@@ -2,6 +2,7 @@ package live
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -28,6 +29,35 @@ func userIDFromCtx(c *gin.Context) (uuid.UUID, bool) {
 		c.Abort()
 	}
 	return id, ok
+}
+
+func (h *Handler) ListLibraryLiveSessions(c *gin.Context) {
+	authorID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	sessions, err := h.svc.ListLibraryLiveSessions(c.Request.Context(), authorID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	items := make([]dto.LibraryLiveSessionItem, len(sessions))
+	for i, s := range sessions {
+		items[i] = dto.LibraryLiveSessionItem{
+			SessionID:         s.SessionID.String(),
+			QuizTemplateID:    s.QuizTemplateID.String(),
+			QuizTitle:         s.QuizTitle,
+			Status:            string(s.Status),
+			Phase:             string(s.Phase),
+			JoinCode:          s.JoinCode,
+			ParticipantsCount: s.ParticipantsCount,
+			CreatedAt:         s.CreatedAt.UTC().Format(time.RFC3339),
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.ListLibraryLiveSessionsResponse{Sessions: items})
 }
 
 func (h *Handler) JoinLiveSession(c *gin.Context) {
