@@ -91,6 +91,21 @@ type LiveResultsTeacherResponse struct {
 	Leaderboard []LiveResultsTeacherAttempt `json:"leaderboard"`
 }
 
+type LibraryLiveSessionItem struct {
+	SessionID         string  `json:"session_id"`
+	QuizTemplateID    string  `json:"quiz_template_id"`
+	QuizTitle         string  `json:"quiz_title"`
+	Status            string  `json:"status"`
+	Phase             string  `json:"phase"`
+	JoinCode          *string `json:"join_code,omitempty"`
+	ParticipantsCount int     `json:"participants_count"`
+	CreatedAt         string  `json:"created_at"`
+}
+
+type ListLibraryLiveSessionsResponse struct {
+	Sessions []LibraryLiveSessionItem `json:"sessions"`
+}
+
 type JoinLiveSessionRequest struct {
 	Name *string `json:"name"`
 }
