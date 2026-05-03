@@ -3,6 +3,7 @@ package live
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -118,6 +119,7 @@ type evtQuestionLocked struct {
 	Stats         evtQuestionStatsTick `json:"stats"`
 	Distribution  []evtOptionStat      `json:"distribution,omitempty"`
 	CorrectAnswer *evtCorrectAnswer    `json:"correct_answer,omitempty"`
+	WordCloud     []string             `json:"word_cloud,omitempty"`
 	MyResult      *evtMyResult         `json:"my_result,omitempty"`
 }
 
@@ -237,4 +239,21 @@ func buildCorrectAnswer(q domain.QuestionWithOptions) *evtCorrectAnswer {
 		}
 	}
 	return nil
+}
+
+// buildWordCloud собирает все текстовые ответы участников для with_given_answer.
+// Возвращает nil для всех остальных типов вопросов.
+func buildWordCloud(q domain.QuestionWithOptions, allAnswers map[uuid.UUID]domain.LiveAnswer) []string {
+	if q.Type != domain.QuestionTypeWithGivenAnswer {
+		return nil
+	}
+	words := make([]string, 0, len(allAnswers))
+	for _, ans := range allAnswers {
+		if text, ok := ans.AnswerData["text"].(string); ok {
+			if w := strings.ToLower(strings.TrimSpace(text)); w != "" {
+				words = append(words, w)
+			}
+		}
+	}
+	return words
 }
