@@ -150,6 +150,17 @@ type CreateLiveCourseSessionParams struct {
 	QuestionTimeLimitSec *int
 }
 
+type LibraryLiveSession struct {
+	SessionID         uuid.UUID
+	QuizTemplateID    uuid.UUID
+	QuizTitle         string
+	Status            SessionStatus
+	Phase             LivePhase
+	JoinCode          *string
+	ParticipantsCount int
+	CreatedAt         time.Time
+}
+
 type CreateTestCourseSessionInlineParams struct {
 	Title             string
 	Description       *string
