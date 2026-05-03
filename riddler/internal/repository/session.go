@@ -157,6 +157,34 @@ func (r *PgSessionRepository) SetGradingSent(ctx context.Context, id uuid.UUID) 
 	return nil
 }
 
+func (r *PgSessionRepository) ListLiveLibrarySessions(ctx context.Context, authorID uuid.UUID) ([]domain.LibraryLiveSession, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	rows, err := exec.QueryContext(ctx,
+		`SELECT qs.id, qs.quiz_template_id, qt.title, qs.status, qs.created_at
+		 FROM quiz_session qs
+		 JOIN quiz_template qt ON qt.id = qs.quiz_template_id
+		 WHERE qs.source = 'library'
+		   AND qs.mode = 'live'
+		   AND qt.author_id = $1
+		 ORDER BY qs.created_at DESC`,
+		authorID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list live library sessions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.LibraryLiveSession
+	for rows.Next() {
+		var s domain.LibraryLiveSession
+		if err := rows.Scan(&s.SessionID, &s.QuizTemplateID, &s.QuizTitle, &s.Status, &s.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan session row: %w", err)
+		}
+		result = append(result, s)
+	}
+	return result, rows.Err()
+}
+
 func (r *PgSessionRepository) GetFreeAnswerSubmissionsForSession(ctx context.Context, sessionID uuid.UUID) ([]domain.FreeAnswerSubmission, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	rows, err := exec.QueryContext(ctx,

@@ -153,6 +153,23 @@ func (s *Service) ResolveLiveCode(ctx context.Context, code string) (*domain.Liv
 	return meta, nil
 }
 
+func (s *Service) ListLibraryLiveSessions(ctx context.Context, authorID uuid.UUID) ([]domain.LibraryLiveSession, error) {
+	sessions, err := s.sessions.ListLiveLibrarySessions(ctx, authorID)
+	if err != nil {
+		return nil, fmt.Errorf("list sessions: %w", err)
+	}
+	for i, sess := range sessions {
+		meta, err := s.liveSession.GetSessionMeta(ctx, sess.SessionID)
+		if err != nil || meta == nil {
+			continue
+		}
+		sessions[i].Phase = meta.Phase
+		sessions[i].JoinCode = meta.JoinCode
+		sessions[i].ParticipantsCount = meta.ParticipantsCount
+	}
+	return sessions, nil
+}
+
 func resolveTimeLimitSec(override, fromQuiz *int) int {
 	if override != nil {
 		return *override

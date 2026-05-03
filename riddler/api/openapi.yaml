@@ -309,6 +309,35 @@ components:
         - `question_locked` — вопрос закрыт (таймер истёк или все ответили), показ статистики
         - `completed` — все вопросы пройдены, доступны итоги
 
+    LibraryLiveSessionItem:
+      type: object
+      description: Элемент списка library live-сессий учителя.
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        quiz_template_id:
+          type: string
+          format: uuid
+        quiz_title:
+          type: string
+        status:
+          type: string
+          enum: [not_started, waiting, active, running, finished]
+          description: Статус сессии из БД.
+        phase:
+          $ref: "#/components/schemas/LivePhase"
+        join_code:
+          type: string
+          nullable: true
+          description: 6-значный код; присутствует, если сессия запущена (есть данные в Redis).
+        participants_count:
+          type: integer
+          description: Текущее количество участников (из Redis; 0 если сессия не запущена).
+        created_at:
+          type: string
+          format: date-time
+
     LiveSessionMeta:
       type: object
       description: Мета live-сессии. Возвращается при резолве кода и подключении.
@@ -1333,6 +1362,30 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
+  /sessions/live:
+    get:
+      tags: [Live]
+      summary: Список library live-сессий учителя
+      operationId: listLibraryLiveSessions
+      description: |
+        Возвращает все live-сессии текущего учителя с `source=library`, отсортированные по дате создания (новые первые).
+        Для каждой сессии обогащает данные из Redis: текущая фаза, `join_code` (если сессия запущена), количество участников.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Список сессий
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/LibraryLiveSessionItem"
+        "401": {$ref: "#/components/responses/Unauthorized"}
 
   /sessions/live/course:
     post:
