@@ -60,7 +60,9 @@ func (s *Service) GradeSubmission(ctx context.Context, attemptID, submissionID, 
 	})
 }
 
-func (s *Service) GetAttemptReview(ctx context.Context, attemptID, userID uuid.UUID) (*domain.Attempt, []domain.AnswerWithQuestion, error) {
+// GetAttemptReview возвращает попытку с ответами.
+// Без JWT (callerID == nil) допустимо только при user_id попытки NULL в БД.
+func (s *Service) GetAttemptReview(ctx context.Context, attemptID uuid.UUID, callerID *uuid.UUID) (*domain.Attempt, []domain.AnswerWithQuestion, error) {
 	attempt, err := s.attempts.GetByID(ctx, attemptID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get attempt: %w", err)
@@ -69,14 +71,29 @@ func (s *Service) GetAttemptReview(ctx context.Context, attemptID, userID uuid.U
 		return nil, nil, apperr.ErrAttemptNotFound
 	}
 
-	isTeacher := attempt.UserID != userID
-	if isTeacher {
-		if err := s.requireSessionOwner(ctx, attempt.SessionID, userID); err != nil {
-			return nil, nil, err
+	var enrichTeacher bool
+
+	if callerID == nil {
+		if attempt.UserID != uuid.Nil {
+			return nil, nil, apperr.ErrUnauthorized
 		}
-	} else {
 		if attempt.Status == domain.AttemptStatusInProgress {
 			return nil, nil, apperr.ErrAttemptNotActive
+		}
+		enrichTeacher = false
+	} else {
+		caller := *callerID
+		isOwner := attempt.UserID != uuid.Nil && attempt.UserID == caller
+		if isOwner {
+			if attempt.Status == domain.AttemptStatusInProgress {
+				return nil, nil, apperr.ErrAttemptNotActive
+			}
+			enrichTeacher = false
+		} else {
+			if err := s.requireSessionOwner(ctx, attempt.SessionID, caller); err != nil {
+				return nil, nil, err
+			}
+			enrichTeacher = true
 		}
 	}
 
@@ -85,7 +102,7 @@ func (s *Service) GetAttemptReview(ctx context.Context, attemptID, userID uuid.U
 		return nil, nil, fmt.Errorf("get answers: %w", err)
 	}
 
-	if isTeacher {
+	if enrichTeacher {
 		session, err := s.sessions.GetByID(ctx, attempt.SessionID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("get session: %w", err)

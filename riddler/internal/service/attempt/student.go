@@ -86,7 +86,7 @@ func (s *Service) SubmitAnswer(ctx context.Context, attemptID, userID, questionI
 	if attempt == nil {
 		return apperr.ErrAttemptNotFound
 	}
-	if attempt.UserID != userID {
+	if attempt.UserID == uuid.Nil || attempt.UserID != userID {
 		return apperr.ErrAttemptForbidden
 	}
 	if attempt.Status != domain.AttemptStatusInProgress {
@@ -116,7 +116,7 @@ func (s *Service) Finish(ctx context.Context, attemptID, userID uuid.UUID) error
 	if attempt == nil {
 		return apperr.ErrAttemptNotFound
 	}
-	if attempt.UserID != userID {
+	if attempt.UserID == uuid.Nil || attempt.UserID != userID {
 		return apperr.ErrAttemptForbidden
 	}
 	if attempt.Status != domain.AttemptStatusInProgress {

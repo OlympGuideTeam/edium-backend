@@ -53,15 +53,18 @@ func (s *Service) scheduleAttemptScored(ctx context.Context, attempt *domain.Att
 	type payload struct {
 		AttemptID  uuid.UUID `json:"attempt_id"`
 		SessionID  uuid.UUID `json:"session_id"`
-		UserID     uuid.UUID `json:"user_id"`
+		UserID     uuid.UUID `json:"user_id,omitempty"`
 		TotalScore float64   `json:"total_score"`
 	}
-	data, _ := json.Marshal(payload{
+	pl := payload{
 		AttemptID:  attempt.ID,
 		SessionID:  attempt.SessionID,
-		UserID:     attempt.UserID,
 		TotalScore: totalScore,
-	})
+	}
+	if attempt.UserID != uuid.Nil {
+		pl.UserID = attempt.UserID
+	}
+	data, _ := json.Marshal(pl)
 	if err := s.tasks.Schedule(ctx, domain.TaskTypeAttemptScoredPublisher, data); err != nil {
 		slog.ErrorContext(ctx, "schedule attempt.scored", "attempt_id", attempt.ID, "err", err)
 	}

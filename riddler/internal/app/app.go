@@ -211,6 +211,7 @@ func (a *App) Router() *gin.Engine {
 	optAuth := r.Group("/riddler/v1")
 	optAuth.Use(middleware.OptionalAuth(a.jwksClient))
 	optAuth.POST("/sessions/:session_id/live/join", a.liveHandler.JoinLiveSession)
+	optAuth.GET("/attempts/:attempt_id/review", a.attemptHandler.GetAttemptReview)
 
 	api.GET("/users/me/statistic", a.attemptHandler.GetMeStatistic)
 
@@ -218,7 +219,6 @@ func (a *App) Router() *gin.Engine {
 	{
 		attempts.POST("/:attempt_id/answers", a.attemptHandler.SubmitAnswer)
 		attempts.POST("/:attempt_id/finish", a.attemptHandler.Finish)
-		attempts.GET("/:attempt_id/review", a.attemptHandler.GetAttemptReview)
 		attempts.POST("/:attempt_id/submissions/:submission_id/grade", a.attemptHandler.GradeSubmission)
 		attempts.POST("/:attempt_id/complete", a.attemptHandler.CompleteAttempt)
 	}
