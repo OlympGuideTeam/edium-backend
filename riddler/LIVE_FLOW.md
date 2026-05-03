@@ -478,6 +478,24 @@ UI ориентируется на `deadline_at` для синхронизаци
 | `drag` | `correct_order` | `{"correct_order": ["B", "A", "C"]}` |
 | `connection` | `correct_pairs` | `{"correct_pairs": {"A": "1", "B": "2"}}` |
 
+### Поле `word_cloud` для `with_given_answer`
+
+Только для вопросов типа `with_given_answer`. Плоский список всех текстовых ответов участников
+(после `trim` и `toLower`). Дубликаты сохраняются — фронт использует частоту для размера слова.
+Правильный ответ отдаётся отдельно в `correct_answer.correct_answers`.
+
+```json
+{ "type": "question.locked", "data": {
+    "question_id": "uuid",
+    "stats": { ... },
+    "correct_answer": { "correct_answers": ["париж", "paris"] },
+    "word_cloud": ["париж", "лондон", "париж", "берлин", "париж", "москва"],
+    "my_result": { "is_correct": true, "score": 10 }
+}}
+```
+
+При остальных типах вопросов поле `word_cloud` отсутствует.
+
 ---
 
 ## 15. Переход к следующему вопросу
