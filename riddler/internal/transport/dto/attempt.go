@@ -44,7 +44,7 @@ type AnswerSubmissionResponse struct {
 
 type AttemptSummaryResponse struct {
 	AttemptID string   `json:"attempt_id"`
-	UserID    string   `json:"user_id"`
+	UserID    string   `json:"user_id,omitempty"`
 	Status    string   `json:"status"`
 	Score     *float64 `json:"score"`
 }
@@ -70,7 +70,7 @@ type AnswerReviewResponse struct {
 
 type AttemptReviewResponse struct {
 	AttemptID  string                 `json:"attempt_id"`
-	UserID     string                 `json:"user_id"`
+	UserID     string                 `json:"user_id,omitempty"`
 	Status     string                 `json:"status"`
 	Score      *float64               `json:"score"`
 	StartedAt  string                 `json:"started_at"`

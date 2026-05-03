@@ -189,6 +189,8 @@ components:
         user_id:
           type: string
           format: uuid
+          nullable: true
+          description: Нет в JSON, если в БД у попытки user_id NULL.
         status:
           type: string
           enum: [in_progress, grading, graded, completed]
@@ -252,6 +254,8 @@ components:
         user_id:
           type: string
           format: uuid
+          nullable: true
+          description: Нет в JSON, если в БД у попытки user_id NULL.
         status:
           type: string
           enum: [in_progress, grading, graded, completed]
@@ -1897,6 +1901,12 @@ paths:
 
         **Учитель** (автор квиза) — доступен в любой момент.
         Дополнительно возвращает `options` с `is_correct` и `metadata` с правильными ответами.
+
+        Без авторизации — только если у попытки в БД **`user_id` IS NULL** (тот же студенческий ответ, без `options`/`metadata`;
+        только при `status != in_progress`). Иначе нужен JWT.
+      security:
+        - bearerAuth: []
+        - {}
       parameters:
         - name: attempt_id
           in: path

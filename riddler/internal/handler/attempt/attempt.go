@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"riddler/internal/middleware"
 	"riddler/internal/pkg/apperr"
 	"riddler/internal/pkg/httpx"
 	"riddler/internal/transport/dto"
@@ -107,20 +108,23 @@ func (h *Handler) ListSessionAttempts(c *gin.Context) {
 
 	resp := make([]dto.AttemptSummaryResponse, len(attempts))
 	for i, a := range attempts {
-		resp[i] = dto.AttemptSummaryResponse{
+		item := dto.AttemptSummaryResponse{
 			AttemptID: a.ID.String(),
-			UserID:    a.UserID.String(),
 			Status:    string(a.Status),
 			Score:     a.Score,
 		}
+		if a.UserID != uuid.Nil {
+			item.UserID = a.UserID.String()
+		}
+		resp[i] = item
 	}
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *Handler) GetAttemptReview(c *gin.Context) {
-	userID, ok := userIDFromCtx(c)
-	if !ok {
-		return
+	var callerID *uuid.UUID
+	if id, ok := middleware.UserIDFromContext(c.Request.Context()); ok {
+		callerID = &id
 	}
 
 	attemptID, err := uuid.Parse(c.Param("attempt_id"))
@@ -129,7 +133,7 @@ func (h *Handler) GetAttemptReview(c *gin.Context) {
 		return
 	}
 
-	attempt, answers, err := h.service.GetAttemptReview(c.Request.Context(), attemptID, userID)
+	attempt, answers, err := h.service.GetAttemptReview(c.Request.Context(), attemptID, callerID)
 	if err != nil {
 		httpx.WriteError(c, err)
 		return
@@ -174,15 +178,18 @@ func (h *Handler) GetAttemptReview(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, dto.AttemptReviewResponse{
+	resp := dto.AttemptReviewResponse{
 		AttemptID:  attempt.ID.String(),
-		UserID:     attempt.UserID.String(),
 		Status:     string(attempt.Status),
 		Score:      attempt.Score,
 		StartedAt:  attempt.StartedAt.Format("2006-01-02T15:04:05Z"),
 		FinishedAt: finishedAt,
 		Answers:    reviewAnswers,
-	})
+	}
+	if attempt.UserID != uuid.Nil {
+		resp.UserID = attempt.UserID.String()
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *Handler) GradeSubmission(c *gin.Context) {
