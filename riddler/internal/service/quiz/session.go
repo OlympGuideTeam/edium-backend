@@ -131,7 +131,12 @@ func (s *Service) DeleteCourseSession(ctx context.Context, sessionID, authorID u
 	if quiz == nil {
 		return apperr.ErrQuizNotFound
 	}
-	if quiz.AuthorID != authorID {
+	mayDelete := quiz.AuthorID == authorID
+	if session.Mode == domain.SessionModeLive && session.Source == domain.LiveSourceLibrary &&
+		session.LiveHostUserID != nil && *session.LiveHostUserID == authorID {
+		mayDelete = true
+	}
+	if !mayDelete {
 		return apperr.ErrQuizForbidden
 	}
 
