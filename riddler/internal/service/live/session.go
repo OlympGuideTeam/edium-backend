@@ -74,9 +74,6 @@ func (s *Service) CreateLiveLibrarySession(ctx context.Context, authorID, quizTe
 	if quiz == nil {
 		return uuid.Nil, apperr.ErrQuizNotFound
 	}
-	if quiz.AuthorID != authorID {
-		return uuid.Nil, apperr.ErrQuizForbidden
-	}
 	if quiz.Source != domain.QuizSourceLibrary || !quiz.IsPublic {
 		return uuid.Nil, apperr.ErrLiveNotLibrary
 	}
@@ -86,10 +83,12 @@ func (s *Service) CreateLiveLibrarySession(ctx context.Context, authorID, quizTe
 
 	timeLimitSec := resolveTimeLimitSec(questionTimeLimitSec, quiz.DefaultSettings.QuestionTimeLimitSec)
 
+	hostID := authorID
 	return s.sessions.Create(ctx, domain.CreateSessionParams{
 		QuizTemplateID:       quizTemplateID,
 		Mode:                 domain.SessionModeLive,
 		Source:               domain.LiveSourceLibrary,
+		LiveHostUserID:       &hostID,
 		MaxScore:             quiz.MaxScore,
 		QuestionTimeLimitSec: &timeLimitSec,
 		Status:               domain.SessionStatusNotStarted,
@@ -113,8 +112,20 @@ func (s *Service) StartLiveSession(ctx context.Context, sessionID, callerID uuid
 		return "", "", apperr.ErrQuizNotFound
 	}
 
-	if session.Source == domain.LiveSourceCourse && quiz.AuthorID != callerID {
-		return "", "", apperr.ErrQuizForbidden
+	switch session.Source {
+	case domain.LiveSourceCourse:
+		if quiz.AuthorID != callerID {
+			return "", "", apperr.ErrQuizForbidden
+		}
+	case domain.LiveSourceLibrary:
+		if session.LiveHostUserID != nil {
+			if *session.LiveHostUserID != callerID {
+				return "", "", apperr.ErrQuizForbidden
+			}
+		} else if quiz.AuthorID != callerID {
+			// Сессии до миграции live_host_user_id создавал только автор шаблона.
+			return "", "", apperr.ErrQuizForbidden
+		}
 	}
 
 	joinCode, err = s.liveSession.InitSession(ctx, sessionID, quiz, *session.QuestionTimeLimitSec, session.Source, callerID)
