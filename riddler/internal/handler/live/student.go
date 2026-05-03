@@ -136,12 +136,14 @@ func (h *Handler) lockQuestion(ctx context.Context, room *SessionRoom, sessionID
 	allAnswers, _ := h.svc.GetAllAnswers(ctx, sessionID, q.ID)
 	stats, distribution := buildStats(q, allAnswers, connected)
 	correctAnswer := buildCorrectAnswer(q)
+	wordCloud := buildWordCloud(q, allAnswers)
 
 	room.sendTeacher(encodeMsg("question.locked", evtQuestionLocked{
 		QuestionID:    q.ID.String(),
 		Stats:         stats,
 		Distribution:  distribution,
 		CorrectAnswer: correctAnswer,
+		WordCloud:     wordCloud,
 	}))
 
 	room.mu.RLock()
@@ -152,6 +154,7 @@ func (h *Handler) lockQuestion(ctx context.Context, room *SessionRoom, sessionID
 			Stats:         stats,
 			Distribution:  distribution,
 			CorrectAnswer: correctAnswer,
+			WordCloud:     wordCloud,
 			MyResult: &evtMyResult{
 				IsCorrect: ans.IsCorrect,
 				Score:     ans.Score,

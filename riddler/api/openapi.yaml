@@ -2072,6 +2072,8 @@ x-websocket-events:
         - `stats` — финальные агрегаты (без `distribution` внутри).
         - `distribution` — на верхнем уровне, только при `kind=choice`.
         - `correct_answer` — структура зависит от типа вопроса (см. `LiveCorrectAnswer`).
+        - `word_cloud` — только для `with_given_answer`; плоский список всех ответов участников
+          (trim + toLower), дубликаты сохранены для частотного рендеринга облака слов.
         - `my_result` — только студенту; `null` если не успел ответить.
       payload:
         question_id: {type: string, format: uuid}
@@ -2083,6 +2085,14 @@ x-websocket-events:
           items:
             $ref: "#/components/schemas/LiveOptionStat"
         correct_answer: {$ref: "#/components/schemas/LiveCorrectAnswer"}
+        word_cloud:
+          type: array
+          nullable: true
+          description: |
+            Только для with_given_answer. Все текстовые ответы участников (trim + toLower).
+            Дубликаты сохраняются — фронт использует частоту для размера слова в облаке.
+          items:
+            type: string
         my_result:
           $ref: "#/components/schemas/LiveStudentResult"
           nullable: true
