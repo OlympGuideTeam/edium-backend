@@ -108,3 +108,26 @@ type CreateCourseItemRequest struct {
 type CreateCourseItemResponse struct {
 	ID string `json:"id"`
 }
+
+// ─── Course sheet (ведомость) ─────────────────────────────────────────────────────
+
+type SheetScore struct {
+	ItemID string   `json:"item_id"`
+	Score  *float64 `json:"score"`
+}
+
+type SheetRow struct {
+	StudentID   string       `json:"student_id"`
+	StudentName string       `json:"student_name"`
+	Scores      []SheetScore `json:"scores"`
+}
+
+type SheetColumn struct {
+	ID    string `json:"id"`
+	RefID string `json:"ref_id"`
+}
+
+type CourseSheet struct {
+	Items    []SheetColumn `json:"items"`
+	Students []SheetRow    `json:"students"`
+}

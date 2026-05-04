@@ -49,17 +49,19 @@ func (s *Service) GetUserStatistic(ctx context.Context, userID uuid.UUID) (*doma
 	return s.attempts.GetUserStatistic(ctx, userID)
 }
 
-func (s *Service) scheduleAttemptScored(ctx context.Context, attempt *domain.Attempt, totalScore float64) {
+func (s *Service) scheduleAttemptScored(ctx context.Context, attempt *domain.Attempt, totalScore, maxScore float64) {
 	type payload struct {
 		AttemptID  uuid.UUID `json:"attempt_id"`
 		SessionID  uuid.UUID `json:"session_id"`
 		UserID     uuid.UUID `json:"user_id,omitempty"`
 		TotalScore float64   `json:"total_score"`
+		MaxScore   float64   `json:"max_score"`
 	}
 	pl := payload{
 		AttemptID:  attempt.ID,
 		SessionID:  attempt.SessionID,
 		TotalScore: totalScore,
+		MaxScore:   maxScore,
 	}
 	if attempt.UserID != uuid.Nil {
 		pl.UserID = attempt.UserID

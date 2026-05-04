@@ -362,3 +362,31 @@ func (r *PgAttemptRepository) FindExpiredInProgress(ctx context.Context) ([]doma
 	}
 	return result, rows.Err()
 }
+
+func (r *PgAttemptRepository) GetQuizAttemptsByUser(ctx context.Context, quizTemplateID, userID uuid.UUID) ([]domain.QuizAttemptSummary, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+
+	rows, err := exec.QueryContext(ctx,
+		`SELECT a.id, a.session_id, qs.mode, a.status, a.score, a.started_at, a.finished_at
+		 FROM attempt a
+		 JOIN quiz_session qs ON qs.id = a.session_id
+		 WHERE qs.quiz_template_id = $1 AND a.user_id = $2
+		 ORDER BY a.started_at DESC`,
+		quizTemplateID, userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query quiz attempts: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.QuizAttemptSummary
+	for rows.Next() {
+		var s domain.QuizAttemptSummary
+		err := rows.Scan(&s.ID, &s.SessionID, &s.SessionType, &s.Status, &s.Score, &s.StartedAt, &s.FinishedAt)
+		if err != nil {
+			return nil, fmt.Errorf("scan attempt: %w", err)
+		}
+		result = append(result, s)
+	}
+	return result, rows.Err()
+}

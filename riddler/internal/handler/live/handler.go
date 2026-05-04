@@ -294,3 +294,41 @@ func (h *Handler) CreateLiveCourseSession(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dto.CreateLiveSessionResponse{SessionID: sessionID.String()})
 }
+
+func (h *Handler) GetLibraryLiveSessionsByHost(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	sessions, err := h.svc.GetLibraryLiveSessionsByHost(c.Request.Context(), userID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	items := make([]dto.UserLiveSessionItem, len(sessions))
+	for i, s := range sessions {
+		var startedAt, finishedAt *string
+		if s.StartedAt != nil {
+			sa := s.StartedAt.UTC().Format(time.RFC3339)
+			startedAt = &sa
+		}
+		if s.FinishedAt != nil {
+			fa := s.FinishedAt.UTC().Format(time.RFC3339)
+			finishedAt = &fa
+		}
+		items[i] = dto.UserLiveSessionItem{
+			SessionID:         s.SessionID.String(),
+			QuizTemplateID:    s.QuizTemplateID.String(),
+			QuizTitle:         s.QuizTitle,
+			Status:            string(s.Status),
+			Phase:             string(s.Phase),
+			ParticipantsCount: s.ParticipantsCount,
+			StartedAt:         startedAt,
+			FinishedAt:        finishedAt,
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.UserLiveSessionsResponse{Sessions: items})
+}

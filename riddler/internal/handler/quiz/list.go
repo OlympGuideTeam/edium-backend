@@ -18,7 +18,9 @@ func (h *Handler) ListQuizzes(c *gin.Context) {
 		return
 	}
 
-	items, err := h.service.ListQuizzes(c.Request.Context(), role)
+	search := c.Query("search")
+
+	items, err := h.service.ListQuizzes(c.Request.Context(), role, &search)
 	if err != nil {
 		httpx.WriteError(c, err)
 		return
