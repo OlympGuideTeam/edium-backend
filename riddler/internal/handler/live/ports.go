@@ -32,6 +32,7 @@ type liveService interface {
 	GetPhase(ctx context.Context, sessionID uuid.UUID) (domain.LivePhase, error)
 	SetPhase(ctx context.Context, sessionID uuid.UUID, phase domain.LivePhase) error
 	SetCurrentQuestion(ctx context.Context, sessionID uuid.UUID, idx int, deadline time.Time) error
+	GetCurrentQuestion(ctx context.Context, sessionID uuid.UUID) (int, time.Time, error)
 	SaveAnswer(ctx context.Context, sessionID, questionID, attemptID uuid.UUID, ans domain.LiveAnswer) error
 	GetAnswer(ctx context.Context, sessionID, questionID, attemptID uuid.UUID) (*domain.LiveAnswer, error)
 	GetAllAnswers(ctx context.Context, sessionID, questionID uuid.UUID) (map[uuid.UUID]domain.LiveAnswer, error)
