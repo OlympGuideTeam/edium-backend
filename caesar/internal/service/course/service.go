@@ -14,6 +14,7 @@ import (
 type Service struct {
 	courses courseStore
 	classes classAccessor
+	sheets  sheetAccessor
 	tasks   taskScheduler
 	tx      txRunner
 }
@@ -113,18 +114,106 @@ func (s *Service) UpdateCourse(ctx context.Context, courseID, userID uuid.UUID, 
 		return apperr.ErrCourseEmptyTitle
 	}
 
-	c, err := s.getCourse(ctx, courseID)
+	course, err := s.courses.GetByID(ctx, courseID)
 	if err != nil {
-		return err
+		return fmt.Errorf("getByID: %w", err)
 	}
-	if err := s.requireCanModify(ctx, c, userID); err != nil {
-		return err
+	if course == nil {
+		return apperr.ErrCourseNotFound
+	}
+
+	role, ok, err := s.classes.GetMemberRole(ctx, course.ClassID, userID)
+	if err != nil {
+		return fmt.Errorf("getMemberRole: %w", err)
+	}
+	if !ok || role == domain.ClassMemberRoleStudent {
+		return apperr.ErrCourseForbidden
 	}
 
 	if err := s.courses.Update(ctx, courseID, title); err != nil {
 		return fmt.Errorf("update: %w", err)
 	}
 	return nil
+}
+
+func (s *Service) GetCourseSheet(ctx context.Context, courseID, userID uuid.UUID) (*domain.CourseSheet, error) {
+	course, err := s.courses.GetByID(ctx, courseID)
+	if err != nil {
+		return nil, fmt.Errorf("getByID: %w", err)
+	}
+	if course == nil {
+		return nil, apperr.ErrCourseNotFound
+	}
+
+	_, ok, err := s.classes.GetMemberRole(ctx, course.ClassID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("getMemberRole: %w", err)
+	}
+	if !ok {
+		return nil, apperr.ErrCourseNotMember
+	}
+
+	items, err := s.courses.GetSheetItems(ctx, courseID)
+	if err != nil {
+		return nil, fmt.Errorf("getSheetItems: %w", err)
+	}
+
+	scores, err := s.courses.GetSheetScores(ctx, courseID)
+	if err != nil {
+		return nil, fmt.Errorf("getSheetScores: %w", err)
+	}
+
+	members, err := s.classes.GetMembersForDetail(ctx, course.ClassID)
+	if err != nil {
+		return nil, fmt.Errorf("getMembersForDetail: %w", err)
+	}
+
+	var students []domain.ClassMember
+	for _, m := range members {
+		if m.Role == domain.ClassMemberRoleStudent {
+			students = append(students, m)
+		}
+	}
+
+	itemIDToIndex := make(map[uuid.UUID]int)
+	for i, item := range items {
+		itemIDToIndex[item.ID] = i
+	}
+
+	userIDToScores := make(map[uuid.UUID][]domain.SheetScore)
+	for _, s := range scores {
+		userIDToScores[s.UserID] = append(userIDToScores[s.UserID], domain.SheetScore{
+			ItemID: s.ItemID,
+			Score:  s.Score,
+		})
+	}
+
+	sheetRows := make([]domain.SheetRow, 0, len(students))
+	for _, student := range students {
+		rowScores := make([]domain.SheetScore, len(items))
+		for idx := range items {
+			rowScores[idx].ItemID = items[idx].ID
+		}
+
+		if userScores, exists := userIDToScores[student.UserID]; exists {
+			for _, sc := range userScores {
+				if idx, ok := itemIDToIndex[sc.ItemID]; ok {
+					rowScores[idx] = sc
+				}
+			}
+		}
+
+		sheetRows = append(sheetRows, domain.SheetRow{
+			StudentID:   student.UserID,
+			StudentName: student.Name + " " + student.Surname,
+			Scores:      rowScores,
+		})
+	}
+
+	return &domain.CourseSheet{
+		Items:    items,
+		Students: sheetRows,
+	}, nil
 }
 
 func (s *Service) DeleteCourse(ctx context.Context, courseID, userID uuid.UUID) error {

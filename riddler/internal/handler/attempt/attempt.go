@@ -133,7 +133,7 @@ func (h *Handler) GetAttemptReview(c *gin.Context) {
 		return
 	}
 
-	attempt, answers, err := h.service.GetAttemptReview(c.Request.Context(), attemptID, callerID)
+	attempt, answers, enriched, err := h.service.GetAttemptReview(c.Request.Context(), attemptID, callerID)
 	if err != nil {
 		httpx.WriteError(c, err)
 		return
@@ -154,27 +154,38 @@ func (h *Handler) GetAttemptReview(c *gin.Context) {
 			src = &s
 		}
 		var opts []dto.AnswerOptionTeacherResponse
+		var studentOpts []dto.AnswerOptionForStudentResponse
 		if len(a.Options) > 0 {
 			opts = make([]dto.AnswerOptionTeacherResponse, len(a.Options))
+			studentOpts = make([]dto.AnswerOptionForStudentResponse, len(a.Options))
 			for j, o := range a.Options {
 				opts[j] = dto.AnswerOptionTeacherResponse{
 					ID:        o.ID.String(),
 					Text:      o.Text,
 					IsCorrect: o.IsCorrect,
 				}
+				studentOpts[j] = dto.AnswerOptionForStudentResponse{
+					ID:   o.ID.String(),
+					Text: o.Text,
+				}
 			}
 		}
+		var metadata map[string]any
+		if enriched {
+			metadata = a.Metadata
+		}
 		reviewAnswers[i] = dto.AnswerReviewResponse{
-			SubmissionID:  a.SubmissionID.String(),
-			QuestionID:    a.QuestionID.String(),
-			QuestionType:  a.QuestionType,
-			QuestionText:  a.QuestionText,
-			AnswerData:    a.AnswerData,
-			FinalScore:    a.FinalScore,
-			FinalSource:   src,
-			FinalFeedback: a.FinalFeedback,
-			Options:       opts,
-			Metadata:      a.Metadata,
+			SubmissionID:   a.SubmissionID.String(),
+			QuestionID:     a.QuestionID.String(),
+			QuestionType:   a.QuestionType,
+			QuestionText:   a.QuestionText,
+			AnswerData:     a.AnswerData,
+			FinalScore:     a.FinalScore,
+			FinalSource:    src,
+			FinalFeedback:  a.FinalFeedback,
+			Options:        opts,
+			StudentOptions: studentOpts,
+			Metadata:       metadata,
 		}
 	}
 

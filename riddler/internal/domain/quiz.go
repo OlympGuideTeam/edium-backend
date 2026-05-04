@@ -111,6 +111,17 @@ type QuizStudentView struct {
 	QuestionTimeLimitSec *int
 	QuestionCount        int
 	LibraryTestSessionID *uuid.UUID
+	Attempts             []QuizAttemptSummary
+}
+
+type QuizAttemptSummary struct {
+	ID          uuid.UUID
+	SessionID   uuid.UUID
+	SessionType SessionMode
+	Status      AttemptStatus
+	Score       *float64
+	StartedAt   time.Time
+	FinishedAt  *time.Time
 }
 
 type QuizListItem struct {

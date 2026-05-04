@@ -99,7 +99,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	taskRepo := repository.NewPgTaskRepository(pgdb)
 
 	sessionService := sessionsvc.NewService(sessionRepo)
-	quizService := quizsvc.NewService(quizRepo, sessionService, txManager, taskRepo)
+	quizService := quizsvc.NewService(quizRepo, attemptRepo, sessionService, txManager, taskRepo)
 	attemptService := attemptsvc.NewService(attemptRepo, sessionRepo, sessionRepo, quizRepo, quizRepo, txManager, taskRepo)
 	liveRepo := repository.NewLiveRepository(rdb)
 	liveService := livesvc.NewService(quizRepo, sessionRepo, attemptRepo, liveRepo, liveRepo, liveRepo, liveRepo, taskRepo, txManager)
@@ -194,6 +194,7 @@ func (a *App) Router() *gin.Engine {
 		sessions.POST("/test", a.testHandler.CreateTestCourseSession)
 		sessions.POST("/test/inline", a.quizHandler.CreateTestCourseSessionInline)
 		sessions.GET("/live", a.liveHandler.ListLibraryLiveSessions)
+		sessions.GET("/live/host", a.liveHandler.GetLibraryLiveSessionsByHost)
 		sessions.POST("/live/course", a.liveHandler.CreateLiveCourseSession)
 		sessions.POST("/live/library", a.liveHandler.CreateLiveLibrarySession)
 		sessions.POST("/:session_id/live/start", a.liveHandler.StartLiveSession)
