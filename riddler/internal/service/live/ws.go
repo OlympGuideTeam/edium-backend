@@ -58,6 +58,10 @@ func (s *Service) SetCurrentQuestion(ctx context.Context, sessionID uuid.UUID, i
 	return s.liveSession.SetCurrentQuestion(ctx, sessionID, idx, deadline)
 }
 
+func (s *Service) GetCurrentQuestion(ctx context.Context, sessionID uuid.UUID) (int, time.Time, error) {
+	return s.liveSession.GetCurrentQuestion(ctx, sessionID)
+}
+
 func (s *Service) SaveAnswer(ctx context.Context, sessionID, questionID, attemptID uuid.UUID, ans domain.LiveAnswer) error {
 	return s.liveAnswers.SaveAnswer(ctx, sessionID, questionID, attemptID, ans)
 }

@@ -39,6 +39,7 @@ func (h *Handler) handleStartQuiz(ctx context.Context, _ *Conn, room *SessionRoo
 	room.questionIdx = 0
 	room.mu.Unlock()
 
+	room.broadcastAll(encodeMsg("quiz.started", nil))
 	h.startQuestion(ctx, room, sessionID)
 }
 
@@ -89,8 +90,6 @@ func (h *Handler) startQuestion(ctx context.Context, room *SessionRoom, sessionI
 	_ = h.svc.SetCurrentQuestion(ctx, sessionID, idx, deadline)
 
 	q := questions[idx]
-
-	room.broadcastAll(encodeMsg("quiz.started", nil))
 
 	questionTotal := len(questions)
 	if meta != nil && meta.QuestionCount > 0 {

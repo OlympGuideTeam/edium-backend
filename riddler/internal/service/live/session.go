@@ -133,6 +133,10 @@ func (s *Service) StartLiveSession(ctx context.Context, sessionID, callerID uuid
 		return "", "", fmt.Errorf("init session: %w", err)
 	}
 
+	if err := s.sessions.UpdateStatus(ctx, sessionID, domain.SessionStatusRunning); err != nil {
+		return "", "", fmt.Errorf("update session status: %w", err)
+	}
+
 	wsToken, err = s.liveTokens.IssueWsToken(ctx, sessionID, repository.WsTokenPayload{
 		Role:   domain.RoleTeacher,
 		UserID: callerID.String(),
@@ -170,11 +174,20 @@ func (s *Service) ListLibraryLiveSessions(ctx context.Context, authorID uuid.UUI
 		return nil, fmt.Errorf("list sessions: %w", err)
 	}
 	for i, sess := range sessions {
-		meta, err := s.liveSession.GetSessionMeta(ctx, sess.SessionID)
-		if err != nil || meta == nil {
+		if sess.Status == domain.SessionStatusFinished {
+			sessions[i].Phase = domain.LivePhaseCompleted
 			continue
 		}
-		sessions[i].Phase = meta.Phase
+		meta, err := s.liveSession.GetSessionMeta(ctx, sess.SessionID)
+		if err != nil || meta == nil {
+			sessions[i].Phase = domain.LivePhasePending
+			continue
+		}
+		phase := meta.Phase
+		if phase == "" {
+			phase = domain.LivePhaseLobby
+		}
+		sessions[i].Phase = phase
 		sessions[i].JoinCode = meta.JoinCode
 		sessions[i].ParticipantsCount = meta.ParticipantsCount
 	}

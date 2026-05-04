@@ -188,9 +188,11 @@ func (h *Handler) buildSnapshot(ctx context.Context, conn *Conn, room *SessionRo
 		}
 
 	case domain.LivePhaseQuestionActive, domain.LivePhaseQuestionLocked:
+		idx, deadline, err := h.svc.GetCurrentQuestion(ctx, sessionID)
+		if err != nil {
+			break
+		}
 		room.mu.RLock()
-		idx := room.questionIdx
-		startedAt := room.questionStartedAt
 		questions := room.questions
 		room.mu.RUnlock()
 
@@ -198,8 +200,8 @@ func (h *Handler) buildSnapshot(ctx context.Context, conn *Conn, room *SessionRo
 			q := questions[idx]
 			snap.QuestionIdx = idx
 			snap.TimeLimitSec = meta.QuestionTimeLimitSec
-			if !startedAt.IsZero() {
-				snap.DeadlineAt = startedAt.Add(time.Duration(meta.QuestionTimeLimitSec) * time.Second).UTC().Format(time.RFC3339)
+			if !deadline.IsZero() {
+				snap.DeadlineAt = deadline.UTC().Format(time.RFC3339)
 			}
 			eq := buildQuestion(q, conn.role == domain.RoleTeacher)
 			snap.CurrentQuestion = &eq
