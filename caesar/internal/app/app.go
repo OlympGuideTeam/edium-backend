@@ -163,6 +163,7 @@ func (a *App) Router() *gin.Engine {
 	api.GET("/courses/:courseId", a.CourseHandler.GetCourse)
 	api.PATCH("/courses/:courseId", a.CourseHandler.UpdateCourse)
 	api.DELETE("/courses/:courseId", a.CourseHandler.DeleteCourse)
+	api.GET("/courses/:courseId/sheet", a.CourseHandler.GetCourseSheet)
 	api.GET("/classes/:classId/courses", a.CourseHandler.GetClassCourses)
 	api.POST("/courses/:courseId/modules", a.CourseHandler.CreateModule)
 	api.PATCH("/courses/:courseId/modules/order", a.CourseHandler.ReorderModules)

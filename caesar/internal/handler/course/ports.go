@@ -24,4 +24,6 @@ type courseService interface {
 
 	DeleteCourseItem(ctx context.Context, itemID, userID uuid.UUID) error
 	DeleteCourseDraft(ctx context.Context, draftID, userID uuid.UUID) error
+
+	GetCourseSheet(ctx context.Context, courseID, userID uuid.UUID) (*domain.CourseSheet, error)
 }

@@ -116,7 +116,12 @@ func (h *Handler) getQuizAsTeacher(c *gin.Context, quizID, userID uuid.UUID) {
 }
 
 func (h *Handler) getQuizAsStudent(c *gin.Context, quizID uuid.UUID) {
-	view, err := h.service.GetQuizForStudent(c.Request.Context(), quizID)
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	view, err := h.service.GetQuizForStudent(c.Request.Context(), quizID, userID)
 	if err != nil {
 		httpx.WriteError(c, err)
 		return
@@ -126,6 +131,24 @@ func (h *Handler) getQuizAsStudent(c *gin.Context, quizID uuid.UUID) {
 	if view.LibraryTestSessionID != nil {
 		s := view.LibraryTestSessionID.String()
 		sessionID = &s
+	}
+
+	attempts := make([]dto.QuizAttemptSummaryResponse, len(view.Attempts))
+	for i, a := range view.Attempts {
+		var finishedAt *string
+		if a.FinishedAt != nil {
+			s := a.FinishedAt.Format("2006-01-02T15:04:05Z")
+			finishedAt = &s
+		}
+		attempts[i] = dto.QuizAttemptSummaryResponse{
+			ID:          a.ID.String(),
+			SessionID:   a.SessionID.String(),
+			SessionType: string(a.SessionType),
+			Status:      string(a.Status),
+			Score:       a.Score,
+			StartedAt:   a.StartedAt.Format("2006-01-02T15:04:05Z"),
+			FinishedAt:  finishedAt,
+		}
 	}
 
 	c.JSON(http.StatusOK, dto.QuizStudentViewResponse{
@@ -138,6 +161,7 @@ func (h *Handler) getQuizAsStudent(c *gin.Context, quizID uuid.UUID) {
 		},
 		QuestionCount:        view.QuestionCount,
 		LibraryTestSessionID: sessionID,
+		Attempts:             attempts,
 	})
 }
 

@@ -50,6 +50,7 @@ type attemptScoredPayload struct {
 	SessionID  string  `json:"session_id"`
 	UserID     string  `json:"user_id"`
 	TotalScore float64 `json:"total_score"`
+	MaxScore   float64 `json:"max_score"`
 }
 
 func (w *AttemptScoredProcessor) processBatch(ctx context.Context) error {
@@ -96,9 +97,14 @@ func (w *AttemptScoredProcessor) processTask(ctx context.Context, t domain.Task)
 		return w.tasks.MarkDone(ctx, t.ID)
 	}
 
-	slog.InfoContext(ctx, "attempt-scored-processor: обновление оценки", "task_id", t.ID, "item_id", item.ID, "score", p.TotalScore)
+	slog.InfoContext(ctx, "attempt-scored-processor: обновление оценки", "task_id", t.ID, "item_id", item.ID, "score", p.TotalScore, "max_score", p.MaxScore)
 
-	if err := w.items.UpdateProgressScore(ctx, item.ID, userID, p.TotalScore); err != nil {
+	var normalizedScore float64
+	if p.MaxScore > 0 {
+		normalizedScore = (p.TotalScore / p.MaxScore) * 100.0
+	}
+
+	if err := w.items.UpdateProgressScore(ctx, item.ID, userID, normalizedScore); err != nil {
 		return fmt.Errorf("updateProgressScore: %w", err)
 	}
 	return w.tasks.MarkDone(ctx, t.ID)

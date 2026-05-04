@@ -165,7 +165,7 @@ func (r *PgQuizRepository) Copy(ctx context.Context, sourceID, newAuthorID uuid.
 	return newID, nil
 }
 
-func (r *PgQuizRepository) ListPublished(ctx context.Context, needEvaluationFalseOnly bool) ([]domain.QuizListItem, error) {
+func (r *PgQuizRepository) ListPublished(ctx context.Context, needEvaluationFalseOnly bool, search *string) ([]domain.QuizListItem, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 
 	query := `SELECT id, title, description, default_settings, is_public, source, need_evaluation, question_count
@@ -174,9 +174,19 @@ func (r *PgQuizRepository) ListPublished(ctx context.Context, needEvaluationFals
 	if needEvaluationFalseOnly {
 		query += ` AND need_evaluation = false`
 	}
+	if search != nil && *search != "" {
+		query += ` AND (title ILIKE $1 OR description ILIKE $1)`
+	}
 	query += ` ORDER BY created_at DESC`
 
-	rows, err := exec.QueryContext(ctx, query)
+	var rows *sql.Rows
+	var err error
+	if search != nil && *search != "" {
+		searchPattern := "%" + *search + "%"
+		rows, err = exec.QueryContext(ctx, query, searchPattern)
+	} else {
+		rows, err = exec.QueryContext(ctx, query)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("list published quizzes: %w", err)
 	}
