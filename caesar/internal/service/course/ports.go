@@ -53,4 +53,3 @@ type classAccessor interface {
 	GetMemberRole(ctx context.Context, classID, userID uuid.UUID) (domain.ClassMemberRole, bool, error)
 	GetMembersForDetail(ctx context.Context, classID uuid.UUID) ([]domain.ClassMember, error)
 }
-
