@@ -14,7 +14,6 @@ import (
 type Service struct {
 	courses courseStore
 	classes classAccessor
-	sheets  sheetAccessor
 	tasks   taskScheduler
 	tx      txRunner
 }

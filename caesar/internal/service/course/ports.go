@@ -54,7 +54,3 @@ type classAccessor interface {
 	GetMembersForDetail(ctx context.Context, classID uuid.UUID) ([]domain.ClassMember, error)
 }
 
-type sheetAccessor interface {
-	GetSheetItems(ctx context.Context, courseID uuid.UUID) ([]domain.CourseSheetItem, error)
-	GetSheetScores(ctx context.Context, courseID uuid.UUID) ([]domain.UserItemScore, error)
-}
