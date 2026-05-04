@@ -229,7 +229,7 @@ components:
           nullable: true
         options:
           type: array
-          description: Только для учителя — варианты ответа с правильными отметками
+          description: Только для учителя или студента после завершенной проверки — варианты ответа с правильными отметками
           items:
             type: object
             properties:
@@ -240,10 +240,21 @@ components:
                 type: string
               is_correct:
                 type: boolean
+        student_options:
+          type: array
+          description: Для студента — варианты ответа без правильных отметок
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              text:
+                type: string
         metadata:
           type: object
           nullable: true
-          description: Только для учителя — correct_answers / correct_order / correct_pairs
+          description: Только для учителя или студента после завершенной проверки — correct_answers / correct_order / correct_pairs
 
     AttemptReview:
       type: object
@@ -341,6 +352,33 @@ components:
         created_at:
           type: string
           format: date-time
+
+    UserLiveSessionItem:
+      type: object
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        quiz_template_id:
+          type: string
+          format: uuid
+        quiz_title:
+          type: string
+        status:
+          type: string
+          enum: [ not_started, waiting, active, running, finished ]
+        phase:
+          $ref: "#/components/schemas/LivePhase"
+        participants_count:
+          type: integer
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
 
     LiveSessionMeta:
       type: object
@@ -684,6 +722,12 @@ paths:
           description: |
             teacher — все опубликованные квизы;
             student — опубликованные публичные квизы без ручной проверки
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Поиск по названию и описанию (частичное совпадение, регистронезависимый)
       responses:
         "200":
           description: Список квизов
@@ -1391,6 +1435,30 @@ paths:
                       $ref: "#/components/schemas/LibraryLiveSessionItem"
         "401": {$ref: "#/components/responses/Unauthorized"}
 
+  /sessions/live/host:
+    get:
+      tags: [Live]
+      summary: Список проведённых live-сессий ведущего
+      operationId: listLibraryLiveSessionsByHost
+      description: |
+        Возвращает все live-сессии, где пользователь был ведущим (live_host_user_id). 
+        Только `source=library`, `mode=live`. Отсортированы по дате старта (новые первые).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Список сессий
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserLiveSessionItem"
+        "401": {$ref: "#/components/responses/Unauthorized"}
+
   /sessions/live/course:
     post:
       tags: [Live]
@@ -1897,12 +1965,14 @@ paths:
         Универсальный endpoint просмотра попытки.
 
         **Студент** (владелец попытки) — доступен при `status != in_progress`.
-        Возвращает свои ответы, баллы и фидбек. Без правильных ответов (`options`, `metadata` отсутствуют).
+        Возвращает свои ответы, баллы и фидбек.
+        - При `status = completed` — возвращает `options` с `is_correct` и `metadata` с правильными ответами.
+        - При других статусах — возвращает `student_options` без `is_correct`, без `metadata`.
 
         **Учитель** (автор квиза) — доступен в любой момент.
         Дополнительно возвращает `options` с `is_correct` и `metadata` с правильными ответами.
 
-        Без авторизации — только если у попытки в БД **`user_id` IS NULL** (тот же студенческий ответ, без `options`/`metadata`;
+        Без авторизации — только если у попытки в БД **`user_id` IS NULL** (тот же студенческий ответ, с той же логикой `student_options` или `options`/`metadata` в зависимости от статуса;
         только при `status != in_progress`). Иначе нужен JWT.
       security:
         - bearerAuth: []

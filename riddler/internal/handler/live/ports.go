@@ -15,6 +15,7 @@ type liveService interface {
 	CreateLiveCourseSession(ctx context.Context, authorID, quizTemplateID, moduleID uuid.UUID, questionTimeLimitSec *int) (uuid.UUID, error)
 	CreateLiveLibrarySession(ctx context.Context, authorID, quizTemplateID uuid.UUID, questionTimeLimitSec *int) (uuid.UUID, error)
 	ListLibraryLiveSessions(ctx context.Context, authorID uuid.UUID) ([]domain.LibraryLiveSession, error)
+	GetLibraryLiveSessionsByHost(ctx context.Context, hostUserID uuid.UUID) ([]domain.UserLiveSession, error)
 	StartLiveSession(ctx context.Context, sessionID, authorID uuid.UUID) (wsToken, joinCode string, err error)
 	ResolveLiveCode(ctx context.Context, code string) (*domain.LiveSessionMeta, error)
 	JoinLiveSession(ctx context.Context, sessionID uuid.UUID, userID *uuid.UUID, name *string) (attemptID uuid.UUID, wsToken string, err error)

@@ -13,7 +13,7 @@ type attemptService interface {
 	SubmitAnswer(ctx context.Context, attemptID, userID, questionID uuid.UUID, answerData map[string]any) error
 	Finish(ctx context.Context, attemptID, userID uuid.UUID) error
 	ListSessionAttempts(ctx context.Context, sessionID, teacherID uuid.UUID) ([]domain.AttemptSummary, error)
-	GetAttemptReview(ctx context.Context, attemptID uuid.UUID, callerID *uuid.UUID) (*domain.Attempt, []domain.AnswerWithQuestion, error)
+	GetAttemptReview(ctx context.Context, attemptID uuid.UUID, callerID *uuid.UUID) (*domain.Attempt, []domain.AnswerWithQuestion, bool, error)
 	GradeSubmission(ctx context.Context, attemptID, submissionID, teacherID uuid.UUID, score float64, feedback *string) error
 	CompleteAttempt(ctx context.Context, attemptID, teacherID uuid.UUID) error
 	GetUserStatistic(ctx context.Context, userID uuid.UUID) (*domain.UserStatistic, error)

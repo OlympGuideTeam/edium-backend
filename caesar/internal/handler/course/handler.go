@@ -189,3 +189,50 @@ func (h *Handler) DeleteCourse(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+func (h *Handler) GetCourseSheet(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	courseID, ok := parseCourseID(c)
+	if !ok {
+		return
+	}
+
+	sheet, err := h.service.GetCourseSheet(c.Request.Context(), courseID, userID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	items := make([]dto.SheetColumn, len(sheet.Items))
+	for i, item := range sheet.Items {
+		items[i] = dto.SheetColumn{
+			ID:    item.ID.String(),
+			RefID: item.RefID.String(),
+		}
+	}
+
+	rows := make([]dto.SheetRow, len(sheet.Students))
+	for i, row := range sheet.Students {
+		scores := make([]dto.SheetScore, len(row.Scores))
+		for j, sc := range row.Scores {
+			scores[j] = dto.SheetScore{
+				ItemID: sc.ItemID.String(),
+				Score:  sc.Score,
+			}
+		}
+		rows[i] = dto.SheetRow{
+			StudentID:   row.StudentID.String(),
+			StudentName: row.StudentName,
+			Scores:      scores,
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.CourseSheet{
+		Items:    items,
+		Students: rows,
+	})
+}

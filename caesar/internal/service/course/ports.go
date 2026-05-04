@@ -35,6 +35,9 @@ type courseStore interface {
 	GetDraftByID(ctx context.Context, id uuid.UUID) (*domain.CourseDraft, error)
 	DeleteDraft(ctx context.Context, id uuid.UUID) error
 	ListDraftsByCourseID(ctx context.Context, courseID uuid.UUID) ([]domain.CourseDraft, error)
+
+	GetSheetItems(ctx context.Context, courseID uuid.UUID) ([]domain.CourseSheetItem, error)
+	GetSheetScores(ctx context.Context, courseID uuid.UUID) ([]domain.UserItemScore, error)
 }
 
 type taskScheduler interface {

@@ -107,7 +107,7 @@ func (s *Service) GetQuiz(ctx context.Context, id, userID uuid.UUID) (*domain.Qu
 	return &domain.QuizDetail{QuizTemplate: *quiz, Questions: questions}, nil
 }
 
-func (s *Service) GetQuizForStudent(ctx context.Context, id uuid.UUID) (*domain.QuizStudentView, error) {
+func (s *Service) GetQuizForStudent(ctx context.Context, id, userID uuid.UUID) (*domain.QuizStudentView, error) {
 	quiz, err := s.quizzes.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("get quiz: %w", err)
@@ -119,6 +119,11 @@ func (s *Service) GetQuizForStudent(ctx context.Context, id uuid.UUID) (*domain.
 		return nil, apperr.ErrQuizNotAvailable
 	}
 
+	attempts, err := s.attempts.GetQuizAttemptsByUser(ctx, id, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get attempts: %w", err)
+	}
+
 	return &domain.QuizStudentView{
 		ID:                   quiz.ID,
 		Title:                quiz.Title,
@@ -127,6 +132,7 @@ func (s *Service) GetQuizForStudent(ctx context.Context, id uuid.UUID) (*domain.
 		QuestionTimeLimitSec: quiz.DefaultSettings.QuestionTimeLimitSec,
 		QuestionCount:        quiz.QuestionCount,
 		LibraryTestSessionID: quiz.LibrarySessionID,
+		Attempts:             attempts,
 	}, nil
 }
 
@@ -277,8 +283,8 @@ func (s *Service) DeleteQuiz(ctx context.Context, id, authorID uuid.UUID) error 
 	return nil
 }
 
-func (s *Service) ListQuizzes(ctx context.Context, role domain.Role) ([]domain.QuizListItem, error) {
-	items, err := s.quizzes.ListPublished(ctx, role == domain.RoleStudent)
+func (s *Service) ListQuizzes(ctx context.Context, role domain.Role, search *string) ([]domain.QuizListItem, error) {
+	items, err := s.quizzes.ListPublished(ctx, role == domain.RoleStudent, search)
 	if err != nil {
 		return nil, fmt.Errorf("list quizzes: %w", err)
 	}

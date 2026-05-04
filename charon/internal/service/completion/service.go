@@ -46,12 +46,12 @@ func (s *Service) ProcessCompletion(ctx context.Context, req domain.CompletionRe
 	duration := time.Since(start)
 
 	record := domain.UsageRecord{
-		Timestamp: start,
-		RequestID: req.RequestID,
-		Service:   req.Service,
-		Model:     req.Model,
+		Timestamp:  start,
+		RequestID:  req.RequestID,
+		Service:    req.Service,
+		Model:      req.Model,
 		DurationMs: uint32(duration.Milliseconds()),
-		Status:    "ok",
+		Status:     "ok",
 	}
 
 	if err != nil {

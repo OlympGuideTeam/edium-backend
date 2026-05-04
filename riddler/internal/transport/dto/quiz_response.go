@@ -52,12 +52,23 @@ type QuizStudentDefaultSettings struct {
 }
 
 type QuizStudentViewResponse struct {
-	ID                   string                     `json:"id"`
-	Title                string                     `json:"title"`
-	Description          *string                    `json:"description"`
-	DefaultSettings      QuizStudentDefaultSettings `json:"default_settings"`
-	QuestionCount        int                        `json:"question_count"`
-	LibraryTestSessionID *string                    `json:"library_test_session_id"`
+	ID                   string                       `json:"id"`
+	Title                string                       `json:"title"`
+	Description          *string                      `json:"description"`
+	DefaultSettings      QuizStudentDefaultSettings   `json:"default_settings"`
+	QuestionCount        int                          `json:"question_count"`
+	LibraryTestSessionID *string                      `json:"library_test_session_id"`
+	Attempts             []QuizAttemptSummaryResponse `json:"attempts,omitempty"`
+}
+
+type QuizAttemptSummaryResponse struct {
+	ID          string   `json:"id"`
+	SessionID   string   `json:"session_id"`
+	SessionType string   `json:"session_type"`
+	Status      string   `json:"status"`
+	Score       *float64 `json:"score"`
+	StartedAt   string   `json:"started_at"`
+	FinishedAt  *string  `json:"finished_at"`
 }
 
 type QuizListItemResponse struct {

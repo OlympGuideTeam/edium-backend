@@ -163,6 +163,17 @@ type LibraryLiveSession struct {
 	CreatedAt         time.Time
 }
 
+type UserLiveSession struct {
+	SessionID         uuid.UUID
+	QuizTemplateID    uuid.UUID
+	QuizTitle         string
+	Status            SessionStatus
+	Phase             LivePhase
+	ParticipantsCount int
+	StartedAt         *time.Time
+	FinishedAt        *time.Time
+}
+
 type CreateTestCourseSessionInlineParams struct {
 	Title             string
 	Description       *string
