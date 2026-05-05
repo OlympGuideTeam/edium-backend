@@ -46,27 +46,27 @@ func NewImageService(imageRepo repository.ImageRepository, min *minio.Client, ma
 	}
 }
 
-func (s *ImageService) Upload(ctx context.Context, fileHeader *multipart.FileHeader) error {
+func (s *ImageService) Upload(ctx context.Context, fileHeader *multipart.FileHeader) (*domain.Image, error) {
 	if fileHeader.Size > s.maxFileSize {
-		return fmt.Errorf("файл слишком большой, максимальный размер %d байт", s.maxFileSize)
+		return nil, fmt.Errorf("файл слишком большой, максимальный размер %d байт", s.maxFileSize)
 	}
 
 	mimeType := fileHeader.Header.Get("Content-Type")
 	if !s.allowedTypes[mimeType] {
-		return fmt.Errorf("невалидный тип файла: %s", mimeType)
+		return nil, fmt.Errorf("невалидный тип файла: %s", mimeType)
 	}
 
 	count, err := s.imageRepo.CountByUserID(ctx, uuid.Nil)
 	if err != nil {
-		return fmt.Errorf("проверка лимита загрузок: %w", err)
+		return nil, fmt.Errorf("проверка лимита загрузок: %w", err)
 	}
 	if count >= s.maxUploadsHour {
-		return fmt.Errorf("превышен лимит загрузок за час")
+		return nil, fmt.Errorf("превышен лимит загрузок за час")
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		return fmt.Errorf("открытие файла: %w", err)
+		return nil, fmt.Errorf("открытие файла: %w", err)
 	}
 	defer func() {
 		_ = file.Close()
@@ -74,7 +74,7 @@ func (s *ImageService) Upload(ctx context.Context, fileHeader *multipart.FileHea
 
 	img, _, err := image.Decode(file)
 	if err != nil {
-		return fmt.Errorf("декодирование изображения: %w", err)
+		return nil, fmt.Errorf("декодирование изображения: %w", err)
 	}
 
 	bounds := img.Bounds()
@@ -85,7 +85,7 @@ func (s *ImageService) Upload(ctx context.Context, fileHeader *multipart.FileHea
 
 	buf := new(bytes.Buffer)
 	if err := imaging.Encode(buf, img, imaging.PNG, imaging.PNGCompressionLevel(6)); err != nil {
-		return fmt.Errorf("кодирование в PNG: %w", err)
+		return nil, fmt.Errorf("кодирование в PNG: %w", err)
 	}
 
 	imageData := buf.Bytes()
@@ -94,7 +94,7 @@ func (s *ImageService) Upload(ctx context.Context, fileHeader *multipart.FileHea
 
 	objectName, err := s.minio.Upload(ctx, s3Key, bytes.NewReader(imageData), int64(len(imageData)), "image/png")
 	if err != nil {
-		return fmt.Errorf("загрузка в MinIO: %w", err)
+		return nil, fmt.Errorf("загрузка в MinIO: %w", err)
 	}
 
 	width := img.Bounds().Max.X
@@ -112,12 +112,12 @@ func (s *ImageService) Upload(ctx context.Context, fileHeader *multipart.FileHea
 	}
 
 	if err := s.imageRepo.Save(ctx, domainImg); err != nil {
-		return fmt.Errorf("сохранение в БД: %w", err)
+		return nil, fmt.Errorf("сохранение в БД: %w", err)
 	}
 
 	slog.InfoContext(ctx, "изображение загружено", "id", imgUUID, "size", len(imageData), "dims", fmt.Sprintf("%dx%d", width, height))
 
-	return nil
+	return &domainImg, nil
 }
 
 func (s *ImageService) Download(ctx context.Context, id uuid.UUID) (io.Reader, string, error) {
