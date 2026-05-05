@@ -193,6 +193,7 @@ func (a *App) Router() *gin.Engine {
 	{
 		sessions.POST("/test", a.testHandler.CreateTestCourseSession)
 		sessions.POST("/test/inline", a.quizHandler.CreateTestCourseSessionInline)
+		sessions.GET("/statuses", a.liveHandler.GetSessionStatuses)
 		sessions.GET("/live", a.liveHandler.ListLibraryLiveSessions)
 		sessions.GET("/live/host", a.liveHandler.GetLibraryLiveSessionsByHost)
 		sessions.POST("/live/course", a.liveHandler.CreateLiveCourseSession)
