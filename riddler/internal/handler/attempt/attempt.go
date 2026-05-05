@@ -2,6 +2,7 @@ package attempt
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -157,17 +158,21 @@ func (h *Handler) GetAttemptReview(c *gin.Context) {
 		var opts []dto.AnswerOptionTeacherResponse
 		var studentOpts []dto.AnswerOptionForStudentResponse
 		if len(a.Options) > 0 {
-			opts = make([]dto.AnswerOptionTeacherResponse, len(a.Options))
 			studentOpts = make([]dto.AnswerOptionForStudentResponse, len(a.Options))
 			for j, o := range a.Options {
-				opts[j] = dto.AnswerOptionTeacherResponse{
-					ID:        o.ID.String(),
-					Text:      o.Text,
-					IsCorrect: o.IsCorrect,
-				}
 				studentOpts[j] = dto.AnswerOptionForStudentResponse{
 					ID:   o.ID.String(),
 					Text: o.Text,
+				}
+			}
+			if enriched {
+				opts = make([]dto.AnswerOptionTeacherResponse, len(a.Options))
+				for j, o := range a.Options {
+					opts[j] = dto.AnswerOptionTeacherResponse{
+						ID:        o.ID.String(),
+						Text:      o.Text,
+						IsCorrect: o.IsCorrect,
+					}
 				}
 			}
 		}
@@ -202,6 +207,102 @@ func (h *Handler) GetAttemptReview(c *gin.Context) {
 		resp.UserID = attempt.UserID.String()
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+func (h *Handler) GetStudentDashboard(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	dashboard, err := h.service.GetStudentDashboard(c.Request.Context(), userID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	grades := make([]dto.RecentGradeItemDTO, len(dashboard.RecentGrades))
+	for i, g := range dashboard.RecentGrades {
+		var finishedAt *string
+		if g.FinishedAt != nil {
+			s := g.FinishedAt.UTC().Format(time.RFC3339)
+			finishedAt = &s
+		}
+		grades[i] = dto.RecentGradeItemDTO{
+			SessionID:      g.SessionID.String(),
+			QuizTemplateID: g.QuizTemplateID.String(),
+			QuizTitle:      g.QuizTitle,
+			AttemptID:      g.AttemptID.String(),
+			Score:          g.Score,
+			Status:         string(g.Status),
+			FinishedAt:     finishedAt,
+		}
+	}
+
+	active := make([]dto.ActiveTestItemDTO, len(dashboard.ActiveTests))
+	for i, t := range dashboard.ActiveTests {
+		var sessionStartedAt, sessionFinishedAt *string
+		if t.SessionStartedAt != nil {
+			s := t.SessionStartedAt.UTC().Format(time.RFC3339)
+			sessionStartedAt = &s
+		}
+		if t.SessionFinishedAt != nil {
+			s := t.SessionFinishedAt.UTC().Format(time.RFC3339)
+			sessionFinishedAt = &s
+		}
+		var attemptID *string
+		if t.AttemptID != nil {
+			s := t.AttemptID.String()
+			attemptID = &s
+		}
+		var attemptStatus *string
+		if t.AttemptStatus != nil {
+			s := string(*t.AttemptStatus)
+			attemptStatus = &s
+		}
+		active[i] = dto.ActiveTestItemDTO{
+			SessionID:         t.SessionID.String(),
+			QuizTemplateID:    t.QuizTemplateID.String(),
+			QuizTitle:         t.QuizTitle,
+			TotalTimeLimitSec: t.TotalTimeLimitSec,
+			SessionStartedAt:  sessionStartedAt,
+			SessionFinishedAt: sessionFinishedAt,
+			AttemptID:         attemptID,
+			AttemptStatus:     attemptStatus,
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.StudentDashboardResponse{
+		RecentGrades: grades,
+		ActiveTests:  active,
+	})
+}
+
+func (h *Handler) ListAwaitingReview(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	sessions, err := h.service.ListAwaitingReview(c.Request.Context(), userID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	items := make([]dto.AwaitingReviewSessionItem, len(sessions))
+	for i, s := range sessions {
+		items[i] = dto.AwaitingReviewSessionItem{
+			SessionID:      s.SessionID.String(),
+			QuizTemplateID: s.QuizTemplateID.String(),
+			QuizTitle:      s.QuizTitle,
+			GradingCount:   s.GradingCount,
+			GradedCount:    s.GradedCount,
+			CompletedCount: s.CompletedCount,
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.AwaitingReviewResponse{Sessions: items})
 }
 
 func (h *Handler) GradeAttempt(c *gin.Context) {

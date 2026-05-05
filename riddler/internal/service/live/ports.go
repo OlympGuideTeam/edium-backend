@@ -21,7 +21,8 @@ type sessionRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizSession, error)
 	GetManyByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.QuizSession, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.SessionStatus) error
-	ListLiveLibrarySessions(ctx context.Context, authorID uuid.UUID) ([]domain.LibraryLiveSession, error)
+	ListLiveSessions(ctx context.Context, authorID uuid.UUID, source *string, limit int) ([]domain.LiveSession, error)
+	FindRunningCourseLiveSessions(ctx context.Context, courseIDs []uuid.UUID) ([]domain.LiveLobbySnapshot, error)
 }
 
 type attemptRepository interface {
@@ -66,6 +67,10 @@ type liveTokenStore interface {
 
 type taskScheduler interface {
 	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
+}
+
+type studentNotifier interface {
+	NotifyLobbyOpened(sessionID, courseID uuid.UUID, quizTitle string, questionTimeLimitSec int)
 }
 
 type txManager interface {

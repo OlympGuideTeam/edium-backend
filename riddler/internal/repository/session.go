@@ -199,30 +199,28 @@ func (r *PgSessionRepository) SetGradingSent(ctx context.Context, id uuid.UUID) 
 	return nil
 }
 
-func (r *PgSessionRepository) ListLiveLibrarySessions(ctx context.Context, authorID uuid.UUID) ([]domain.LibraryLiveSession, error) {
+func (r *PgSessionRepository) ListLiveSessions(ctx context.Context, authorID uuid.UUID, source *string, limit int) ([]domain.LiveSession, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	rows, err := exec.QueryContext(ctx,
-		`SELECT qs.id, qs.quiz_template_id, qt.title, qs.status, qs.created_at
+		`SELECT qs.id, qs.quiz_template_id, qt.title, qs.source, qs.status, qs.created_at
 		 FROM quiz_session qs
 		 JOIN quiz_template qt ON qt.id = qs.quiz_template_id
-		 WHERE qs.source = 'library'
-		   AND qs.mode = 'live'
-		   AND (
-		     qs.live_host_user_id = $1
-		     OR (qs.live_host_user_id IS NULL AND qt.author_id = $1)
-		   )
-		 ORDER BY qs.created_at DESC`,
-		authorID,
+		 WHERE qs.mode = 'live'
+		   AND (qs.live_host_user_id = $1 OR (qs.live_host_user_id IS NULL AND qt.author_id = $1))
+		   AND ($2::text IS NULL OR qs.source = $2)
+		 ORDER BY qs.created_at DESC
+		 LIMIT $3`,
+		authorID, source, limit,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("list live library sessions: %w", err)
+		return nil, fmt.Errorf("list live sessions: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
-	var result []domain.LibraryLiveSession
+	var result []domain.LiveSession
 	for rows.Next() {
-		var s domain.LibraryLiveSession
-		if err := rows.Scan(&s.SessionID, &s.QuizTemplateID, &s.QuizTitle, &s.Status, &s.CreatedAt); err != nil {
+		var s domain.LiveSession
+		if err := rows.Scan(&s.SessionID, &s.QuizTemplateID, &s.QuizTitle, &s.Source, &s.Status, &s.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan session row: %w", err)
 		}
 		result = append(result, s)
@@ -254,6 +252,156 @@ func (r *PgSessionRepository) GetFreeAnswerSubmissionsForSession(ctx context.Con
 			return nil, fmt.Errorf("scan free answer submission: %w", err)
 		}
 		result = append(result, f)
+	}
+	return result, rows.Err()
+}
+
+func (r *PgSessionRepository) FindRunningCourseLiveSessions(ctx context.Context, courseIDs []uuid.UUID) ([]domain.LiveLobbySnapshot, error) {
+	if len(courseIDs) == 0 {
+		return nil, nil
+	}
+	strs := make([]string, len(courseIDs))
+	for i, id := range courseIDs {
+		strs[i] = id.String()
+	}
+	exec := db.ExecutorFromContext(ctx, r.db)
+	rows, err := exec.QueryContext(ctx,
+		`SELECT qs.id, qt.course_id, qt.title, qs.question_time_limit_sec
+		 FROM quiz_session qs
+		 JOIN quiz_template qt ON qt.id = qs.quiz_template_id
+		 WHERE qs.mode = 'live'
+		   AND qs.source = 'course'
+		   AND qs.status = 'running'
+		   AND qt.course_id = ANY($1::uuid[])`,
+		"{"+strings.Join(strs, ",")+"}")
+	if err != nil {
+		return nil, fmt.Errorf("find running course live sessions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.LiveLobbySnapshot
+	for rows.Next() {
+		var s domain.LiveLobbySnapshot
+		var limitSec *int
+		if err := rows.Scan(&s.SessionID, &s.CourseID, &s.QuizTitle, &limitSec); err != nil {
+			return nil, fmt.Errorf("scan snapshot: %w", err)
+		}
+		if limitSec != nil {
+			s.QuestionTimeLimitSec = *limitSec
+		}
+		result = append(result, s)
+	}
+	return result, rows.Err()
+}
+
+func (r *PgSessionRepository) FindStudentRecentGrades(ctx context.Context, userID uuid.UUID, limit int) ([]domain.RecentGradeItem, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	rows, err := exec.QueryContext(ctx,
+		`SELECT qs.id, qs.quiz_template_id, qt.title,
+		        a.id, a.grade, a.status, a.finished_at
+		 FROM attempt a
+		 JOIN quiz_session qs ON qs.id = a.session_id
+		 JOIN quiz_template qt ON qt.id = qs.quiz_template_id
+		 WHERE a.user_id = $1
+		   AND qs.source = $2
+		   AND qs.mode = $3
+		   AND a.status != $4
+		 ORDER BY a.finished_at DESC NULLS LAST
+		 LIMIT $5`,
+		userID, domain.LiveSourceCourse, domain.SessionModeTest, domain.AttemptStatusInProgress, limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("find student recent grades: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.RecentGradeItem
+	for rows.Next() {
+		var item domain.RecentGradeItem
+		if err := rows.Scan(&item.SessionID, &item.QuizTemplateID, &item.QuizTitle,
+			&item.AttemptID, &item.Score, &item.Status, &item.FinishedAt); err != nil {
+			return nil, fmt.Errorf("scan recent grade: %w", err)
+		}
+		result = append(result, item)
+	}
+	return result, rows.Err()
+}
+
+func (r *PgSessionRepository) FindStudentActiveTests(ctx context.Context, userID uuid.UUID) ([]domain.ActiveTestItem, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	rows, err := exec.QueryContext(ctx,
+		`SELECT qs.id, qs.quiz_template_id, qt.title,
+		        qs.total_time_limit_sec, qs.started_at, qs.finished_at,
+		        a.id, a.status
+		 FROM quiz_session qs
+		 JOIN quiz_template qt ON qt.id = qs.quiz_template_id
+		 LEFT JOIN attempt a ON a.session_id = qs.id AND a.user_id = $1
+		 WHERE qs.source = $2
+		   AND qs.mode = $3
+		   AND qs.status = $4
+		   AND (qs.finished_at IS NULL OR qs.finished_at > now())
+		   AND (a.id IS NULL OR a.status = $5)
+		 ORDER BY
+		   CASE WHEN a.status = $5 THEN 0 ELSE 1 END,
+		   qs.started_at DESC
+		 LIMIT 5`,
+		userID, domain.LiveSourceCourse, domain.SessionModeTest,
+		domain.SessionStatusActive, domain.AttemptStatusInProgress,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("find student active tests: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.ActiveTestItem
+	for rows.Next() {
+		var item domain.ActiveTestItem
+		var attemptID *uuid.UUID
+		var attemptStatus *string
+		if err := rows.Scan(&item.SessionID, &item.QuizTemplateID, &item.QuizTitle,
+			&item.TotalTimeLimitSec, &item.SessionStartedAt, &item.SessionFinishedAt,
+			&attemptID, &attemptStatus); err != nil {
+			return nil, fmt.Errorf("scan active test: %w", err)
+		}
+		item.AttemptID = attemptID
+		if attemptStatus != nil {
+			s := domain.AttemptStatus(*attemptStatus)
+			item.AttemptStatus = &s
+		}
+		result = append(result, item)
+	}
+	return result, rows.Err()
+}
+
+func (r *PgSessionRepository) FindAwaitingReview(ctx context.Context, authorID uuid.UUID) ([]domain.AwaitingReviewSession, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	rows, err := exec.QueryContext(ctx,
+		`SELECT qs.id, qs.quiz_template_id, qt.title,
+		        COUNT(*) FILTER (WHERE a.status = 'grading')   AS grading_count,
+		        COUNT(*) FILTER (WHERE a.status = 'graded')    AS graded_count,
+		        COUNT(*) FILTER (WHERE a.status = 'completed') AS completed_count
+		 FROM quiz_session qs
+		 JOIN quiz_template qt ON qt.id = qs.quiz_template_id
+		 JOIN attempt a ON a.session_id = qs.id
+		 WHERE qt.author_id = $1
+		   AND a.status IN ('grading', 'graded', 'completed')
+		 GROUP BY qs.id, qs.quiz_template_id, qt.title
+		 HAVING COUNT(*) FILTER (WHERE a.status IN ('grading', 'graded')) > 0
+		 ORDER BY qs.created_at DESC`,
+		authorID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("find awaiting review sessions: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.AwaitingReviewSession
+	for rows.Next() {
+		var s domain.AwaitingReviewSession
+		if err := rows.Scan(&s.SessionID, &s.QuizTemplateID, &s.QuizTitle, &s.GradingCount, &s.GradedCount, &s.CompletedCount); err != nil {
+			return nil, fmt.Errorf("scan awaiting review session: %w", err)
+		}
+		result = append(result, s)
 	}
 	return result, rows.Err()
 }

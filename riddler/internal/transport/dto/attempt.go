@@ -84,6 +84,45 @@ type AttemptReviewResponse struct {
 	Answers    []AnswerReviewResponse `json:"answers"`
 }
 
+type RecentGradeItemDTO struct {
+	SessionID      string   `json:"session_id"`
+	QuizTemplateID string   `json:"quiz_template_id"`
+	QuizTitle      string   `json:"quiz_title"`
+	AttemptID      string   `json:"attempt_id"`
+	Score          *float64 `json:"score"`
+	Status         string   `json:"status"`
+	FinishedAt     *string  `json:"finished_at"`
+}
+
+type ActiveTestItemDTO struct {
+	SessionID         string   `json:"session_id"`
+	QuizTemplateID    string   `json:"quiz_template_id"`
+	QuizTitle         string   `json:"quiz_title"`
+	TotalTimeLimitSec *int     `json:"total_time_limit_sec"`
+	SessionStartedAt  *string  `json:"session_started_at"`
+	SessionFinishedAt *string  `json:"session_finished_at"`
+	AttemptID         *string  `json:"attempt_id"`
+	AttemptStatus     *string  `json:"attempt_status"`
+}
+
+type StudentDashboardResponse struct {
+	RecentGrades []RecentGradeItemDTO `json:"recent_grades"`
+	ActiveTests  []ActiveTestItemDTO  `json:"active_tests"`
+}
+
+type AwaitingReviewSessionItem struct {
+	SessionID      string `json:"session_id"`
+	QuizTemplateID string `json:"quiz_template_id"`
+	QuizTitle      string `json:"quiz_title"`
+	GradingCount   int    `json:"grading_count"`
+	GradedCount    int    `json:"graded_count"`
+	CompletedCount int    `json:"completed_count"`
+}
+
+type AwaitingReviewResponse struct {
+	Sessions []AwaitingReviewSessionItem `json:"sessions"`
+}
+
 type UserStatisticResponse struct {
 	QuizCountPassed       int     `json:"quiz_count_passed"`
 	AvgQuizScore          float64 `json:"avg_quiz_score"`

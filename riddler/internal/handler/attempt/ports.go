@@ -16,5 +16,7 @@ type attemptService interface {
 	GetAttemptReview(ctx context.Context, attemptID uuid.UUID, callerID *uuid.UUID) (*domain.Attempt, []domain.AnswerWithQuestion, bool, error)
 	GradeAttempt(ctx context.Context, attemptID, teacherID uuid.UUID, grades []domain.GradeItem) error
 	PublishSession(ctx context.Context, sessionID, teacherID uuid.UUID) error
+	ListAwaitingReview(ctx context.Context, authorID uuid.UUID) ([]domain.AwaitingReviewSession, error)
+	GetStudentDashboard(ctx context.Context, userID uuid.UUID) (*domain.StudentDashboard, error)
 	GetUserStatistic(ctx context.Context, userID uuid.UUID) (*domain.UserStatistic, error)
 }

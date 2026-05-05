@@ -36,6 +36,9 @@ type attemptRepository interface {
 
 type sessionReader interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizSession, error)
+	FindAwaitingReview(ctx context.Context, authorID uuid.UUID) ([]domain.AwaitingReviewSession, error)
+	FindStudentRecentGrades(ctx context.Context, userID uuid.UUID, limit int) ([]domain.RecentGradeItem, error)
+	FindStudentActiveTests(ctx context.Context, userID uuid.UUID) ([]domain.ActiveTestItem, error)
 }
 
 type quizReader interface {

@@ -14,4 +14,5 @@ const (
 
 	SubjectQuizGradeRequested = "riddler.quiz.grade.requested"
 	SubjectQuizGradeCompleted = "charon.quiz.grade.completed"
+
 )
