@@ -253,7 +253,3 @@ func resolveTimeLimitSec(override, fromQuiz *int) int {
 	}
 	return defaultQuestionTimeLimitSec
 }
-
-func (s *Service) GetLibraryLiveSessionsByHost(ctx context.Context, hostUserID uuid.UUID) ([]domain.UserLiveSession, error) {
-	return s.sessions.GetLibraryLiveSessionsByHost(ctx, hostUserID)
-}

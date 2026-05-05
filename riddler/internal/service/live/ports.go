@@ -22,7 +22,6 @@ type sessionRepository interface {
 	GetManyByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.QuizSession, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.SessionStatus) error
 	ListLiveLibrarySessions(ctx context.Context, authorID uuid.UUID) ([]domain.LibraryLiveSession, error)
-	GetLibraryLiveSessionsByHost(ctx context.Context, hostUserID uuid.UUID) ([]domain.UserLiveSession, error)
 }
 
 type attemptRepository interface {
@@ -31,7 +30,7 @@ type attemptRepository interface {
 	GetLiveLeaderboard(ctx context.Context, sessionID uuid.UUID) ([]domain.LiveParticipantResult, error)
 	GetLiveSessionAnswers(ctx context.Context, sessionID uuid.UUID) ([]repository.LiveSessionAnswer, error)
 	BulkInsertSubmissions(ctx context.Context, submissions []repository.BulkSubmission) error
-	CompleteLive(ctx context.Context, attemptID uuid.UUID, score float64) error
+	PublishLive(ctx context.Context, attemptID uuid.UUID, score float64) error
 	SetKicked(ctx context.Context, attemptID uuid.UUID) error
 }
 

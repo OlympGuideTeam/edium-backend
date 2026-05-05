@@ -45,8 +45,8 @@ func (s *Service) CompleteLiveSession(ctx context.Context, sessionID uuid.UUID) 
 		if err := s.attempts.BulkInsertSubmissions(ctx, submissions); err != nil {
 			return fmt.Errorf("bulk insert submissions: %w", err)
 		}
-		if err := s.attempts.CompleteLive(ctx, p.AttemptID, totalScore); err != nil {
-			return fmt.Errorf("complete attempt: %w", err)
+		if err := s.attempts.PublishLive(ctx, p.AttemptID, totalScore); err != nil {
+			return fmt.Errorf("publish attempt: %w", err)
 		}
 	}
 

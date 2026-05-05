@@ -106,21 +106,6 @@ type ListLibraryLiveSessionsResponse struct {
 	Sessions []LibraryLiveSessionItem `json:"sessions"`
 }
 
-type UserLiveSessionItem struct {
-	SessionID         string  `json:"session_id"`
-	QuizTemplateID    string  `json:"quiz_template_id"`
-	QuizTitle         string  `json:"quiz_title"`
-	Status            string  `json:"status"`
-	Phase             string  `json:"phase"`
-	ParticipantsCount int     `json:"participants_count"`
-	StartedAt         *string `json:"started_at"`
-	FinishedAt        *string `json:"finished_at"`
-}
-
-type UserLiveSessionsResponse struct {
-	Sessions []UserLiveSessionItem `json:"sessions"`
-}
-
 type SessionStatusItemDTO struct {
 	SessionID string  `json:"session_id"`
 	Mode      string  `json:"mode"`

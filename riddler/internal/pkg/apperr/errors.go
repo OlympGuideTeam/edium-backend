@@ -39,7 +39,9 @@ var (
 	ErrAttemptForbidden = New("FORBIDDEN", "Нет доступа к попытке", http.StatusForbidden)
 	ErrAttemptNotActive = New("ATTEMPT_NOT_ACTIVE", "Попытка уже завершена", http.StatusConflict)
 	ErrAttemptExpired   = New("ATTEMPT_EXPIRED", "Время попытки истекло", http.StatusConflict)
-	ErrAttemptNotGraded = New("ATTEMPT_NOT_GRADED", "Попытка ещё не проверена", http.StatusConflict)
+	ErrAttemptNotGraded    = New("ATTEMPT_NOT_GRADED", "Попытка ещё не проверена", http.StatusConflict)
+	ErrAttemptNotCompleted = New("ATTEMPT_NOT_COMPLETED", "Не все попытки завершены", http.StatusConflict)
+	ErrAttemptNotAllGraded = New("ATTEMPT_NOT_ALL_GRADED", "Не все свободные ответы оценены", http.StatusConflict)
 
 	// Ответы
 	ErrSubmissionNotFound = New("SUBMISSION_NOT_FOUND", "Ответ не найден", http.StatusNotFound)

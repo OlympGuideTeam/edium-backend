@@ -257,31 +257,3 @@ func (r *PgSessionRepository) GetFreeAnswerSubmissionsForSession(ctx context.Con
 	}
 	return result, rows.Err()
 }
-
-func (r *PgSessionRepository) GetLibraryLiveSessionsByHost(ctx context.Context, hostUserID uuid.UUID) ([]domain.UserLiveSession, error) {
-	exec := db.ExecutorFromContext(ctx, r.db)
-
-	rows, err := exec.QueryContext(ctx,
-		`SELECT qs.id, qs.quiz_template_id, qt.title, qs.status, qs.phase, qs.participants_count, qs.started_at, qs.finished_at
-		 FROM quiz_session qs
-		 JOIN quiz_template qt ON qt.id = qs.quiz_template_id
-		 WHERE qs.mode = $1 AND qs.source = $2 AND qs.live_host_user_id = $3
-		 ORDER BY qs.started_at DESC`,
-		domain.SessionModeLive, domain.LiveSourceLibrary, hostUserID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("query library live sessions by host: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var result []domain.UserLiveSession
-	for rows.Next() {
-		var s domain.UserLiveSession
-		err := rows.Scan(&s.SessionID, &s.QuizTemplateID, &s.QuizTitle, &s.Status, &s.Phase, &s.ParticipantsCount, &s.StartedAt, &s.FinishedAt)
-		if err != nil {
-			return nil, fmt.Errorf("scan session: %w", err)
-		}
-		result = append(result, s)
-	}
-	return result, rows.Err()
-}

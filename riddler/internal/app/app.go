@@ -195,8 +195,7 @@ func (a *App) Router() *gin.Engine {
 		sessions.POST("/test/inline", a.quizHandler.CreateTestCourseSessionInline)
 		sessions.GET("/statuses", a.liveHandler.GetSessionStatuses)
 		sessions.GET("/live", a.liveHandler.ListLibraryLiveSessions)
-		sessions.GET("/live/host", a.liveHandler.GetLibraryLiveSessionsByHost)
-		sessions.POST("/live/course", a.liveHandler.CreateLiveCourseSession)
+sessions.POST("/live/course", a.liveHandler.CreateLiveCourseSession)
 		sessions.POST("/live/library", a.liveHandler.CreateLiveLibrarySession)
 		sessions.POST("/:session_id/live/start", a.liveHandler.StartLiveSession)
 		sessions.GET("/:session_id/live/results/teacher", a.liveHandler.GetLiveResultsTeacher)
@@ -221,8 +220,8 @@ func (a *App) Router() *gin.Engine {
 	{
 		attempts.POST("/:attempt_id/answers", a.attemptHandler.SubmitAnswer)
 		attempts.POST("/:attempt_id/finish", a.attemptHandler.Finish)
-		attempts.POST("/:attempt_id/submissions/:submission_id/grade", a.attemptHandler.GradeSubmission)
-		attempts.POST("/:attempt_id/complete", a.attemptHandler.CompleteAttempt)
+		attempts.POST("/:attempt_id/grade", a.attemptHandler.GradeAttempt)
+		attempts.POST("/session/:session_id/publish", a.attemptHandler.PublishSession)
 	}
 
 	return r

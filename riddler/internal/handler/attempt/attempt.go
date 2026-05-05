@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"riddler/internal/domain"
 	"riddler/internal/middleware"
 	"riddler/internal/pkg/apperr"
 	"riddler/internal/pkg/httpx"
@@ -203,7 +204,7 @@ func (h *Handler) GetAttemptReview(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-func (h *Handler) GradeSubmission(c *gin.Context) {
+func (h *Handler) GradeAttempt(c *gin.Context) {
 	teacherID, ok := userIDFromCtx(c)
 	if !ok {
 		return
@@ -215,19 +216,27 @@ func (h *Handler) GradeSubmission(c *gin.Context) {
 		return
 	}
 
-	submissionID, err := uuid.Parse(c.Param("submission_id"))
-	if err != nil {
-		httpx.WriteError(c, apperr.ErrBadID)
-		return
-	}
-
-	var req dto.GradeSubmissionRequest
+	var req dto.GradeAttemptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		httpx.WriteError(c, apperr.ErrBadRequest)
 		return
 	}
 
-	if err := h.service.GradeSubmission(c.Request.Context(), attemptID, submissionID, teacherID, req.Score, req.Feedback); err != nil {
+	grades := make([]domain.GradeItem, len(req.Grades))
+	for i, g := range req.Grades {
+		submissionID, err := uuid.Parse(g.SubmissionID)
+		if err != nil {
+			httpx.WriteError(c, apperr.ErrBadID)
+			return
+		}
+		grades[i] = domain.GradeItem{
+			SubmissionID: submissionID,
+			Score:        g.Score,
+			Feedback:     g.Feedback,
+		}
+	}
+
+	if err := h.service.GradeAttempt(c.Request.Context(), attemptID, teacherID, grades); err != nil {
 		httpx.WriteError(c, err)
 		return
 	}
@@ -235,19 +244,19 @@ func (h *Handler) GradeSubmission(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (h *Handler) CompleteAttempt(c *gin.Context) {
+func (h *Handler) PublishSession(c *gin.Context) {
 	teacherID, ok := userIDFromCtx(c)
 	if !ok {
 		return
 	}
 
-	attemptID, err := uuid.Parse(c.Param("attempt_id"))
+	sessionID, err := uuid.Parse(c.Param("session_id"))
 	if err != nil {
 		httpx.WriteError(c, apperr.ErrBadID)
 		return
 	}
 
-	if err := h.service.CompleteAttempt(c.Request.Context(), attemptID, teacherID); err != nil {
+	if err := h.service.PublishSession(c.Request.Context(), sessionID, teacherID); err != nil {
 		httpx.WriteError(c, err)
 		return
 	}

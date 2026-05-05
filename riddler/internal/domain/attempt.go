@@ -14,6 +14,7 @@ const (
 	AttemptStatusGraded     AttemptStatus = "graded"
 	AttemptStatusCompleted  AttemptStatus = "completed"
 	AttemptStatusKicked     AttemptStatus = "kicked"
+	AttemptStatusPublished  AttemptStatus = "published"
 )
 
 type FinalSource string
@@ -102,4 +103,10 @@ type UserStatistic struct {
 	QuizCountPassed       int
 	AvgQuizScore          float64
 	QuizSessionsConducted int
+}
+
+type GradeItem struct {
+	SubmissionID uuid.UUID
+	Score        float64
+	Feedback     *string
 }
