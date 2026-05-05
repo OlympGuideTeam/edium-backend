@@ -1,11 +1,12 @@
 meta {
   name: Delete Image
   type: http
-  seq: 3
+  seq: 2
 }
 
 delete {
   url: http://localhost:8086/louvre/v1/images/{{imageId}}
+  body: none
   auth: bearer
 }
 

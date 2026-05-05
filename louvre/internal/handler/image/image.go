@@ -11,6 +11,7 @@ import (
 	"louvre/internal/pkg/apperr"
 	"louvre/internal/pkg/httpx"
 	"louvre/internal/service"
+	"louvre/internal/transport/dto"
 )
 
 type Handler struct {
@@ -32,7 +33,7 @@ func (h *Handler) Upload(c *gin.Context) {
 		return
 	}
 
-	err = h.imageService.Upload(c.Request.Context(), fileHeader)
+	domainImg, err := h.imageService.Upload(c.Request.Context(), fileHeader)
 	if err != nil {
 		slog.ErrorContext(c.Request.Context(), "upload image", "err", err)
 
@@ -60,7 +61,14 @@ func (h *Handler) Upload(c *gin.Context) {
 		return
 	}
 
-	c.Status(200)
+	c.JSON(200, dto.UploadResponse{
+		ID:        domainImg.ID.String(),
+		FileName:  domainImg.FileName,
+		MimeType:  domainImg.MimeType,
+		SizeBytes: domainImg.SizeBytes,
+		Width:     domainImg.Width,
+		Height:    domainImg.Height,
+	})
 }
 
 func (h *Handler) Download(c *gin.Context) {
