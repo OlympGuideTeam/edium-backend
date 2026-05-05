@@ -73,7 +73,7 @@ func (s *Service) finishAttempt(ctx context.Context, attempt *domain.Attempt) er
 		}
 
 		grade := computeGrade(totalScore, session.MaxScore)
-		if err := s.attempts.Complete(ctx, attempt.ID, totalScore, grade); err != nil {
+		if err := s.attempts.Publish(ctx, attempt.ID, totalScore, grade); err != nil {
 			return err
 		}
 		s.scheduleAttemptScored(ctx, attempt, totalScore, float64(session.MaxScore))

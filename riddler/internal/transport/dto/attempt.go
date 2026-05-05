@@ -7,9 +7,14 @@ type SubmitAnswerRequest struct {
 	AnswerData map[string]any `json:"answer_data" binding:"required"`
 }
 
-type GradeSubmissionRequest struct {
-	Score    float64 `json:"score" binding:"required,min=0"`
-	Feedback *string `json:"feedback"`
+type GradeItem struct {
+	SubmissionID string  `json:"submission_id" binding:"required"`
+	Score        float64 `json:"score" binding:"min=0"`
+	Feedback     *string `json:"feedback"`
+}
+
+type GradeAttemptRequest struct {
+	Grades []GradeItem `json:"grades" binding:"required,min=1"`
 }
 
 // --- Ответы ---
