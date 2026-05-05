@@ -175,14 +175,14 @@ type RecentGradeItem struct {
 }
 
 type ActiveTestItem struct {
-	SessionID          uuid.UUID
-	QuizTemplateID     uuid.UUID
-	QuizTitle          string
-	TotalTimeLimitSec  *int
-	SessionStartedAt   *time.Time
-	SessionFinishedAt  *time.Time
-	AttemptID          *uuid.UUID
-	AttemptStatus      *AttemptStatus
+	SessionID         uuid.UUID
+	QuizTemplateID    uuid.UUID
+	QuizTitle         string
+	TotalTimeLimitSec *int
+	SessionStartedAt  *time.Time
+	SessionFinishedAt *time.Time
+	AttemptID         *uuid.UUID
+	AttemptStatus     *AttemptStatus
 }
 
 type StudentDashboard struct {

@@ -290,8 +290,8 @@ func (s *Service) ListQuizzes(ctx context.Context, role domain.Role, userID *uui
 	}
 	if role == domain.RoleStudent && userID != nil && len(items) > 0 {
 		ids := make([]uuid.UUID, len(items))
-		for i, item := range items {
-			ids[i] = item.ID
+		for i := range items {
+			ids[i] = items[i].ID
 		}
 		attemptsMap, err := s.attempts.GetAttemptsByUserBatch(ctx, *userID, ids)
 		if err != nil {

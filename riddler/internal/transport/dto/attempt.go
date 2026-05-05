@@ -95,14 +95,14 @@ type RecentGradeItemDTO struct {
 }
 
 type ActiveTestItemDTO struct {
-	SessionID         string   `json:"session_id"`
-	QuizTemplateID    string   `json:"quiz_template_id"`
-	QuizTitle         string   `json:"quiz_title"`
-	TotalTimeLimitSec *int     `json:"total_time_limit_sec"`
-	SessionStartedAt  *string  `json:"session_started_at"`
-	SessionFinishedAt *string  `json:"session_finished_at"`
-	AttemptID         *string  `json:"attempt_id"`
-	AttemptStatus     *string  `json:"attempt_status"`
+	SessionID         string  `json:"session_id"`
+	QuizTemplateID    string  `json:"quiz_template_id"`
+	QuizTitle         string  `json:"quiz_title"`
+	TotalTimeLimitSec *int    `json:"total_time_limit_sec"`
+	SessionStartedAt  *string `json:"session_started_at"`
+	SessionFinishedAt *string `json:"session_finished_at"`
+	AttemptID         *string `json:"attempt_id"`
+	AttemptStatus     *string `json:"attempt_status"`
 }
 
 type StudentDashboardResponse struct {

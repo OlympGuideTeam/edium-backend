@@ -31,7 +31,6 @@ const (
 
 	TaskTypeGradingRequestedPublisher TaskType = "grading_requested_publisher"
 	TaskTypeGradingCompleted          TaskType = "grading_completed"
-
 )
 
 type CourseSessionCreatedPayload struct {

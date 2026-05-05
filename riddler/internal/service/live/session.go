@@ -167,7 +167,6 @@ func (s *Service) StartLiveSession(ctx context.Context, sessionID, callerID uuid
 	return wsToken, joinCode, nil
 }
 
-
 func (s *Service) GetActiveCourseLiveSessions(ctx context.Context, courseIDs []uuid.UUID) ([]domain.LiveLobbySnapshot, error) {
 	sessions, err := s.sessions.FindRunningCourseLiveSessions(ctx, courseIDs)
 	if err != nil {
@@ -209,7 +208,8 @@ func (s *Service) ListLiveSessions(ctx context.Context, authorID uuid.UUID, sour
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
 	}
-	for i, sess := range sessions {
+	for i := range sessions {
+		sess := &sessions[i]
 		if sess.Status == domain.SessionStatusFinished {
 			sessions[i].Phase = domain.LivePhaseCompleted
 			continue
