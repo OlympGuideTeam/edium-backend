@@ -128,13 +128,29 @@ func (s *Service) StartLiveSession(ctx context.Context, sessionID, callerID uuid
 		}
 	}
 
-	joinCode, err = s.liveSession.InitSession(ctx, sessionID, quiz, *session.QuestionTimeLimitSec, session.Source, callerID)
-	if err != nil {
-		return "", "", fmt.Errorf("init session: %w", err)
-	}
-
-	if err := s.sessions.UpdateStatus(ctx, sessionID, domain.SessionStatusRunning); err != nil {
-		return "", "", fmt.Errorf("update session status: %w", err)
+	currentPhase, phaseErr := s.liveSession.GetPhase(ctx, sessionID)
+	switch {
+	case phaseErr != nil || currentPhase == "" || currentPhase == domain.LivePhasePending:
+		// Сессия ещё не инициализирована — запускаем впервые.
+		joinCode, err = s.liveSession.InitSession(ctx, sessionID, quiz, *session.QuestionTimeLimitSec, session.Source, callerID)
+		if err != nil {
+			return "", "", fmt.Errorf("init session: %w", err)
+		}
+		if err := s.sessions.UpdateStatus(ctx, sessionID, domain.SessionStatusRunning); err != nil {
+			return "", "", fmt.Errorf("update session status: %w", err)
+		}
+	case currentPhase == domain.LivePhaseCompleted:
+		return "", "", apperr.ErrSessionCompleted
+	default:
+		// Сессия уже запущена — переиздаём ws_token, join_code не меняем.
+		meta, err := s.liveSession.GetSessionMeta(ctx, sessionID)
+		if err != nil {
+			return "", "", fmt.Errorf("get session meta: %w", err)
+		}
+		if meta == nil || meta.JoinCode == nil {
+			return "", "", apperr.ErrSessionNotFound
+		}
+		joinCode = *meta.JoinCode
 	}
 
 	wsToken, err = s.liveTokens.IssueWsToken(ctx, sessionID, repository.WsTokenPayload{
@@ -192,6 +208,40 @@ func (s *Service) ListLibraryLiveSessions(ctx context.Context, authorID uuid.UUI
 		sessions[i].ParticipantsCount = meta.ParticipantsCount
 	}
 	return sessions, nil
+}
+
+func (s *Service) GetSessionStatuses(ctx context.Context, ids []uuid.UUID) ([]domain.SessionStatusItem, error) {
+	sessions, err := s.sessions.GetManyByIDs(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("get sessions: %w", err)
+	}
+
+	result := make([]domain.SessionStatusItem, 0, len(sessions))
+	for i := range sessions {
+		sess := &sessions[i]
+		item := domain.SessionStatusItem{
+			SessionID: sess.ID,
+			Mode:      sess.Mode,
+			Status:    sess.ComputedStatus(),
+		}
+		if sess.Mode == domain.SessionModeLive {
+			if item.Status == domain.SessionStatusFinished {
+				phase := domain.LivePhaseCompleted
+				item.Phase = &phase
+			} else {
+				meta, _ := s.liveSession.GetSessionMeta(ctx, sess.ID)
+				if meta == nil || meta.Phase == "" {
+					phase := domain.LivePhasePending
+					item.Phase = &phase
+				} else {
+					phase := meta.Phase
+					item.Phase = &phase
+				}
+			}
+		}
+		result = append(result, item)
+	}
+	return result, nil
 }
 
 func resolveTimeLimitSec(override, fromQuiz *int) int {
