@@ -181,3 +181,12 @@ type CreateTestCourseSessionInlineParams struct {
 	StartedAt         *time.Time
 	FinishedAt        *time.Time
 }
+
+type CreateLiveCourseSessionInlineParams struct {
+	Title                string
+	Description          *string
+	CourseID             uuid.UUID
+	ModuleID             uuid.UUID
+	Questions            []AddQuestionParams
+	QuestionTimeLimitSec *int
+}
