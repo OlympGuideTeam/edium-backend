@@ -19,6 +19,7 @@ type quizRepository interface {
 type sessionRepository interface {
 	Create(ctx context.Context, p domain.CreateSessionParams) (uuid.UUID, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizSession, error)
+	GetManyByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.QuizSession, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.SessionStatus) error
 	ListLiveLibrarySessions(ctx context.Context, authorID uuid.UUID) ([]domain.LibraryLiveSession, error)
 	GetLibraryLiveSessionsByHost(ctx context.Context, hostUserID uuid.UUID) ([]domain.UserLiveSession, error)

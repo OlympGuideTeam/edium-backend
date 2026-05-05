@@ -314,6 +314,43 @@ components:
           type: string
           nullable: true
 
+    SessionStatusItem:
+      type: object
+      description: Статус одной квиз-сессии.
+      required: [session_id, mode, status, phase]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        mode:
+          type: string
+          enum: [test, live]
+          description: |
+            Режим сессии:
+            - `test` — асинхронный, каждый в своём темпе
+            - `live` — синхронный, управляется учителем
+        status:
+          type: string
+          enum: [not_started, waiting, active, running, finished]
+          description: |
+            Эффективный статус сессии:
+            - `not_started` — создана, `started_at` ещё не наступил
+            - `waiting` — зарезервирован для будущих состояний ожидания
+            - `active` — test-сессия принимает попытки
+            - `running` — live-сессия запущена (учитель ведёт вопросы)
+            - `finished` — сессия завершена
+        phase:
+          type: string
+          nullable: true
+          enum: [pending, lobby, question_active, question_locked, completed]
+          description: |
+            Фаза live-сессии (null для test-сессий):
+            - `pending` — сессия создана, учитель ещё не запустил лобби
+            - `lobby` — лобби открыто, участники регистрируются
+            - `question_active` — текущий вопрос показан, ученики отвечают
+            - `question_locked` — вопрос закрыт, показывается статистика
+            - `completed` — все вопросы пройдены
+
     LivePhase:
       type: string
       enum: [lobby, question_active, question_locked, completed]
@@ -1410,6 +1447,53 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
+  /sessions/statuses:
+    get:
+      tags: [Sessions]
+      summary: Batch-запрос статусов сессий
+      operationId: getSessionStatuses
+      description: |
+        Возвращает статус и режим для нескольких сессий по их ID.
+        Предназначен для BFF/клиента, которому нужно показать статус квиз-сессий в экране модуля.
+
+        Для **test**-сессий статус вычисляется динамически из `started_at`/`finished_at`:
+        - `not_started` — сессия создана, но `started_at` ещё не наступил
+        - `active` — идёт приём попыток
+        - `finished` — `finished_at` прошёл или явно завершено
+
+        Для **live**-сессий статус берётся из БД, фаза — из Redis (состояние WebSocket-сессии):
+        - `not_started` / `running` / `finished` — в зависимости от состояния
+        - фаза: `pending` → `lobby` → `question_active` → `question_locked` → `completed`
+
+        Сессии, которых не существует, просто отсутствуют в ответе (не ошибка).
+        Максимум 50 ID за один запрос.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          description: Comma-separated список UUID сессий (максимум 50).
+          schema:
+            type: string
+            example: "550e8400-e29b-41d4-a716-446655440000,6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+      responses:
+        "200":
+          description: Статусы сессий
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SessionStatusItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /sessions/live:
     get:
