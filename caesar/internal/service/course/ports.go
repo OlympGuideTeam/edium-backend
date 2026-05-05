@@ -14,6 +14,7 @@ type courseStore interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Course, error)
 	GetDetail(ctx context.Context, id uuid.UUID) (*domain.CourseDetail, error)
 	ListByClassID(ctx context.Context, classID uuid.UUID) ([]domain.CourseListItem, error)
+	ListByStudentID(ctx context.Context, userID uuid.UUID) ([]domain.CourseListItem, error)
 	Update(ctx context.Context, id uuid.UUID, title string) error
 	Delete(ctx context.Context, id uuid.UUID) error
 
