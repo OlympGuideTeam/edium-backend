@@ -91,9 +91,9 @@ func (h *StudentHub) NotifyLobbyOpened(sessionID, courseID uuid.UUID, quizTitle 
 	msg, _ := json.Marshal(wsMessage{
 		Type: "lobby_opened",
 		Data: json.RawMessage(mustMarshal(map[string]any{
-			"session_id":             sessionID.String(),
-			"course_id":              courseID.String(),
-			"quiz_title":             quizTitle,
+			"session_id":              sessionID.String(),
+			"course_id":               courseID.String(),
+			"quiz_title":              quizTitle,
 			"question_time_limit_sec": questionTimeLimitSec,
 		})),
 	})

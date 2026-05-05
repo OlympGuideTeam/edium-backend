@@ -58,7 +58,8 @@ func (h *Handler) ListLiveSessions(c *gin.Context) {
 	}
 
 	items := make([]dto.LiveSessionItem, len(sessions))
-	for i, s := range sessions {
+	for i := range sessions {
+		s := &sessions[i]
 		items[i] = dto.LiveSessionItem{
 			SessionID:         s.SessionID.String(),
 			QuizTemplateID:    s.QuizTemplateID.String(),
@@ -309,4 +310,3 @@ func (h *Handler) CreateLiveCourseSession(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dto.CreateLiveSessionResponse{SessionID: sessionID.String()})
 }
-

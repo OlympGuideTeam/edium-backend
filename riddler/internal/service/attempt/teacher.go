@@ -201,4 +201,3 @@ func (s *Service) GetAttemptReview(ctx context.Context, attemptID uuid.UUID, cal
 	enriched := enrichTeacher || attempt.Status == domain.AttemptStatusPublished
 	return attempt, answers, enriched, nil
 }
-
