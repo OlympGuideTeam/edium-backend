@@ -174,6 +174,13 @@ type UserLiveSession struct {
 	FinishedAt        *time.Time
 }
 
+type SessionStatusItem struct {
+	SessionID uuid.UUID
+	Mode      SessionMode
+	Status    SessionStatus
+	Phase     *LivePhase // nil для test-сессий
+}
+
 type CreateTestCourseSessionInlineParams struct {
 	Title             string
 	Description       *string

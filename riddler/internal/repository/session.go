@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -127,6 +128,34 @@ func (r *PgSessionRepository) HasSessions(ctx context.Context, quizTemplateID uu
 		quizTemplateID,
 	).Scan(&exists)
 	return exists, err
+}
+
+func (r *PgSessionRepository) GetManyByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.QuizSession, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	strs := make([]string, len(ids))
+	for i, id := range ids {
+		strs[i] = id.String()
+	}
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT id, mode, status, started_at, finished_at
+		 FROM quiz_session WHERE id = ANY($1::uuid[])`,
+		"{"+strings.Join(strs, ",")+"}")
+	if err != nil {
+		return nil, fmt.Errorf("get sessions by ids: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.QuizSession
+	for rows.Next() {
+		var s domain.QuizSession
+		if err := rows.Scan(&s.ID, &s.Mode, &s.Status, &s.StartedAt, &s.FinishedAt); err != nil {
+			return nil, fmt.Errorf("scan session: %w", err)
+		}
+		result = append(result, s)
+	}
+	return result, rows.Err()
 }
 
 func (r *PgSessionRepository) FindFinishedNeedingGrading(ctx context.Context) ([]domain.QuizSession, error) {
