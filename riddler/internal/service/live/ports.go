@@ -30,7 +30,7 @@ type attemptRepository interface {
 	GetLiveLeaderboard(ctx context.Context, sessionID uuid.UUID) ([]domain.LiveParticipantResult, error)
 	GetLiveSessionAnswers(ctx context.Context, sessionID uuid.UUID) ([]repository.LiveSessionAnswer, error)
 	BulkInsertSubmissions(ctx context.Context, submissions []repository.BulkSubmission) error
-	PublishLive(ctx context.Context, attemptID uuid.UUID, score float64) error
+	PublishLive(ctx context.Context, attemptID uuid.UUID, score, grade float64) error
 	SetKicked(ctx context.Context, attemptID uuid.UUID) error
 }
 

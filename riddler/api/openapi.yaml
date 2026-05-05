@@ -1492,6 +1492,66 @@ paths:
                       $ref: "#/components/schemas/LibraryLiveSessionItem"
         "401": {$ref: "#/components/responses/Unauthorized"}
 
+  /sessions/live/inline:
+    post:
+      tags: [Live]
+      summary: Создать квиз и live-сессию за один запрос (для курса)
+      operationId: createLiveCourseSessionInline
+      description: |
+        Атомарно создаёт шаблон квиза с `source=course`, добавляет вопросы и создаёт live-сессию.
+        Вопросы типа `with_free_answer` запрещены.
+        Публикует события `riddler.quiz_template.attached` и `riddler.course_session.created`.
+        Лобби открывается отдельно через `POST /sessions/{id}/live/start`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, course_id, module_id, questions]
+              properties:
+                title:
+                  type: string
+                  example: "Викторина по теме 1"
+                description:
+                  type: string
+                  nullable: true
+                course_id:
+                  type: string
+                  format: uuid
+                module_id:
+                  type: string
+                  format: uuid
+                questions:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: "#/components/schemas/AddQuestionRequest"
+                question_time_limit_sec:
+                  type: integer
+                  nullable: true
+                  description: Лимит времени на вопрос в секундах (дефолт 30)
+                  example: 30
+      responses:
+        "200":
+          description: Квиз и сессия созданы
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  quiz_template_id:
+                    type: string
+                    format: uuid
+                  session_id:
+                    type: string
+                    format: uuid
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
+
   /sessions/live/course:
     post:
       tags: [Live]

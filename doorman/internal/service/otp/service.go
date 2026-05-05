@@ -22,6 +22,7 @@ const (
 	maxOTPAttempts   = 3
 	regTokenLength   = 32
 	maxDailySMSSends = 20
+	testOTP          = uint64(123456)
 )
 
 type Service struct {
@@ -30,6 +31,7 @@ type Service struct {
 	otpStore      OTPStore
 	taskScheduler TaskScheduler
 	jwtPublisher  JWTPublisher
+	testPhones    map[string]struct{}
 }
 
 type OtpData struct {
@@ -43,13 +45,19 @@ func NewService(
 	otpStore OTPStore,
 	taskScheduler TaskScheduler,
 	jwtPublisher JWTPublisher,
+	testPhones []string,
 ) *Service {
+	tp := make(map[string]struct{}, len(testPhones))
+	for _, p := range testPhones {
+		tp[p] = struct{}{}
+	}
 	return &Service{
 		identityStore: identityStore,
 		regTokenStore: regTokenStore,
 		taskScheduler: taskScheduler,
 		otpStore:      otpStore,
 		jwtPublisher:  jwtPublisher,
+		testPhones:    tp,
 	}
 }
 
@@ -87,9 +95,15 @@ func (s *Service) SendOTP(ctx context.Context, phone string, channel domain.Chan
 		return 0, apperr.ErrPhoneUnavailable
 	}
 
-	otp, err := generateOTP()
-	if err != nil {
-		return 0, err
+	var otp uint64
+	if _, isTest := s.testPhones[phone]; isTest {
+		otp = testOTP
+	} else {
+		var err error
+		otp, err = generateOTP()
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	hashOTP := s.hashOTP(otp)
@@ -98,21 +112,22 @@ func (s *Service) SendOTP(ctx context.Context, phone string, channel domain.Chan
 		return 0, err
 	}
 
-	payload, err := json.Marshal(struct {
-		Phone   string         `json:"phone"`
-		OTP     uint64         `json:"otp"`
-		Channel domain.Channel `json:"channel"`
-	}{
-		Phone:   phone,
-		OTP:     otp,
-		Channel: channel,
-	})
-	if err != nil {
-		return 0, err
-	}
-
-	if err := s.taskScheduler.Schedule(ctx, domain.OTPSent, payload); err != nil {
-		return 0, err
+	if _, isTest := s.testPhones[phone]; !isTest {
+		payload, err := json.Marshal(struct {
+			Phone   string         `json:"phone"`
+			OTP     uint64         `json:"otp"`
+			Channel domain.Channel `json:"channel"`
+		}{
+			Phone:   phone,
+			OTP:     otp,
+			Channel: channel,
+		})
+		if err != nil {
+			return 0, err
+		}
+		if err := s.taskScheduler.Schedule(ctx, domain.OTPSent, payload); err != nil {
+			return 0, err
+		}
 	}
 
 	return otpTTL, nil

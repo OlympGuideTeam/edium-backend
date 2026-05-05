@@ -15,7 +15,8 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Port int `env:"APP_PORT" envDefault:"80"`
+	Port       int      `env:"APP_PORT" envDefault:"80"`
+	TestPhones []string `env:"TEST_PHONES" envSeparator:"," envDefault:"+70000000000,+71111111111"`
 }
 
 type PostgresConfig struct {

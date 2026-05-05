@@ -107,6 +107,84 @@ func (s *Service) CreateTestCourseSessionInline(ctx context.Context, authorID uu
 	return quizTemplateID, sessionID, nil
 }
 
+func (s *Service) CreateLiveCourseSessionInline(ctx context.Context, authorID uuid.UUID, p domain.CreateLiveCourseSessionInlineParams) (uuid.UUID, uuid.UUID, error) {
+	var quizTemplateID, sessionID uuid.UUID
+
+	var inlineMaxScore int
+	for _, q := range p.Questions {
+		if q.Type == domain.QuestionTypeWithFreeAnswer {
+			return uuid.Nil, uuid.Nil, apperr.ErrLiveTemplateInvalid
+		}
+		inlineMaxScore += q.MaxScore
+	}
+
+	timeLimitSec := defaultLiveQuestionTimeLimitSec
+	if p.QuestionTimeLimitSec != nil {
+		timeLimitSec = *p.QuestionTimeLimitSec
+	}
+
+	err := s.txManager.WithTx(ctx, func(ctx context.Context) error {
+		var innerErr error
+		quizTemplateID, innerErr = s.quizzes.Create(ctx, authorID, p.Title, p.Description, domain.QuizDefaultSettings{}, domain.QuizSourceCourse, &p.CourseID)
+		if innerErr != nil {
+			return fmt.Errorf("create quiz: %w", innerErr)
+		}
+
+		for i := range p.Questions {
+			p.Questions[i].QuizTemplateID = quizTemplateID
+			if err := validateQuestion(p.Questions[i].Type, p.Questions[i].Metadata, p.Questions[i].Options); err != nil {
+				return err
+			}
+			if _, _, innerErr = s.quizzes.AddQuestion(ctx, p.Questions[i]); innerErr != nil {
+				return fmt.Errorf("add question: %w", innerErr)
+			}
+		}
+
+		sessionID, innerErr = s.sessions.Create(ctx, domain.CreateSessionParams{
+			QuizTemplateID:       quizTemplateID,
+			Mode:                 domain.SessionModeLive,
+			Source:               domain.LiveSourceCourse,
+			MaxScore:             inlineMaxScore,
+			QuestionTimeLimitSec: &timeLimitSec,
+			Status:               domain.SessionStatusNotStarted,
+		})
+		if innerErr != nil {
+			return fmt.Errorf("create session: %w", innerErr)
+		}
+
+		attachedPayload, _ := json.Marshal(quizTemplateAttachedPayload{
+			QuizTemplateID: quizTemplateID,
+			CourseID:       p.CourseID,
+			Title:          p.Title,
+			Payload:        buildCourseDraftPayload(p.Title, domain.QuizDefaultSettings{}),
+		})
+		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, attachedPayload); innerErr != nil {
+			return fmt.Errorf("schedule quiz_template.attached: %w", innerErr)
+		}
+
+		qtID := quizTemplateID
+		cID := p.CourseID
+		sessionCreatedPayload, _ := json.Marshal(domain.CourseSessionCreatedPayload{
+			SessionID:            sessionID,
+			ModuleID:             p.ModuleID,
+			QuizTemplateID:       &qtID,
+			CourseID:             &cID,
+			Title:                p.Title,
+			Mode:                 string(domain.SessionModeLive),
+			QuestionTimeLimitSec: &timeLimitSec,
+		})
+		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeCourseSessionCreatedPublisher, sessionCreatedPayload); innerErr != nil {
+			return fmt.Errorf("schedule course_session.created: %w", innerErr)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	return quizTemplateID, sessionID, nil
+}
+
 type courseSessionCanceledPayload struct {
 	SessionID      uuid.UUID       `json:"session_id"`
 	QuizTemplateID uuid.UUID       `json:"quiz_template_id"`

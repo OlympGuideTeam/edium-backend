@@ -322,11 +322,11 @@ func (r *PgAttemptRepository) BulkInsertSubmissions(ctx context.Context, submiss
 	return nil
 }
 
-func (r *PgAttemptRepository) PublishLive(ctx context.Context, attemptID uuid.UUID, score float64) error {
+func (r *PgAttemptRepository) PublishLive(ctx context.Context, attemptID uuid.UUID, score, grade float64) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,
-		`UPDATE attempt SET status = $2, score = $3, finished_at = now(), updated_at = now() WHERE id = $1`,
-		attemptID, domain.AttemptStatusPublished, score,
+		`UPDATE attempt SET status = $2, score = $3, grade = $4, finished_at = now(), updated_at = now() WHERE id = $1`,
+		attemptID, domain.AttemptStatusPublished, score, grade,
 	)
 	if err != nil {
 		return fmt.Errorf("publish live attempt: %w", err)

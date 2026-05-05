@@ -381,6 +381,70 @@ func (h *Handler) CreateTestCourseSessionInline(c *gin.Context) {
 	})
 }
 
+func (h *Handler) CreateLiveCourseSessionInline(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	var req dto.CreateLiveCourseSessionInlineRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.WriteError(c, apperr.ErrBadRequest)
+		return
+	}
+
+	courseID, err := uuid.Parse(req.CourseID)
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+	moduleID, err := uuid.Parse(req.ModuleID)
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	questions := make([]domain.AddQuestionParams, len(req.Questions))
+	for i, q := range req.Questions {
+		maxScore := 10
+		if q.MaxScore != nil {
+			maxScore = *q.MaxScore
+		}
+		options := make([]domain.AddOptionParams, len(q.AnswerOptions))
+		for j, o := range q.AnswerOptions {
+			options[j] = domain.AddOptionParams{Text: o.Text, IsCorrect: o.IsCorrect}
+		}
+		questions[i] = domain.AddQuestionParams{
+			Type:     domain.QuestionType(q.Type),
+			Text:     q.Text,
+			ImageID:  parseNullableUUID(q.ImageID),
+			Metadata: q.Metadata,
+			MaxScore: maxScore,
+			Options:  options,
+		}
+	}
+
+	params := domain.CreateLiveCourseSessionInlineParams{
+		Title:                req.Title,
+		Description:          req.Description,
+		CourseID:             courseID,
+		ModuleID:             moduleID,
+		Questions:            questions,
+		QuestionTimeLimitSec: req.QuestionTimeLimitSec,
+	}
+
+	quizTemplateID, sessionID, err := h.service.CreateLiveCourseSessionInline(c.Request.Context(), userID, params)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.CreateTestCourseSessionInlineResponse{
+		QuizTemplateID: quizTemplateID.String(),
+		SessionID:      sessionID.String(),
+	})
+}
+
 func uuidPtrToString(id *uuid.UUID) *string {
 	if id == nil {
 		return nil

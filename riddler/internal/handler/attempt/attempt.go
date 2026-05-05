@@ -193,7 +193,7 @@ func (h *Handler) GetAttemptReview(c *gin.Context) {
 	resp := dto.AttemptReviewResponse{
 		AttemptID:  attempt.ID.String(),
 		Status:     string(attempt.Status),
-		Score:      attempt.Score,
+		Score:      attempt.Grade,
 		StartedAt:  attempt.StartedAt.Format("2006-01-02T15:04:05Z"),
 		FinishedAt: finishedAt,
 		Answers:    reviewAnswers,
