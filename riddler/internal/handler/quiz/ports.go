@@ -18,7 +18,7 @@ type quizService interface {
 	PublishQuiz(ctx context.Context, id, authorID uuid.UUID) error
 	GetQuiz(ctx context.Context, id, userID uuid.UUID) (*domain.QuizDetail, error)
 	GetQuizForStudent(ctx context.Context, id, userID uuid.UUID) (*domain.QuizStudentView, error)
-	ListQuizzes(ctx context.Context, role domain.Role, search *string) ([]domain.QuizListItem, error)
+	ListQuizzes(ctx context.Context, role domain.Role, userID *uuid.UUID, search *string) ([]domain.QuizListItem, error)
 	ListMyQuizzes(ctx context.Context, authorID uuid.UUID) ([]domain.QuizListItem, error)
 	CopyQuiz(ctx context.Context, quizID, authorID uuid.UUID, attachToCourse *uuid.UUID) (uuid.UUID, error)
 	CreateTestCourseSessionInline(ctx context.Context, authorID uuid.UUID, p domain.CreateTestCourseSessionInlineParams) (uuid.UUID, uuid.UUID, error)

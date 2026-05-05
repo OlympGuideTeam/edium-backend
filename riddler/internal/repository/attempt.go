@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -377,6 +378,40 @@ func (r *PgAttemptRepository) FindExpiredInProgress(ctx context.Context) ([]doma
 			}
 		}
 		result = append(result, a)
+	}
+	return result, rows.Err()
+}
+
+func (r *PgAttemptRepository) GetAttemptsByUserBatch(ctx context.Context, userID uuid.UUID, quizIDs []uuid.UUID) (map[uuid.UUID][]domain.QuizAttemptSummary, error) {
+	if len(quizIDs) == 0 {
+		return map[uuid.UUID][]domain.QuizAttemptSummary{}, nil
+	}
+	exec := db.ExecutorFromContext(ctx, r.db)
+
+	strs := make([]string, len(quizIDs))
+	for i, id := range quizIDs {
+		strs[i] = id.String()
+	}
+	rows, err := exec.QueryContext(ctx,
+		`SELECT qs.quiz_template_id, a.id, a.session_id, qs.mode, a.status, a.grade, a.started_at, a.finished_at
+		 FROM attempt a
+		 JOIN quiz_session qs ON qs.id = a.session_id
+		 WHERE a.user_id = $1 AND qs.quiz_template_id = ANY($2::uuid[])
+		 ORDER BY a.started_at DESC`,
+		userID, "{"+strings.Join(strs, ",")+"}")
+	if err != nil {
+		return nil, fmt.Errorf("get attempts batch: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make(map[uuid.UUID][]domain.QuizAttemptSummary)
+	for rows.Next() {
+		var quizID uuid.UUID
+		var s domain.QuizAttemptSummary
+		if err := rows.Scan(&quizID, &s.ID, &s.SessionID, &s.SessionType, &s.Status, &s.Score, &s.StartedAt, &s.FinishedAt); err != nil {
+			return nil, fmt.Errorf("scan attempt: %w", err)
+		}
+		result[quizID] = append(result[quizID], s)
 	}
 	return result, rows.Err()
 }

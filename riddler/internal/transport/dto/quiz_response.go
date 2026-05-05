@@ -72,12 +72,13 @@ type QuizAttemptSummaryResponse struct {
 }
 
 type QuizListItemResponse struct {
-	ID              string              `json:"id"`
-	Title           string              `json:"title"`
-	Description     *string             `json:"description"`
-	DefaultSettings QuizDefaultSettings `json:"default_settings"`
-	IsPublic        bool                `json:"is_public"`
-	Source          string              `json:"source"`
-	NeedEvaluation  bool                `json:"need_evaluation"`
-	QuestionCount   int                 `json:"question_count"`
+	ID              string                       `json:"id"`
+	Title           string                       `json:"title"`
+	Description     *string                      `json:"description"`
+	DefaultSettings QuizDefaultSettings          `json:"default_settings"`
+	IsPublic        bool                         `json:"is_public"`
+	Source          string                       `json:"source"`
+	NeedEvaluation  bool                         `json:"need_evaluation"`
+	QuestionCount   int                          `json:"question_count"`
+	Attempts        []QuizAttemptSummaryResponse `json:"attempts,omitempty"`
 }

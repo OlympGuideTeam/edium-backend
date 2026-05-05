@@ -10,6 +10,25 @@ import (
 	"riddler/internal/pkg/apperr"
 )
 
+func (s *Service) ListAwaitingReview(ctx context.Context, authorID uuid.UUID) ([]domain.AwaitingReviewSession, error) {
+	return s.sessions.FindAwaitingReview(ctx, authorID)
+}
+
+func (s *Service) GetStudentDashboard(ctx context.Context, userID uuid.UUID) (*domain.StudentDashboard, error) {
+	grades, err := s.sessions.FindStudentRecentGrades(ctx, userID, 5)
+	if err != nil {
+		return nil, fmt.Errorf("recent grades: %w", err)
+	}
+	active, err := s.sessions.FindStudentActiveTests(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("active tests: %w", err)
+	}
+	return &domain.StudentDashboard{
+		RecentGrades: grades,
+		ActiveTests:  active,
+	}, nil
+}
+
 func (s *Service) ListSessionAttempts(ctx context.Context, sessionID, teacherID uuid.UUID) ([]domain.AttemptSummary, error) {
 	if err := s.requireSessionOwner(ctx, sessionID, teacherID); err != nil {
 		return nil, err
@@ -158,22 +177,22 @@ func (s *Service) GetAttemptReview(ctx context.Context, attemptID uuid.UUID, cal
 		return nil, nil, false, fmt.Errorf("get answers: %w", err)
 	}
 
-	if enrichTeacher {
-		session, err := s.sessions.GetByID(ctx, attempt.SessionID)
-		if err != nil {
-			return nil, nil, false, fmt.Errorf("get session: %w", err)
-		}
-		questions, err := s.quizzes.GetQuestionsWithOptions(ctx, session.QuizTemplateID)
-		if err != nil {
-			return nil, nil, false, fmt.Errorf("get questions: %w", err)
-		}
-		qMap := make(map[uuid.UUID]domain.QuestionWithOptions, len(questions))
-		for i := range questions {
-			qMap[questions[i].ID] = questions[i]
-		}
-		for i := range answers {
-			if q, ok := qMap[answers[i].QuestionID]; ok {
-				answers[i].Options = q.Options
+	session, err := s.sessions.GetByID(ctx, attempt.SessionID)
+	if err != nil {
+		return nil, nil, false, fmt.Errorf("get session: %w", err)
+	}
+	questions, err := s.quizzes.GetQuestionsWithOptions(ctx, session.QuizTemplateID)
+	if err != nil {
+		return nil, nil, false, fmt.Errorf("get questions: %w", err)
+	}
+	qMap := make(map[uuid.UUID]domain.QuestionWithOptions, len(questions))
+	for i := range questions {
+		qMap[questions[i].ID] = questions[i]
+	}
+	for i := range answers {
+		if q, ok := qMap[answers[i].QuestionID]; ok {
+			answers[i].Options = q.Options
+			if enrichTeacher {
 				answers[i].Metadata = q.Metadata
 			}
 		}

@@ -39,6 +39,7 @@ func (h *Handler) handleStartQuiz(ctx context.Context, _ *Conn, room *SessionRoo
 	room.questionIdx = 0
 	room.mu.Unlock()
 
+	h.studentHub.NotifyLobbyClosed(sessionID)
 	room.broadcastAll(encodeMsg("quiz.started", nil))
 	h.startQuestion(ctx, room, sessionID)
 }
@@ -141,6 +142,7 @@ func (h *Handler) handleKick(ctx context.Context, room *SessionRoom, sessionID, 
 func (h *Handler) completeQuiz(ctx context.Context, room *SessionRoom, sessionID uuid.UUID) {
 	room.broadcastAll(encodeMsg("quiz.completed", nil))
 
+	h.studentHub.NotifyLobbyClosed(sessionID)
 	_ = h.svc.CompleteLiveSession(ctx, sessionID)
 
 	room.mu.RLock()

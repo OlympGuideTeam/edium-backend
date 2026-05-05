@@ -283,10 +283,23 @@ func (s *Service) DeleteQuiz(ctx context.Context, id, authorID uuid.UUID) error 
 	return nil
 }
 
-func (s *Service) ListQuizzes(ctx context.Context, role domain.Role, search *string) ([]domain.QuizListItem, error) {
+func (s *Service) ListQuizzes(ctx context.Context, role domain.Role, userID *uuid.UUID, search *string) ([]domain.QuizListItem, error) {
 	items, err := s.quizzes.ListPublished(ctx, role == domain.RoleStudent, search)
 	if err != nil {
 		return nil, fmt.Errorf("list quizzes: %w", err)
+	}
+	if role == domain.RoleStudent && userID != nil && len(items) > 0 {
+		ids := make([]uuid.UUID, len(items))
+		for i, item := range items {
+			ids[i] = item.ID
+		}
+		attemptsMap, err := s.attempts.GetAttemptsByUserBatch(ctx, *userID, ids)
+		if err != nil {
+			return nil, fmt.Errorf("get attempts batch: %w", err)
+		}
+		for i := range items {
+			items[i].Attempts = attemptsMap[items[i].ID]
+		}
 	}
 	return items, nil
 }

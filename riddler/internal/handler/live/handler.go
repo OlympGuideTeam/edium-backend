@@ -2,6 +2,7 @@ package live
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,12 +15,13 @@ import (
 )
 
 type Handler struct {
-	svc liveService
-	hub *Hub
+	svc        liveService
+	hub        *Hub
+	studentHub *StudentHub
 }
 
-func NewHandler(svc liveService) *Handler {
-	return &Handler{svc: svc, hub: newHub()}
+func NewHandler(svc liveService, studentHub *StudentHub) *Handler {
+	return &Handler{svc: svc, hub: newHub(), studentHub: studentHub}
 }
 
 func userIDFromCtx(c *gin.Context) (uuid.UUID, bool) {
@@ -31,24 +33,37 @@ func userIDFromCtx(c *gin.Context) (uuid.UUID, bool) {
 	return id, ok
 }
 
-func (h *Handler) ListLibraryLiveSessions(c *gin.Context) {
+func (h *Handler) ListLiveSessions(c *gin.Context) {
 	authorID, ok := userIDFromCtx(c)
 	if !ok {
 		return
 	}
 
-	sessions, err := h.svc.ListLibraryLiveSessions(c.Request.Context(), authorID)
+	var source *string
+	if s := c.Query("source"); s != "" {
+		source = &s
+	}
+
+	limit := 20
+	if l := c.Query("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && v > 0 {
+			limit = v
+		}
+	}
+
+	sessions, err := h.svc.ListLiveSessions(c.Request.Context(), authorID, source, limit)
 	if err != nil {
 		httpx.WriteError(c, err)
 		return
 	}
 
-	items := make([]dto.LibraryLiveSessionItem, len(sessions))
+	items := make([]dto.LiveSessionItem, len(sessions))
 	for i, s := range sessions {
-		items[i] = dto.LibraryLiveSessionItem{
+		items[i] = dto.LiveSessionItem{
 			SessionID:         s.SessionID.String(),
 			QuizTemplateID:    s.QuizTemplateID.String(),
 			QuizTitle:         s.QuizTitle,
+			Source:            string(s.Source),
 			Status:            string(s.Status),
 			Phase:             string(s.Phase),
 			JoinCode:          s.JoinCode,
@@ -57,7 +72,7 @@ func (h *Handler) ListLibraryLiveSessions(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, dto.ListLibraryLiveSessionsResponse{Sessions: items})
+	c.JSON(http.StatusOK, dto.ListLiveSessionsResponse{Sessions: items})
 }
 
 func (h *Handler) JoinLiveSession(c *gin.Context) {

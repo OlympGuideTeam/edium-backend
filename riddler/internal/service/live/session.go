@@ -139,6 +139,9 @@ func (s *Service) StartLiveSession(ctx context.Context, sessionID, callerID uuid
 		if err := s.sessions.UpdateStatus(ctx, sessionID, domain.SessionStatusRunning); err != nil {
 			return "", "", fmt.Errorf("update session status: %w", err)
 		}
+		if session.Source == domain.LiveSourceCourse && quiz.CourseID != nil && s.notifier != nil {
+			s.notifier.NotifyLobbyOpened(sessionID, *quiz.CourseID, quiz.Title, *session.QuestionTimeLimitSec)
+		}
 	case currentPhase == domain.LivePhaseCompleted:
 		return "", "", apperr.ErrSessionCompleted
 	default:
@@ -164,6 +167,23 @@ func (s *Service) StartLiveSession(ctx context.Context, sessionID, callerID uuid
 	return wsToken, joinCode, nil
 }
 
+
+func (s *Service) GetActiveCourseLiveSessions(ctx context.Context, courseIDs []uuid.UUID) ([]domain.LiveLobbySnapshot, error) {
+	sessions, err := s.sessions.FindRunningCourseLiveSessions(ctx, courseIDs)
+	if err != nil {
+		return nil, fmt.Errorf("find running sessions: %w", err)
+	}
+	var result []domain.LiveLobbySnapshot
+	for _, sess := range sessions {
+		phase, err := s.liveSession.GetPhase(ctx, sess.SessionID)
+		if err != nil || phase != domain.LivePhaseLobby {
+			continue
+		}
+		result = append(result, sess)
+	}
+	return result, nil
+}
+
 func (s *Service) ResolveLiveCode(ctx context.Context, code string) (*domain.LiveSessionMeta, error) {
 	sessionID, err := s.liveSession.ResolveCode(ctx, code)
 	if err != nil {
@@ -184,8 +204,8 @@ func (s *Service) ResolveLiveCode(ctx context.Context, code string) (*domain.Liv
 	return meta, nil
 }
 
-func (s *Service) ListLibraryLiveSessions(ctx context.Context, authorID uuid.UUID) ([]domain.LibraryLiveSession, error) {
-	sessions, err := s.sessions.ListLiveLibrarySessions(ctx, authorID)
+func (s *Service) ListLiveSessions(ctx context.Context, authorID uuid.UUID, source *string, limit int) ([]domain.LiveSession, error) {
+	sessions, err := s.sessions.ListLiveSessions(ctx, authorID, source, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
 	}
