@@ -1,0 +1,28 @@
+package apperr
+
+type Error struct {
+	Code        string
+	Description string
+	HTTPStatus  int
+	Details     map[string]any
+}
+
+func (e *Error) Error() string {
+	return e.Code
+}
+
+func New(code, desc string, status int) *Error {
+	return &Error{
+		Code:        code,
+		Description: desc,
+		HTTPStatus:  status,
+	}
+}
+
+func BadRequest(err error) *Error {
+	return &Error{
+		Code:        "BAD_REQUEST",
+		Description: err.Error(),
+		HTTPStatus:  400,
+	}
+}

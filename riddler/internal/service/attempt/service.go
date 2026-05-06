@@ -49,22 +49,28 @@ func (s *Service) GetUserStatistic(ctx context.Context, userID uuid.UUID) (*doma
 	return s.attempts.GetUserStatistic(ctx, userID)
 }
 
-func (s *Service) scheduleAttemptScored(ctx context.Context, attempt *domain.Attempt, totalScore, maxScore float64) {
+func (s *Service) scheduleAttemptScored(ctx context.Context, attempt *domain.Attempt, totalScore, maxScore float64, authorID uuid.UUID, gradedBy domain.FinalSource) {
 	type payload struct {
-		AttemptID  uuid.UUID `json:"attempt_id"`
-		SessionID  uuid.UUID `json:"session_id"`
-		UserID     uuid.UUID `json:"user_id,omitempty"`
-		TotalScore float64   `json:"total_score"`
-		MaxScore   float64   `json:"max_score"`
+		AttemptID  uuid.UUID          `json:"attempt_id"`
+		SessionID  uuid.UUID          `json:"session_id"`
+		UserID     uuid.UUID          `json:"user_id,omitempty"`
+		AuthorID   uuid.UUID          `json:"author_id,omitempty"`
+		TotalScore float64            `json:"total_score"`
+		MaxScore   float64            `json:"max_score"`
+		GradedBy   domain.FinalSource `json:"graded_by"`
 	}
 	pl := payload{
 		AttemptID:  attempt.ID,
 		SessionID:  attempt.SessionID,
 		TotalScore: totalScore,
 		MaxScore:   maxScore,
+		GradedBy:   gradedBy,
 	}
 	if attempt.UserID != uuid.Nil {
 		pl.UserID = attempt.UserID
+	}
+	if authorID != uuid.Nil {
+		pl.AuthorID = authorID
 	}
 	data, _ := json.Marshal(pl)
 	if err := s.tasks.Schedule(ctx, domain.TaskTypeAttemptScoredPublisher, data); err != nil {

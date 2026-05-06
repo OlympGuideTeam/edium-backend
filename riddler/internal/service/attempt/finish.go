@@ -76,7 +76,7 @@ func (s *Service) finishAttempt(ctx context.Context, attempt *domain.Attempt) er
 		if err := s.attempts.Publish(ctx, attempt.ID, totalScore, grade); err != nil {
 			return err
 		}
-		s.scheduleAttemptScored(ctx, attempt, totalScore, float64(session.MaxScore))
+		s.scheduleAttemptScored(ctx, attempt, totalScore, float64(session.MaxScore), quiz.AuthorID, domain.FinalSourceAuto)
 		return nil
 	})
 }

@@ -25,6 +25,9 @@ linters:
       - path: _test\.go
         linters:
           - errcheck
+      - path: internal/infra/firebase/
+        linters:
+          - staticcheck
 
 formatters:
   enable:

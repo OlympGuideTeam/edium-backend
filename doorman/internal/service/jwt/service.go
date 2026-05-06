@@ -2,10 +2,13 @@ package jwtsvc
 
 import (
 	"context"
+	"doorman/internal/domain"
 	tokenhandler "doorman/internal/handler/token"
 	"doorman/internal/pkg/apperr"
 	"doorman/internal/transport/dto"
 	"encoding/base64"
+	"encoding/json"
+	"log/slog"
 	"math/big"
 	"time"
 )
@@ -18,12 +21,14 @@ const (
 type Service struct {
 	keyStore          KeyStore
 	refreshTokenStore RefreshTokenStore
+	tasks             TaskRepository
 }
 
-func NewService(keyStore KeyStore, refreshTokenStore RefreshTokenStore) *Service {
+func NewService(keyStore KeyStore, refreshTokenStore RefreshTokenStore, tasks TaskRepository) *Service {
 	return &Service{
 		keyStore:          keyStore,
 		refreshTokenStore: refreshTokenStore,
+		tasks:             tasks,
 	}
 }
 
@@ -77,6 +82,13 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 
 	if userID != claims.Subject {
 		return apperr.ErrRefreshTokenInvalid
+	}
+
+	payload, _ := json.Marshal(struct {
+		UserID string `json:"user_id"`
+	}{UserID: userID})
+	if err := s.tasks.Schedule(ctx, domain.UserLogout, payload); err != nil {
+		slog.ErrorContext(ctx, "logout: не удалось сохранить задачу", "err", err)
 	}
 
 	return nil

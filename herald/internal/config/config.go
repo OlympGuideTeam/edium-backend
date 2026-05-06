@@ -12,6 +12,8 @@ type Config struct {
 	Telegram TelegramConfig
 	SMS      SMSConfig
 	OTel     OTelConfig
+	Doorman  DoormanConfig
+	Firebase FirebaseConfig
 }
 
 type AppConfig struct {
@@ -39,6 +41,14 @@ type SMSConfig struct {
 type OTelConfig struct {
 	Endpoint    string `env:"OTEL_ENDPOINT" envDefault:"jaeger:4317"`
 	ServiceName string `env:"OTEL_SERVICE_NAME" envDefault:"herald"`
+}
+
+type DoormanConfig struct {
+	JWKSEndpoint string `env:"DOORMAN_JWKS_URL" envDefault:"http://doorman/.well-known/jwks.json"`
+}
+
+type FirebaseConfig struct {
+	CredentialsJSON string `env:"FIREBASE_CREDENTIALS_JSON"`
 }
 
 func Load() (*Config, error) {

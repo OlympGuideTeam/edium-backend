@@ -14,6 +14,7 @@ type taskScheduler interface {
 }
 
 type taskRepository interface {
+	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
 	ClaimPending(ctx context.Context, taskType domain.TaskType, limit int) ([]domain.Task, error)
 	MarkDone(ctx context.Context, id uuid.UUID) error
 	MarkFailed(ctx context.Context, id uuid.UUID, reason string, retryAfter time.Duration) error
@@ -30,4 +31,8 @@ type courseItemStore interface {
 type courseDraftStore interface {
 	UpsertCourseDraft(ctx context.Context, quizTemplateID, courseID uuid.UUID, title string, payload json.RawMessage) (uuid.UUID, error)
 	DeleteDraftByTemplateAndCourse(ctx context.Context, quizTemplateID, courseID uuid.UUID) error
+}
+
+type courseStudentStore interface {
+	GetStudentIDsByCourseID(ctx context.Context, courseID uuid.UUID) ([]uuid.UUID, error)
 }
