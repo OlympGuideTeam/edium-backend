@@ -80,7 +80,7 @@ func (s *ImageService) Upload(ctx context.Context, fileHeader *multipart.FileHea
 	bounds := img.Bounds()
 	if bounds.Dx() > s.maxWidth || bounds.Dy() > s.maxHeight {
 		slog.InfoContext(ctx, "ресайз изображения", "origin", bounds, "max", fmt.Sprintf("%dx%d", s.maxWidth, s.maxHeight))
-		img = imaging.Resize(img, s.maxWidth, s.maxHeight, imaging.Lanczos)
+		img = imaging.Fit(img, s.maxWidth, s.maxHeight, imaging.Lanczos)
 	}
 
 	buf := new(bytes.Buffer)
