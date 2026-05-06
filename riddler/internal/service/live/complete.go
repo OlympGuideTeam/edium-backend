@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"riddler/internal/pkg/grading"
+
 	"github.com/google/uuid"
 
 	"riddler/internal/domain"
@@ -22,6 +24,11 @@ func (s *Service) CompleteLiveSession(ctx context.Context, sessionID uuid.UUID) 
 	questions, err := s.quizzes.GetQuestionsWithOptions(ctx, meta.QuizTemplateID)
 	if err != nil {
 		return fmt.Errorf("get questions: %w", err)
+	}
+
+	session, err := s.sessions.GetByID(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("get session: %w", err)
 	}
 
 	participants, err := s.liveParticip.GetParticipants(ctx, sessionID)
@@ -45,8 +52,9 @@ func (s *Service) CompleteLiveSession(ctx context.Context, sessionID uuid.UUID) 
 		if err := s.attempts.BulkInsertSubmissions(ctx, submissions); err != nil {
 			return fmt.Errorf("bulk insert submissions: %w", err)
 		}
-		if err := s.attempts.CompleteLive(ctx, p.AttemptID, totalScore); err != nil {
-			return fmt.Errorf("complete attempt: %w", err)
+		grade := grading.ComputeGrade(totalScore, session.MaxScore)
+		if err := s.attempts.PublishLive(ctx, p.AttemptID, totalScore, grade); err != nil {
+			return fmt.Errorf("publish attempt: %w", err)
 		}
 	}
 

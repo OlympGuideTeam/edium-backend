@@ -91,10 +91,11 @@ type LiveResultsTeacherResponse struct {
 	Leaderboard []LiveResultsTeacherAttempt `json:"leaderboard"`
 }
 
-type LibraryLiveSessionItem struct {
+type LiveSessionItem struct {
 	SessionID         string  `json:"session_id"`
 	QuizTemplateID    string  `json:"quiz_template_id"`
 	QuizTitle         string  `json:"quiz_title"`
+	Source            string  `json:"source"`
 	Status            string  `json:"status"`
 	Phase             string  `json:"phase"`
 	JoinCode          *string `json:"join_code,omitempty"`
@@ -102,23 +103,8 @@ type LibraryLiveSessionItem struct {
 	CreatedAt         string  `json:"created_at"`
 }
 
-type ListLibraryLiveSessionsResponse struct {
-	Sessions []LibraryLiveSessionItem `json:"sessions"`
-}
-
-type UserLiveSessionItem struct {
-	SessionID         string  `json:"session_id"`
-	QuizTemplateID    string  `json:"quiz_template_id"`
-	QuizTitle         string  `json:"quiz_title"`
-	Status            string  `json:"status"`
-	Phase             string  `json:"phase"`
-	ParticipantsCount int     `json:"participants_count"`
-	StartedAt         *string `json:"started_at"`
-	FinishedAt        *string `json:"finished_at"`
-}
-
-type UserLiveSessionsResponse struct {
-	Sessions []UserLiveSessionItem `json:"sessions"`
+type ListLiveSessionsResponse struct {
+	Sessions []LiveSessionItem `json:"sessions"`
 }
 
 type SessionStatusItemDTO struct {

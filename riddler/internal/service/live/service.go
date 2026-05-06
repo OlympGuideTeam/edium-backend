@@ -12,6 +12,7 @@ type Service struct {
 	liveTokens   liveTokenStore
 	tasks        taskScheduler
 	tx           txManager
+	notifier     studentNotifier
 }
 
 func NewService(
@@ -24,6 +25,7 @@ func NewService(
 	liveTokens liveTokenStore,
 	tasks taskScheduler,
 	tx txManager,
+	notifier studentNotifier,
 ) *Service {
 	return &Service{
 		quizzes:      quizzes,
@@ -35,5 +37,6 @@ func NewService(
 		liveTokens:   liveTokens,
 		tasks:        tasks,
 		tx:           tx,
+		notifier:     notifier,
 	}
 }

@@ -133,6 +133,7 @@ type QuizListItem struct {
 	Source          QuizSource
 	NeedEvaluation  bool
 	QuestionCount   int
+	Attempts        []QuizAttemptSummary
 }
 
 type AddOptionParams struct {

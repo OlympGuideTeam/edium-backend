@@ -7,9 +7,14 @@ type SubmitAnswerRequest struct {
 	AnswerData map[string]any `json:"answer_data" binding:"required"`
 }
 
-type GradeSubmissionRequest struct {
-	Score    float64 `json:"score" binding:"required,min=0"`
-	Feedback *string `json:"feedback"`
+type GradeItem struct {
+	SubmissionID string  `json:"submission_id" binding:"required"`
+	Score        float64 `json:"score" binding:"min=0"`
+	Feedback     *string `json:"feedback"`
+}
+
+type GradeAttemptRequest struct {
+	Grades []GradeItem `json:"grades" binding:"required,min=1"`
 }
 
 // --- Ответы ---
@@ -77,6 +82,45 @@ type AttemptReviewResponse struct {
 	StartedAt  string                 `json:"started_at"`
 	FinishedAt *string                `json:"finished_at"`
 	Answers    []AnswerReviewResponse `json:"answers"`
+}
+
+type RecentGradeItemDTO struct {
+	SessionID      string   `json:"session_id"`
+	QuizTemplateID string   `json:"quiz_template_id"`
+	QuizTitle      string   `json:"quiz_title"`
+	AttemptID      string   `json:"attempt_id"`
+	Score          *float64 `json:"score"`
+	Status         string   `json:"status"`
+	FinishedAt     *string  `json:"finished_at"`
+}
+
+type ActiveTestItemDTO struct {
+	SessionID         string  `json:"session_id"`
+	QuizTemplateID    string  `json:"quiz_template_id"`
+	QuizTitle         string  `json:"quiz_title"`
+	TotalTimeLimitSec *int    `json:"total_time_limit_sec"`
+	SessionStartedAt  *string `json:"session_started_at"`
+	SessionFinishedAt *string `json:"session_finished_at"`
+	AttemptID         *string `json:"attempt_id"`
+	AttemptStatus     *string `json:"attempt_status"`
+}
+
+type StudentDashboardResponse struct {
+	RecentGrades []RecentGradeItemDTO `json:"recent_grades"`
+	ActiveTests  []ActiveTestItemDTO  `json:"active_tests"`
+}
+
+type AwaitingReviewSessionItem struct {
+	SessionID      string `json:"session_id"`
+	QuizTemplateID string `json:"quiz_template_id"`
+	QuizTitle      string `json:"quiz_title"`
+	GradingCount   int    `json:"grading_count"`
+	GradedCount    int    `json:"graded_count"`
+	CompletedCount int    `json:"completed_count"`
+}
+
+type AwaitingReviewResponse struct {
+	Sessions []AwaitingReviewSessionItem `json:"sessions"`
 }
 
 type UserStatisticResponse struct {

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -89,40 +90,58 @@ func (r *PgAttemptRepository) SetGraded(ctx context.Context, attemptID uuid.UUID
 	return nil
 }
 
-func (r *PgAttemptRepository) Complete(ctx context.Context, attemptID uuid.UUID, score, grade float64) error {
+func (r *PgAttemptRepository) Publish(ctx context.Context, attemptID uuid.UUID, score, grade float64) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,
 		`UPDATE attempt
 		 SET status = $2, score = $3, grade = $4, finished_at = now(), updated_at = now()
 		 WHERE id = $1`,
-		attemptID, domain.AttemptStatusCompleted, score, grade,
+		attemptID, domain.AttemptStatusPublished, score, grade,
 	)
 	if err != nil {
-		return fmt.Errorf("complete attempt: %w", err)
+		return fmt.Errorf("publish attempt: %w", err)
 	}
 	return nil
 }
 
-func (r *PgAttemptRepository) CompleteGraded(ctx context.Context, attemptID uuid.UUID, score, grade float64) error {
+func (r *PgAttemptRepository) SetCompleted(ctx context.Context, attemptID uuid.UUID, score, grade float64) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,
 		`UPDATE attempt SET status = $2, score = $3, grade = $4, updated_at = now() WHERE id = $1`,
 		attemptID, domain.AttemptStatusCompleted, score, grade,
 	)
 	if err != nil {
-		return fmt.Errorf("complete graded: %w", err)
+		return fmt.Errorf("set attempt completed: %w", err)
 	}
 	return nil
 }
 
-func (r *PgAttemptRepository) UpdateScore(ctx context.Context, attemptID uuid.UUID, score float64) error {
+func (r *PgAttemptRepository) HasUngradedFreeAnswers(ctx context.Context, attemptID uuid.UUID) (bool, error) {
+	exec := db.ExecutorFromContext(ctx, r.db)
+	var exists bool
+	err := exec.QueryRowContext(ctx,
+		`SELECT EXISTS (
+		     SELECT 1 FROM answer_submission s
+		     JOIN question q ON q.id = s.question_id
+		     WHERE s.attempt_id = $1 AND q.type = 'with_free_answer' AND s.final_score IS NULL
+		 )`,
+		attemptID,
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check ungraded free answers: %w", err)
+	}
+	return exists, nil
+}
+
+func (r *PgAttemptRepository) BulkPublishBySessionID(ctx context.Context, sessionID uuid.UUID) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,
-		`UPDATE attempt SET score = $2, updated_at = now() WHERE id = $1`,
-		attemptID, score,
+		`UPDATE attempt SET status = $2, updated_at = now()
+		 WHERE session_id = $1 AND status = $3`,
+		sessionID, domain.AttemptStatusPublished, domain.AttemptStatusCompleted,
 	)
 	if err != nil {
-		return fmt.Errorf("update attempt score: %w", err)
+		return fmt.Errorf("bulk publish attempts: %w", err)
 	}
 	return nil
 }
@@ -153,8 +172,8 @@ func (r *PgAttemptRepository) GetUserStatistic(ctx context.Context, userID uuid.
 	var st domain.UserStatistic
 	err := r.db.QueryRowContext(ctx, `
 		SELECT
-		    COUNT(*) FILTER (WHERE status = 'completed'),
-		    COALESCE(AVG(grade) FILTER (WHERE status = 'completed' AND grade IS NOT NULL), 0),
+		    COUNT(*) FILTER (WHERE status = 'published'),
+		    COALESCE(AVG(grade) FILTER (WHERE status = 'published' AND grade IS NOT NULL), 0),
 		    (SELECT COUNT(*) FROM quiz_session qs
 		     JOIN quiz_template qt ON qt.id = qs.quiz_template_id
 		     WHERE qt.author_id = $1 AND qs.status = 'finished')
@@ -209,7 +228,7 @@ func (r *PgAttemptRepository) GetLiveLeaderboard(ctx context.Context, sessionID 
 		    RANK() OVER (ORDER BY COALESCE(a.score, 0) DESC)
 		 FROM attempt a
 		 LEFT JOIN answer_submission s ON s.attempt_id = a.id
-		 WHERE a.session_id = $1 AND a.status = 'completed'
+		 WHERE a.session_id = $1 AND a.status = 'published'
 		 GROUP BY a.id
 		 ORDER BY 6 ASC`,
 		sessionID,
@@ -250,7 +269,7 @@ func (r *PgAttemptRepository) GetLiveSessionAnswers(ctx context.Context, session
 		 FROM answer_submission s
 		 JOIN attempt a ON a.id = s.attempt_id
 		 JOIN question q ON q.id = s.question_id
-		 WHERE a.session_id = $1 AND a.status = 'completed'`,
+		 WHERE a.session_id = $1 AND a.status = 'published'`,
 		sessionID,
 	)
 	if err != nil {
@@ -304,14 +323,14 @@ func (r *PgAttemptRepository) BulkInsertSubmissions(ctx context.Context, submiss
 	return nil
 }
 
-func (r *PgAttemptRepository) CompleteLive(ctx context.Context, attemptID uuid.UUID, score float64) error {
+func (r *PgAttemptRepository) PublishLive(ctx context.Context, attemptID uuid.UUID, score, grade float64) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,
-		`UPDATE attempt SET status = $2, score = $3, finished_at = now(), updated_at = now() WHERE id = $1`,
-		attemptID, domain.AttemptStatusCompleted, score,
+		`UPDATE attempt SET status = $2, score = $3, grade = $4, finished_at = now(), updated_at = now() WHERE id = $1`,
+		attemptID, domain.AttemptStatusPublished, score, grade,
 	)
 	if err != nil {
-		return fmt.Errorf("complete live attempt: %w", err)
+		return fmt.Errorf("publish live attempt: %w", err)
 	}
 	return nil
 }
@@ -359,6 +378,40 @@ func (r *PgAttemptRepository) FindExpiredInProgress(ctx context.Context) ([]doma
 			}
 		}
 		result = append(result, a)
+	}
+	return result, rows.Err()
+}
+
+func (r *PgAttemptRepository) GetAttemptsByUserBatch(ctx context.Context, userID uuid.UUID, quizIDs []uuid.UUID) (map[uuid.UUID][]domain.QuizAttemptSummary, error) {
+	if len(quizIDs) == 0 {
+		return map[uuid.UUID][]domain.QuizAttemptSummary{}, nil
+	}
+	exec := db.ExecutorFromContext(ctx, r.db)
+
+	strs := make([]string, len(quizIDs))
+	for i, id := range quizIDs {
+		strs[i] = id.String()
+	}
+	rows, err := exec.QueryContext(ctx,
+		`SELECT qs.quiz_template_id, a.id, a.session_id, qs.mode, a.status, a.grade, a.started_at, a.finished_at
+		 FROM attempt a
+		 JOIN quiz_session qs ON qs.id = a.session_id
+		 WHERE a.user_id = $1 AND qs.quiz_template_id = ANY($2::uuid[])
+		 ORDER BY a.started_at DESC`,
+		userID, "{"+strings.Join(strs, ",")+"}")
+	if err != nil {
+		return nil, fmt.Errorf("get attempts batch: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make(map[uuid.UUID][]domain.QuizAttemptSummary)
+	for rows.Next() {
+		var quizID uuid.UUID
+		var s domain.QuizAttemptSummary
+		if err := rows.Scan(&quizID, &s.ID, &s.SessionID, &s.SessionType, &s.Status, &s.Score, &s.StartedAt, &s.FinishedAt); err != nil {
+			return nil, fmt.Errorf("scan attempt: %w", err)
+		}
+		result[quizID] = append(result[quizID], s)
 	}
 	return result, rows.Err()
 }

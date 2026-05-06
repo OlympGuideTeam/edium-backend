@@ -74,7 +74,7 @@ func New(cfg *config.Config) (*App, error) {
 	taskRepo := repository.NewPgTaskRepository(pgdb)
 
 	jwtService := jwtsvc.NewService(keyStore, refreshTokenStore)
-	otpService := otpsvc.NewService(identityStore, regTokenStore, otpStore, taskRepo, jwtService)
+	otpService := otpsvc.NewService(identityStore, regTokenStore, otpStore, taskRepo, jwtService, cfg.App.TestPhones)
 	registrationService := regsvc.NewService(identityStore, regTokenStore, taskRepo, jwtService, txManager)
 
 	tokenHandler := tokenhandler.NewHandler(jwtService)

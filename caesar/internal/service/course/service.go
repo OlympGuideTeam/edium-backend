@@ -79,6 +79,14 @@ func (s *Service) GetCourse(ctx context.Context, courseID, userID uuid.UUID) (*d
 	return detail, nil
 }
 
+func (s *Service) GetMyCourses(ctx context.Context, userID uuid.UUID) ([]domain.CourseListItem, error) {
+	items, err := s.courses.ListByStudentID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("listByStudentID: %w", err)
+	}
+	return items, nil
+}
+
 func (s *Service) GetClassCourses(ctx context.Context, classID, userID uuid.UUID) ([]domain.CourseListItem, error) {
 	cl, err := s.classes.GetByID(ctx, classID)
 	if err != nil {

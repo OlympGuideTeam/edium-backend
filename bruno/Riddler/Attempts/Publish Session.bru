@@ -1,11 +1,11 @@
 meta {
-  name: Complete Attempt
+  name: Publish Session
   type: http
   seq: 7
 }
 
 post {
-  url: {{riddlerUrl}}/riddler/v1/attempts/{{attemptId}}/complete
+  url: {{riddlerUrl}}/riddler/v1/attempts/session/{{sessionId}}/publish
   body: none
   auth: bearer
 }
