@@ -103,6 +103,9 @@ func (s *Service) StartLiveSession(ctx context.Context, sessionID, callerID uuid
 	if session == nil || session.Mode != domain.SessionModeLive {
 		return "", "", apperr.ErrSessionNotFound
 	}
+	if session.Status == domain.SessionStatusFinished {
+		return "", "", apperr.ErrSessionCompleted
+	}
 
 	quiz, err := s.quizzes.GetByID(ctx, session.QuizTemplateID)
 	if err != nil {
