@@ -38,7 +38,7 @@ func run(ctx context.Context, cfg *config.Config) error {
 	}
 	defer func() { _ = shutdown(context.Background()) }()
 
-	application, err := app.New(cfg)
+	application, err := app.New(ctx, cfg)
 	if err != nil {
 		return err
 	}

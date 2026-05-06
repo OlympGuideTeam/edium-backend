@@ -14,6 +14,13 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+type courseSessionNotifyPayload struct {
+	SessionID string      `json:"session_id"`
+	UserIDs   []uuid.UUID `json:"user_ids"`
+	Title     string      `json:"title"`
+	Mode      string      `json:"mode"`
+}
+
 type courseItemPayload struct {
 	Title                string     `json:"title"`
 	Mode                 string     `json:"mode"`
@@ -31,13 +38,14 @@ const (
 )
 
 type CourseSessionCreatedProcessor struct {
-	tasks  taskRepository
-	items  courseItemStore
-	drafts courseDraftStore
+	tasks    taskRepository
+	items    courseItemStore
+	drafts   courseDraftStore
+	students courseStudentStore
 }
 
-func NewCourseSessionCreatedProcessor(tasks taskRepository, items courseItemStore, drafts courseDraftStore) *CourseSessionCreatedProcessor {
-	return &CourseSessionCreatedProcessor{tasks: tasks, items: items, drafts: drafts}
+func NewCourseSessionCreatedProcessor(tasks taskRepository, items courseItemStore, drafts courseDraftStore, students courseStudentStore) *CourseSessionCreatedProcessor {
+	return &CourseSessionCreatedProcessor{tasks: tasks, items: items, drafts: drafts, students: students}
 }
 
 func (w *CourseSessionCreatedProcessor) Run(ctx context.Context) error {
@@ -132,6 +140,22 @@ func (w *CourseSessionCreatedProcessor) processTask(ctx context.Context, t domai
 		}
 		if err := w.drafts.DeleteDraftByTemplateAndCourse(ctx, quizTemplateID, courseID); err != nil {
 			return fmt.Errorf("deleteDraft: %w", err)
+		}
+
+		studentIDs, err := w.students.GetStudentIDsByCourseID(ctx, courseID)
+		if err != nil {
+			return fmt.Errorf("get student ids: %w", err)
+		}
+		if len(studentIDs) > 0 {
+			notifyPayload, _ := json.Marshal(courseSessionNotifyPayload{
+				SessionID: p.SessionID,
+				UserIDs:   studentIDs,
+				Title:     p.Title,
+				Mode:      p.Mode,
+			})
+			if err := w.tasks.Schedule(ctx, domain.CourseSessionNotify, notifyPayload); err != nil {
+				slog.ErrorContext(ctx, "course-session-created-processor: не удалось запланировать уведомление", "err", err)
+			}
 		}
 	}
 

@@ -192,9 +192,11 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       SMS_API_KEY: ${SMS_API_KEY}
       SMS_ALLOWED_PHONES: ${SMS_ALLOWED_PHONES}
+      DOORMAN_JWKS_URL: http://doorman/.well-known/jwks.json
+      FIREBASE_CREDENTIALS_JSON: ${FIREBASE_CREDENTIALS_JSON}
       OTEL_ENDPOINT: jaeger:4317
       HTTPS_PROXY: socks5://tor:9050
-      NO_PROXY: jaeger
+      NO_PROXY: jaeger,doorman
     ports:
       - "8084:80"
     depends_on:
@@ -207,6 +209,8 @@ services:
       nats:
         condition: service_started
       tor:
+        condition: service_started
+      doorman:
         condition: service_started
 
   herald-db:

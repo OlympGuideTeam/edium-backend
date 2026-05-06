@@ -1,0 +1,224 @@
+openapi: "3.0.3"
+info:
+  title: Edium Herald
+  description: Уведомления — FCM push-токены устройств, история уведомлений
+  version: "1.0.0"
+
+servers:
+  - url: https://api.edium.online
+    description: Production
+  - url: https://test.edium.online
+    description: Staging
+
+tags:
+  - name: Devices
+    description: Управление FCM-токенами устройств
+  - name: Notifications
+    description: История уведомлений
+
+security:
+  - bearerAuth: []
+
+paths:
+  /herald/v1/devices:
+    post:
+      tags: [Devices]
+      summary: Зарегистрировать FCM-токен устройства
+      description: |
+        Сохраняет FCM-токен для текущего пользователя. При повторном вызове с уже
+        существующим токеном — обновляет платформу. Один токен всегда принадлежит
+        одному пользователю.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDeviceRequest'
+            example:
+              fcm_token: "fFl3h5K..."
+              platform: ios
+      responses:
+        "204":
+          description: Токен сохранён
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /herald/v1/devices/{token}:
+    delete:
+      tags: [Devices]
+      summary: Удалить FCM-токен устройства
+      description: Удаляет токен. Вызывается при выходе из аккаунта на конкретном устройстве.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: FCM-токен для удаления
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Токен удалён
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /herald/v1/notifications:
+    get:
+      tags: [Notifications]
+      summary: Получить список уведомлений
+      description: Возвращает до 100 последних уведомлений текущего пользователя, отсортированных по убыванию даты.
+      responses:
+        "200":
+          description: Список уведомлений
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/NotificationResponse'
+              example:
+                - id: "550e8400-e29b-41d4-a716-446655440000"
+                  title: "Новый квиз назначен"
+                  body: "Учитель назначил квиз в классе 7А — Математика"
+                  created_at: "2026-04-19T10:30:00Z"
+                  is_read: false
+                  data:
+                    route: "/class/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    role: "student"
+                - id: "660e8400-e29b-41d4-a716-446655440001"
+                  title: "Результаты квиза готовы"
+                  body: "Ваш результат по квизу «Функции» — 85/100"
+                  created_at: "2026-04-18T15:00:00Z"
+                  is_read: true
+                  data: null
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /herald/v1/notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Пометить уведомление прочитанным
+      description: |
+        Помечает уведомление как прочитанное. После этого отправляет data-only
+        silent push на все устройства пользователя с обновлённым значением badge
+        (количество непрочитанных).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID уведомления
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Уведомление помечено прочитанным
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "404":
+          description: Уведомление не найдено или не принадлежит пользователю
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: NOTIFICATION_NOT_FOUND
+                description: Уведомление не найдено
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterDeviceRequest:
+      type: object
+      required: [fcm_token, platform]
+      properties:
+        fcm_token:
+          type: string
+          description: FCM Registration Token, полученный от Firebase SDK на устройстве
+          example: "fFl3h5Kz..."
+        platform:
+          type: string
+          enum: [ios, android]
+          description: Платформа устройства
+          example: ios
+
+    NotificationDataResponse:
+      type: object
+      nullable: true
+      properties:
+        route:
+          type: string
+          nullable: true
+          description: Маршрут для навигации в приложении
+          example: "/class/a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        role:
+          type: string
+          nullable: true
+          description: Роль пользователя в контексте уведомления
+          enum: [student, teacher]
+          example: student
+
+    NotificationResponse:
+      type: object
+      required: [id, title, body, created_at, is_read]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        title:
+          type: string
+          example: "Новый квиз назначен"
+        body:
+          type: string
+          example: "Учитель назначил квиз в классе 7А — Математика"
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-04-19T10:30:00Z"
+        is_read:
+          type: boolean
+          example: false
+        data:
+          $ref: '#/components/schemas/NotificationDataResponse'
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Машиночитаемый код ошибки
+        description:
+          type: string
+          description: Человекочитаемое описание ошибки
+        details:
+          type: object
+          description: Дополнительные детали
+
+  responses:
+    BadRequest:
+      description: Ошибка валидации запроса
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: BAD_REQUEST
+            description: Некорректные параметры запроса
+
+    Unauthorized:
+      description: Отсутствует или неверный JWT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: UNAUTHORIZED
+            description: Требуется авторизация
