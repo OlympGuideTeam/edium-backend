@@ -5,6 +5,8 @@ import (
 	"crypto/rsa"
 	"time"
 
+	"doorman/internal/domain"
+
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -34,4 +36,8 @@ type KeyStore interface {
 type RefreshTokenStore interface {
 	SaveToken(ctx context.Context, jti string, userID string, ttl time.Duration) error
 	GetAndDelToken(ctx context.Context, jti string) (string, error)
+}
+
+type TaskRepository interface {
+	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
 }

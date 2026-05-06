@@ -59,7 +59,12 @@ func (s *Service) ApplyLLMGrade(ctx context.Context, evalID uuid.UUID, score0to1
 			return fmt.Errorf("get session: %w", err)
 		}
 
-		s.scheduleAttemptScored(ctx, attempt, total, float64(session.MaxScore))
+		quiz, err := s.quizzes.GetByID(ctx, session.QuizTemplateID)
+		if err != nil {
+			return fmt.Errorf("get quiz: %w", err)
+		}
+
+		s.scheduleAttemptScored(ctx, attempt, total, float64(session.MaxScore), quiz.AuthorID, domain.FinalSourceLLM)
 		return nil
 	})
 }

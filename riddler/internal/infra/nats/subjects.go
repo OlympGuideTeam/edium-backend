@@ -12,6 +12,7 @@ const (
 	SubjectCourseSessionDeleted  = "caesar.course_session.deleted"
 	SubjectCourseSessionCanceled = "riddler.course_session.canceled"
 
-	SubjectQuizGradeRequested = "riddler.quiz.grade.requested"
-	SubjectQuizGradeCompleted = "charon.quiz.grade.completed"
+	SubjectQuizGradeRequested   = "riddler.quiz.grade.requested"
+	SubjectQuizGradeCompleted   = "charon.quiz.grade.completed"
+	SubjectQuizGenerationNotify = "riddler.quiz.generation.completed"
 )

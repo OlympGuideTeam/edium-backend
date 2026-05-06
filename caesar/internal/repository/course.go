@@ -110,6 +110,30 @@ func (s *PgCourseStore) Delete(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+func (s *PgCourseStore) GetStudentIDsByCourseID(ctx context.Context, courseID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT cm.user_id
+		 FROM class_member cm
+		 JOIN course c ON c.class_id = cm.class_id
+		 WHERE c.id = $1 AND cm.role = 'student'`,
+		courseID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 func scanCourseListItems(rows *sql.Rows) ([]domain.CourseListItem, error) {
 	var items []domain.CourseListItem
 	for rows.Next() {

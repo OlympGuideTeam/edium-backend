@@ -21,6 +21,7 @@ const (
 )
 
 type generationCompletedTaskRepository interface {
+	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
 	ClaimPending(ctx context.Context, taskType domain.TaskType, limit int) ([]domain.Task, error)
 	MarkDone(ctx context.Context, id uuid.UUID) error
 	MarkFailed(ctx context.Context, id uuid.UUID, reason string, retryAfter time.Duration) error
@@ -30,13 +31,18 @@ type generationAdder interface {
 	AddGeneratedQuestions(ctx context.Context, quizID uuid.UUID, questions []domain.AddQuestionParams) error
 }
 
+type quizAuthorGetter interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizTemplate, error)
+}
+
 type GenerationCompletedProcessor struct {
 	tasks   generationCompletedTaskRepository
 	service generationAdder
+	quizzes quizAuthorGetter
 }
 
-func NewGenerationCompletedProcessor(tasks generationCompletedTaskRepository, service generationAdder) *GenerationCompletedProcessor {
-	return &GenerationCompletedProcessor{tasks: tasks, service: service}
+func NewGenerationCompletedProcessor(tasks generationCompletedTaskRepository, service generationAdder, quizzes quizAuthorGetter) *GenerationCompletedProcessor {
+	return &GenerationCompletedProcessor{tasks: tasks, service: service, quizzes: quizzes}
 }
 
 func (w *GenerationCompletedProcessor) Run(ctx context.Context) error {
@@ -110,6 +116,26 @@ func (w *GenerationCompletedProcessor) processTask(ctx context.Context, t domain
 	if err := w.service.AddGeneratedQuestions(ctx, payload.QuizID, params); err != nil {
 		return fmt.Errorf("add generated questions: %w", err)
 	}
+
+	quiz, err := w.quizzes.GetByID(ctx, payload.QuizID)
+	if err != nil {
+		slog.ErrorContext(ctx, "generation-completed-processor: не удалось получить квиз для уведомления", "quiz_id", payload.QuizID, "err", err)
+	} else if quiz != nil {
+		type notifyPayload struct {
+			QuizID   uuid.UUID `json:"quiz_id"`
+			AuthorID uuid.UUID `json:"author_id"`
+			Title    string    `json:"title"`
+		}
+		notifyData, _ := json.Marshal(notifyPayload{
+			QuizID:   quiz.ID,
+			AuthorID: quiz.AuthorID,
+			Title:    quiz.Title,
+		})
+		if schedErr := w.tasks.Schedule(ctx, domain.TaskTypeQuizGenerationNotify, notifyData); schedErr != nil {
+			slog.ErrorContext(ctx, "generation-completed-processor: не удалось запланировать уведомление", "err", schedErr)
+		}
+	}
+
 	return w.tasks.MarkDone(ctx, t.ID)
 }
 

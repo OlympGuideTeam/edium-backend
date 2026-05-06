@@ -20,6 +20,7 @@ type TaskType string
 var (
 	UserCreated TaskType = "user_created"
 	UserDeleted TaskType = "user_deleted"
+	UserLogout  TaskType = "user_logout"
 	OTPRequest  TaskType = "otp_request"
 	OTPSent     TaskType = "otp_sent"
 )

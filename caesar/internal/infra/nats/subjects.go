@@ -10,6 +10,7 @@ const (
 	SubjectCourseSessionCanceled = "riddler.course_session.canceled"
 	SubjectAttemptCreated        = "riddler.attempt.created"
 	SubjectAttemptScored         = "riddler.attempt.scored"
+	SubjectCourseSessionNotify   = "caesar.course_session.notify"
 
 	QueueUserCreated           = "caesar-user-created-consumers"
 	QueueQuizTemplateAttached  = "caesar-quiz-template-attached-consumers"

@@ -128,7 +128,7 @@ func (s *Service) PublishSession(ctx context.Context, sessionID, teacherID uuid.
 				ID:        a.ID,
 				SessionID: sessionID,
 				UserID:    a.UserID,
-			}, score, float64(session.MaxScore))
+			}, score, float64(session.MaxScore), teacherID, domain.FinalSourceTeacher)
 		}
 		return nil
 	})

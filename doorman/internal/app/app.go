@@ -39,6 +39,7 @@ type App struct {
 	UserCreatedPublisher *worker.UserCreatedPublisher
 	UserDeletedConsumer  *worker.UserDeletedConsumer
 	UserDeletedProcessor *worker.UserDeletedProcessor
+	UserLogoutPublisher  *worker.UserLogoutPublisher
 
 	httpAddr    string
 	serviceName string
@@ -73,7 +74,7 @@ func New(cfg *config.Config) (*App, error) {
 	identityStore := repository.NewPgIdentityStore(pgdb)
 	taskRepo := repository.NewPgTaskRepository(pgdb)
 
-	jwtService := jwtsvc.NewService(keyStore, refreshTokenStore)
+	jwtService := jwtsvc.NewService(keyStore, refreshTokenStore, taskRepo)
 	otpService := otpsvc.NewService(identityStore, regTokenStore, otpStore, taskRepo, jwtService, cfg.App.TestPhones)
 	registrationService := regsvc.NewService(identityStore, regTokenStore, taskRepo, jwtService, txManager)
 
@@ -97,6 +98,7 @@ func New(cfg *config.Config) (*App, error) {
 		UserCreatedPublisher: worker.NewUserCreatedPublisher(taskRepo, natsPublisher),
 		UserDeletedConsumer:  worker.NewUserDeletedConsumer(natsSubscriber, taskRepo),
 		UserDeletedProcessor: worker.NewUserDeletedProcessor(taskRepo, identityStore, refreshTokenStore),
+		UserLogoutPublisher:  worker.NewUserLogoutPublisher(taskRepo, natsPublisher),
 
 		httpAddr:    fmt.Sprintf(":%d", cfg.App.Port),
 		serviceName: cfg.OTel.ServiceName,
@@ -112,6 +114,7 @@ func (a *App) Workers() map[string]func(context.Context) error {
 		"UserCreatedPublisher": a.UserCreatedPublisher.Run,
 		"UserDeletedConsumer":  a.UserDeletedConsumer.Run,
 		"UserDeletedProcessor": a.UserDeletedProcessor.Run,
+		"UserLogoutPublisher":  a.UserLogoutPublisher.Run,
 	}
 }
 
