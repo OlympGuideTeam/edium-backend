@@ -1872,6 +1872,8 @@ paths:
         Для `source=library` — без ограничений (квиз публичный).
 
         `ws_token` одноразовый, TTL 1 минута.
+
+        Если `quiz_session.status` уже `finished`, вернётся `409 SESSION_COMPLETED`.
       parameters:
         - in: path
           name: session_id
@@ -1893,6 +1895,7 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
 
   /sessions/{session_id}/live/join:
     post:
@@ -1907,6 +1910,8 @@ paths:
         - `source=library` — JWT опционально. `name` обязателен всегда (учитель видит имена участников).
 
         `ws_token` одноразовый, TTL 1 минута.
+
+        Если `quiz_session.status` уже `finished`, вернётся `409 SESSION_COMPLETED` (в том числе при реконнекте по JWT).
       security:
         - bearerAuth: []
         - {}
@@ -1945,7 +1950,7 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "409":
-          description: Сессия не в фазе lobby
+          description: Сессия не в фазе lobby или уже завершена (`SESSION_COMPLETED`)
           content:
             application/json:
               schema:

@@ -19,6 +19,9 @@ func (s *Service) JoinLiveSession(ctx context.Context, sessionID uuid.UUID, user
 	if session == nil || session.Mode != domain.SessionModeLive {
 		return uuid.Nil, "", apperr.ErrSessionNotFound
 	}
+	if session.Status == domain.SessionStatusFinished {
+		return uuid.Nil, "", apperr.ErrSessionCompleted
+	}
 
 	if session.Source == domain.LiveSourceCourse && userID == nil {
 		return uuid.Nil, "", apperr.ErrUnauthorized
