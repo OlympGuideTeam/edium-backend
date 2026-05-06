@@ -17,5 +17,4 @@ const (
 	QueueAttemptCreated        = "caesar-attempt-created-consumers"
 	QueueAttemptScored         = "caesar-attempt-scored-consumers"
 	QueueCourseSessionCanceled = "caesar-course-session-canceled-consumers"
-
 )
