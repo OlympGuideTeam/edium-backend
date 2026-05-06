@@ -113,7 +113,7 @@ type QuizSession struct {
 	QuizTemplateID       uuid.UUID
 	Mode                 SessionMode
 	Source               LiveSource
-	LiveHostUserID       *uuid.UUID // ведущий library live; nil — до появления колонки или не library live
+	TeacherID            uuid.UUID
 	MaxScore             int
 	TotalTimeLimitSec    *int
 	QuestionTimeLimitSec *int
@@ -130,7 +130,7 @@ type CreateSessionParams struct {
 	QuizTemplateID       uuid.UUID
 	Mode                 SessionMode
 	Source               LiveSource
-	LiveHostUserID       *uuid.UUID
+	TeacherID            uuid.UUID
 	MaxScore             int
 	TotalTimeLimitSec    *int
 	QuestionTimeLimitSec *int
