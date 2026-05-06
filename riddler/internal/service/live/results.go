@@ -102,30 +102,8 @@ func (s *Service) GetLiveResultsTeacher(ctx context.Context, sessionID, callerID
 		return nil, apperr.ErrLiveNotCompleted
 	}
 
-	switch session.Source {
-	case domain.LiveSourceCourse:
-		quiz, err := s.quizzes.GetByID(ctx, session.QuizTemplateID)
-		if err != nil {
-			return nil, fmt.Errorf("get quiz: %w", err)
-		}
-		if quiz == nil || quiz.AuthorID != callerID {
-			return nil, apperr.ErrQuizForbidden
-		}
-	case domain.LiveSourceLibrary:
-		quiz, err := s.quizzes.GetByID(ctx, session.QuizTemplateID)
-		if err != nil {
-			return nil, fmt.Errorf("get quiz: %w", err)
-		}
-		if quiz == nil {
-			return nil, apperr.ErrQuizForbidden
-		}
-		allowed := quiz.AuthorID == callerID
-		if session.LiveHostUserID != nil && *session.LiveHostUserID == callerID {
-			allowed = true
-		}
-		if !allowed {
-			return nil, apperr.ErrQuizForbidden
-		}
+	if session.TeacherID != callerID {
+		return nil, apperr.ErrQuizForbidden
 	}
 
 	leaderboard, err := s.attempts.GetLiveLeaderboard(ctx, sessionID)

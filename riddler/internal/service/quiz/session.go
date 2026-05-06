@@ -59,6 +59,7 @@ func (s *Service) CreateTestCourseSessionInline(ctx context.Context, authorID uu
 			QuizTemplateID:    quizTemplateID,
 			Mode:              domain.SessionModeTest,
 			Source:            domain.LiveSourceCourse,
+			TeacherID:         authorID,
 			MaxScore:          inlineMaxScore,
 			TotalTimeLimitSec: totalLimit,
 			ShuffleQuestions:  p.ShuffleQuestions,
@@ -144,6 +145,7 @@ func (s *Service) CreateLiveCourseSessionInline(ctx context.Context, authorID uu
 			QuizTemplateID:       quizTemplateID,
 			Mode:                 domain.SessionModeLive,
 			Source:               domain.LiveSourceCourse,
+			TeacherID:            authorID,
 			MaxScore:             inlineMaxScore,
 			QuestionTimeLimitSec: &timeLimitSec,
 			Status:               domain.SessionStatusNotStarted,
@@ -209,12 +211,7 @@ func (s *Service) DeleteCourseSession(ctx context.Context, sessionID, authorID u
 	if quiz == nil {
 		return apperr.ErrQuizNotFound
 	}
-	mayDelete := quiz.AuthorID == authorID
-	if session.Mode == domain.SessionModeLive && session.Source == domain.LiveSourceLibrary &&
-		session.LiveHostUserID != nil && *session.LiveHostUserID == authorID {
-		mayDelete = true
-	}
-	if !mayDelete {
+	if session.TeacherID != authorID {
 		return apperr.ErrQuizForbidden
 	}
 
@@ -272,6 +269,7 @@ func (s *Service) buildLibrarySessionParams(quiz *domain.QuizTemplate) domain.Cr
 		QuizTemplateID:    quiz.ID,
 		Mode:              domain.SessionModeTest,
 		Source:            domain.LiveSourceLibrary,
+		TeacherID:         quiz.AuthorID,
 		TotalTimeLimitSec: totalLimit,
 		ShuffleQuestions:  quiz.DefaultSettings.ShuffleQuestions,
 		Status:            domain.SessionStatusActive,
