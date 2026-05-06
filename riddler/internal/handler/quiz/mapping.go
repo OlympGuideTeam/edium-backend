@@ -11,6 +11,26 @@ import (
 var errInvalidMode = errors.New("invalid quiz mode")
 
 func toListItemResponse(item domain.QuizListItem) dto.QuizListItemResponse {
+	var attempts []dto.QuizAttemptSummaryResponse
+	if len(item.Attempts) > 0 {
+		attempts = make([]dto.QuizAttemptSummaryResponse, len(item.Attempts))
+		for i, a := range item.Attempts {
+			var finishedAt *string
+			if a.FinishedAt != nil {
+				s := a.FinishedAt.Format(time.RFC3339)
+				finishedAt = &s
+			}
+			attempts[i] = dto.QuizAttemptSummaryResponse{
+				ID:          a.ID.String(),
+				SessionID:   a.SessionID.String(),
+				SessionType: string(a.SessionType),
+				Status:      string(a.Status),
+				Score:       a.Score,
+				StartedAt:   a.StartedAt.Format(time.RFC3339),
+				FinishedAt:  finishedAt,
+			}
+		}
+	}
 	return dto.QuizListItemResponse{
 		ID:              item.ID.String(),
 		Title:           item.Title,
@@ -20,6 +40,7 @@ func toListItemResponse(item domain.QuizListItem) dto.QuizListItemResponse {
 		Source:          string(item.Source),
 		NeedEvaluation:  item.NeedEvaluation,
 		QuestionCount:   item.QuestionCount,
+		Attempts:        attempts,
 	}
 }
 

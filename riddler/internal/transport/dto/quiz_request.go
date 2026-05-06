@@ -71,6 +71,15 @@ type CreateTestCourseSessionInlineResponse struct {
 	SessionID      string `json:"session_id"`
 }
 
+type CreateLiveCourseSessionInlineRequest struct {
+	Title                string               `json:"title"                  binding:"required"`
+	Description          *string              `json:"description"`
+	CourseID             string               `json:"course_id"              binding:"required"`
+	ModuleID             string               `json:"module_id"              binding:"required"`
+	Questions            []AddQuestionRequest `json:"questions"              binding:"required,min=1"`
+	QuestionTimeLimitSec *int                 `json:"question_time_limit_sec"`
+}
+
 type CreateSessionResponse struct {
 	SessionID string `json:"session_id"`
 }

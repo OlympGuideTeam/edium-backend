@@ -159,6 +159,7 @@ func (a *App) Router() *gin.Engine {
 	api.GET("/invitations/:invitationId", a.ClassHandler.GetInvitation)
 	api.POST("/invitations/:invitationId/accept", a.ClassHandler.AcceptInvitation)
 
+	api.GET("/courses/me", a.CourseHandler.GetMyCourses)
 	api.POST("/courses", a.CourseHandler.CreateCourse)
 	api.GET("/courses/:courseId", a.CourseHandler.GetCourse)
 	api.PATCH("/courses/:courseId", a.CourseHandler.UpdateCourse)

@@ -32,6 +32,34 @@ components:
       bearerFormat: JWT
 
   schemas:
+    QuizAttemptSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+          format: uuid
+        session_type:
+          type: string
+          enum: [test, live]
+        status:
+          type: string
+          enum: [in_progress, grading, graded, completed, published]
+        score:
+          type: number
+          format: float
+          nullable: true
+          description: Нормированная оценка 0–10, null пока не опубликовано
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+
     ErrorResponse:
       type: object
       properties:
@@ -193,7 +221,7 @@ components:
           description: Нет в JSON, если в БД у попытки user_id NULL.
         status:
           type: string
-          enum: [in_progress, grading, graded, completed]
+          enum: [in_progress, grading, graded, completed, published]
         score:
           type: number
           format: float
@@ -269,7 +297,7 @@ components:
           description: Нет в JSON, если в БД у попытки user_id NULL.
         status:
           type: string
-          enum: [in_progress, grading, graded, completed]
+          enum: [in_progress, grading, graded, completed, published]
         score:
           type: number
           format: float
@@ -361,9 +389,9 @@ components:
         - `question_locked` — вопрос закрыт (таймер истёк или все ответили), показ статистики
         - `completed` — все вопросы пройдены, доступны итоги
 
-    LibraryLiveSessionItem:
+    LiveSessionItem:
       type: object
-      description: Элемент списка library live-сессий учителя.
+      description: Элемент списка live-сессий учителя.
       properties:
         session_id:
           type: string
@@ -373,6 +401,9 @@ components:
           format: uuid
         quiz_title:
           type: string
+        source:
+          type: string
+          enum: [library, course]
         status:
           type: string
           enum: [not_started, waiting, active, running, finished]
@@ -389,33 +420,6 @@ components:
         created_at:
           type: string
           format: date-time
-
-    UserLiveSessionItem:
-      type: object
-      properties:
-        session_id:
-          type: string
-          format: uuid
-        quiz_template_id:
-          type: string
-          format: uuid
-        quiz_title:
-          type: string
-        status:
-          type: string
-          enum: [ not_started, waiting, active, running, finished ]
-        phase:
-          $ref: "#/components/schemas/LivePhase"
-        participants_count:
-          type: integer
-        started_at:
-          type: string
-          format: date-time
-          nullable: true
-        finished_at:
-          type: string
-          format: date-time
-          nullable: true
 
     LiveSessionMeta:
       type: object
@@ -795,6 +799,11 @@ paths:
                       type: boolean
                     question_count:
                       type: integer
+                    attempts:
+                      type: array
+                      description: Попытки текущего пользователя по этому квизу (только для role=student)
+                      items:
+                        $ref: "#/components/schemas/QuizAttemptSummary"
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
 
@@ -1448,6 +1457,130 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
 
+  /sessions/dashboard:
+    get:
+      tags: [Sessions]
+      summary: Дашборд студента
+      operationId: getStudentDashboard
+      description: |
+        Возвращает два списка для главного экрана студента:
+        - `recent_grades` — последние 5 завершённых тестов (source=course), отсортированы по дате финиша
+        - `active_tests` — доступные тесты (source=course, не истёк дедлайн), сначала те где есть попытка `in_progress`
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Дашборд
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recent_grades:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        session_id:
+                          type: string
+                          format: uuid
+                        quiz_template_id:
+                          type: string
+                          format: uuid
+                        quiz_title:
+                          type: string
+                        attempt_id:
+                          type: string
+                          format: uuid
+                        score:
+                          type: number
+                          nullable: true
+                          description: Нормированная оценка 0–10
+                        status:
+                          type: string
+                          enum: [grading, graded, completed, published]
+                        finished_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                  active_tests:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        session_id:
+                          type: string
+                          format: uuid
+                        quiz_template_id:
+                          type: string
+                          format: uuid
+                        quiz_title:
+                          type: string
+                        total_time_limit_sec:
+                          type: integer
+                          nullable: true
+                        session_started_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        session_finished_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                          description: Дедлайн сессии
+                        attempt_id:
+                          type: string
+                          format: uuid
+                          nullable: true
+                        attempt_status:
+                          type: string
+                          nullable: true
+                          enum: [in_progress]
+        "401": {$ref: "#/components/responses/Unauthorized"}
+
+  /sessions/awaiting-review:
+    get:
+      tags: [Sessions]
+      summary: Сессии, ожидающие проверки
+      operationId: listAwaitingReview
+      description: |
+        Возвращает тестовые сессии, созданные авторизованным пользователем,
+        у которых есть хотя бы одна попытка в статусе `grading` или `graded`.
+        Включает счётчики попыток по статусам для отображения прогресса проверки.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Список сессий
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        session_id:
+                          type: string
+                          format: uuid
+                        quiz_template_id:
+                          type: string
+                          format: uuid
+                        quiz_title:
+                          type: string
+                        grading_count:
+                          type: integer
+                          description: Попытки в процессе оценивания (LLM)
+                        graded_count:
+                          type: integer
+                          description: Попытки, оценённые LLM, ожидают финальной проверки учителя
+                        completed_count:
+                          type: integer
+                          description: Попытки, полностью проверенные учителем
+        "401": {$ref: "#/components/responses/Unauthorized"}
+
   /sessions/statuses:
     get:
       tags: [Sessions]
@@ -1498,13 +1631,28 @@ paths:
   /sessions/live:
     get:
       tags: [Live]
-      summary: Список library live-сессий учителя
-      operationId: listLibraryLiveSessions
+      summary: Список live-сессий учителя
+      operationId: listLiveSessions
       description: |
-        Возвращает все live-сессии текущего учителя с `source=library`, отсортированные по дате создания (новые первые).
+        Возвращает live-сессии текущего учителя, отсортированные по дате создания (новые первые).
         Для каждой сессии обогащает данные из Redis: текущая фаза, `join_code` (если сессия запущена), количество участников.
       security:
         - bearerAuth: []
+      parameters:
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [library, course]
+          description: Фильтр по источнику. Если не указан — возвращаются оба.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+          description: Максимальное количество сессий в ответе.
       responses:
         "200":
           description: Список сессий
@@ -1516,32 +1664,68 @@ paths:
                   sessions:
                     type: array
                     items:
-                      $ref: "#/components/schemas/LibraryLiveSessionItem"
+                      $ref: "#/components/schemas/LiveSessionItem"
         "401": {$ref: "#/components/responses/Unauthorized"}
 
-  /sessions/live/host:
-    get:
+  /sessions/live/inline:
+    post:
       tags: [Live]
-      summary: Список проведённых live-сессий ведущего
-      operationId: listLibraryLiveSessionsByHost
+      summary: Создать квиз и live-сессию за один запрос (для курса)
+      operationId: createLiveCourseSessionInline
       description: |
-        Возвращает все live-сессии, где пользователь был ведущим (live_host_user_id). 
-        Только `source=library`, `mode=live`. Отсортированы по дате старта (новые первые).
+        Атомарно создаёт шаблон квиза с `source=course`, добавляет вопросы и создаёт live-сессию.
+        Вопросы типа `with_free_answer` запрещены.
+        Публикует события `riddler.quiz_template.attached` и `riddler.course_session.created`.
+        Лобби открывается отдельно через `POST /sessions/{id}/live/start`.
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, course_id, module_id, questions]
+              properties:
+                title:
+                  type: string
+                  example: "Викторина по теме 1"
+                description:
+                  type: string
+                  nullable: true
+                course_id:
+                  type: string
+                  format: uuid
+                module_id:
+                  type: string
+                  format: uuid
+                questions:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: "#/components/schemas/AddQuestionRequest"
+                question_time_limit_sec:
+                  type: integer
+                  nullable: true
+                  description: Лимит времени на вопрос в секундах (дефолт 30)
+                  example: 30
       responses:
         "200":
-          description: Список сессий
+          description: Квиз и сессия созданы
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  sessions:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/UserLiveSessionItem"
+                  quiz_template_id:
+                    type: string
+                    format: uuid
+                  session_id:
+                    type: string
+                    format: uuid
+        "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
+        "422": {$ref: "#/components/responses/UnprocessableEntity"}
 
   /sessions/live/course:
     post:
@@ -2079,22 +2263,17 @@ paths:
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
 
-  /attempts/{attempt_id}/submissions/{submission_id}/grade:
+  /attempts/{attempt_id}/grade:
     post:
       tags: [Teachers]
-      summary: Выставить оценку за ответ
-      operationId: gradeSubmission
+      summary: Выставить оценки за ответы попытки
+      operationId: gradeAttempt
       description: |
-        Учитель выставляет оценку за конкретный ответ студента.
-        Перезаписывает auto/llm-оценку. Не отправляет итог в Caesar — для этого нужен `/complete`.
+        Учитель выставляет оценки за список ответов студента одним запросом.
+        Перезаписывает auto/llm-оценку. Выполняется атомарно — при ошибке откатываются все изменения.
+        Не отправляет итог в Caesar — для этого нужен `/complete`.
       parameters:
         - name: attempt_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: submission_id
           in: path
           required: true
           schema:
@@ -2106,37 +2285,47 @@ paths:
           application/json:
             schema:
               type: object
-              required: [score]
+              required: [grades]
               properties:
-                score:
-                  type: number
-                  format: float
-                  minimum: 0
-                  description: Балл от 0 до max_score вопроса
-                feedback:
-                  type: string
-                  nullable: true
-                  description: Текстовый комментарий к оценке
+                grades:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [submission_id, score]
+                    properties:
+                      submission_id:
+                        type: string
+                        format: uuid
+                      score:
+                        type: number
+                        format: float
+                        minimum: 0
+                        description: Балл от 0 до max_score вопроса
+                      feedback:
+                        type: string
+                        nullable: true
+                        description: Текстовый комментарий к оценке
       responses:
         "200":
-          description: Оценка сохранена
+          description: Оценки сохранены
         "400": {$ref: "#/components/responses/BadRequest"}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
         "422": {$ref: "#/components/responses/UnprocessableEntity"}
 
-  /attempts/{attempt_id}/complete:
+  /attempts/session/{session_id}/publish:
     post:
       tags: [Teachers]
-      summary: Завершить проверку попытки
-      operationId: completeAttempt
+      summary: Опубликовать оценки по сессии
+      operationId: publishSession
       description: |
-        Переводит попытку из `graded` в `completed`. Пересчитывает итоговый балл.
-        Отправляет событие `riddler.attempt.scored` → Caesar обновляет оценку в курсе.
-        Требует: попытка в статусе `graded`.
+        Переводит все `completed` попытки сессии в `published`.
+        Требует: все не-кикнутые попытки в статусе `completed`.
+        Отправляет событие `riddler.attempt.scored` для каждой попытки → Caesar обновляет оценки.
       parameters:
-        - name: attempt_id
+        - name: session_id
           in: path
           required: true
           schema:
@@ -2144,7 +2333,7 @@ paths:
             format: uuid
       responses:
         "200":
-          description: Проверка завершена
+          description: Оценки опубликованы
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}

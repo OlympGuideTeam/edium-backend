@@ -14,7 +14,9 @@ type attemptService interface {
 	Finish(ctx context.Context, attemptID, userID uuid.UUID) error
 	ListSessionAttempts(ctx context.Context, sessionID, teacherID uuid.UUID) ([]domain.AttemptSummary, error)
 	GetAttemptReview(ctx context.Context, attemptID uuid.UUID, callerID *uuid.UUID) (*domain.Attempt, []domain.AnswerWithQuestion, bool, error)
-	GradeSubmission(ctx context.Context, attemptID, submissionID, teacherID uuid.UUID, score float64, feedback *string) error
-	CompleteAttempt(ctx context.Context, attemptID, teacherID uuid.UUID) error
+	GradeAttempt(ctx context.Context, attemptID, teacherID uuid.UUID, grades []domain.GradeItem) error
+	PublishSession(ctx context.Context, sessionID, teacherID uuid.UUID) error
+	ListAwaitingReview(ctx context.Context, authorID uuid.UUID) ([]domain.AwaitingReviewSession, error)
+	GetStudentDashboard(ctx context.Context, userID uuid.UUID) (*domain.StudentDashboard, error)
 	GetUserStatistic(ctx context.Context, userID uuid.UUID) (*domain.UserStatistic, error)
 }

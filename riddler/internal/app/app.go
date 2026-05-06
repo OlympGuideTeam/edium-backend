@@ -102,12 +102,13 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	quizService := quizsvc.NewService(quizRepo, attemptRepo, sessionService, txManager, taskRepo)
 	attemptService := attemptsvc.NewService(attemptRepo, sessionRepo, sessionRepo, quizRepo, quizRepo, txManager, taskRepo)
 	liveRepo := repository.NewLiveRepository(rdb)
-	liveService := livesvc.NewService(quizRepo, sessionRepo, attemptRepo, liveRepo, liveRepo, liveRepo, liveRepo, taskRepo, txManager)
+	studentHub := livehandler.NewStudentHub()
+	liveService := livesvc.NewService(quizRepo, sessionRepo, attemptRepo, liveRepo, liveRepo, liveRepo, liveRepo, taskRepo, txManager, studentHub)
 	testService := testsvc.NewService(quizRepo, sessionRepo, taskRepo, txManager)
 
 	quizHandler := quizhandler.NewHandler(quizService)
 	attemptHandler := attempthandler.NewHandler(attemptService)
-	liveHandler := livehandler.NewHandler(liveService)
+	liveHandler := livehandler.NewHandler(liveService, studentHub)
 	testHandler := testhandler.NewHandler(testService)
 
 	natsPublisher := natsinf.NewPublisher(natsConn)
@@ -193,9 +194,11 @@ func (a *App) Router() *gin.Engine {
 	{
 		sessions.POST("/test", a.testHandler.CreateTestCourseSession)
 		sessions.POST("/test/inline", a.quizHandler.CreateTestCourseSessionInline)
+		sessions.POST("/live/inline", a.quizHandler.CreateLiveCourseSessionInline)
 		sessions.GET("/statuses", a.liveHandler.GetSessionStatuses)
-		sessions.GET("/live", a.liveHandler.ListLibraryLiveSessions)
-		sessions.GET("/live/host", a.liveHandler.GetLibraryLiveSessionsByHost)
+		sessions.GET("/awaiting-review", a.attemptHandler.ListAwaitingReview)
+		sessions.GET("/dashboard", a.attemptHandler.GetStudentDashboard)
+		sessions.GET("/live", a.liveHandler.ListLiveSessions)
 		sessions.POST("/live/course", a.liveHandler.CreateLiveCourseSession)
 		sessions.POST("/live/library", a.liveHandler.CreateLiveLibrarySession)
 		sessions.POST("/:session_id/live/start", a.liveHandler.StartLiveSession)
@@ -204,6 +207,8 @@ func (a *App) Router() *gin.Engine {
 		sessions.POST("/:session_id/attempts", a.attemptHandler.CreateAttempt)
 		sessions.GET("/:session_id/attempts", a.attemptHandler.ListSessionAttempts)
 	}
+
+	api.GET("/courses/live/ws", a.liveHandler.StudentWebSocket)
 
 	noAuth := r.Group("/riddler/v1")
 	noAuth.GET("/sessions/live/:code", a.liveHandler.ResolveLiveCode)
@@ -221,8 +226,8 @@ func (a *App) Router() *gin.Engine {
 	{
 		attempts.POST("/:attempt_id/answers", a.attemptHandler.SubmitAnswer)
 		attempts.POST("/:attempt_id/finish", a.attemptHandler.Finish)
-		attempts.POST("/:attempt_id/submissions/:submission_id/grade", a.attemptHandler.GradeSubmission)
-		attempts.POST("/:attempt_id/complete", a.attemptHandler.CompleteAttempt)
+		attempts.POST("/:attempt_id/grade", a.attemptHandler.GradeAttempt)
+		attempts.POST("/session/:session_id/publish", a.attemptHandler.PublishSession)
 	}
 
 	return r

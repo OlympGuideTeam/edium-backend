@@ -146,6 +146,32 @@ func (h *Handler) GetClassCourses(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+func (h *Handler) GetMyCourses(c *gin.Context) {
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	items, err := h.service.GetMyCourses(c.Request.Context(), userID)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	resp := dto.CourseListResponse{Courses: make([]dto.CourseSummary, 0, len(items))}
+	for _, item := range items {
+		resp.Courses = append(resp.Courses, dto.CourseSummary{
+			ID:           item.ID.String(),
+			Title:        item.Title,
+			TeacherName:  item.TeacherName,
+			ModuleCount:  item.ModuleCount,
+			ElementCount: item.ElementCount,
+			IsTeacher:    false,
+		})
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
 func (h *Handler) UpdateCourse(c *gin.Context) {
 	userID, ok := userIDFromCtx(c)
 	if !ok {

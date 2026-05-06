@@ -152,10 +152,11 @@ type CreateLiveCourseSessionParams struct {
 	QuestionTimeLimitSec *int
 }
 
-type LibraryLiveSession struct {
+type LiveSession struct {
 	SessionID         uuid.UUID
 	QuizTemplateID    uuid.UUID
 	QuizTitle         string
+	Source            LiveSource
 	Status            SessionStatus
 	Phase             LivePhase
 	JoinCode          *string
@@ -163,15 +164,46 @@ type LibraryLiveSession struct {
 	CreatedAt         time.Time
 }
 
-type UserLiveSession struct {
+type RecentGradeItem struct {
+	SessionID      uuid.UUID
+	QuizTemplateID uuid.UUID
+	QuizTitle      string
+	AttemptID      uuid.UUID
+	Score          *float64
+	Status         AttemptStatus
+	FinishedAt     *time.Time
+}
+
+type ActiveTestItem struct {
 	SessionID         uuid.UUID
 	QuizTemplateID    uuid.UUID
 	QuizTitle         string
-	Status            SessionStatus
-	Phase             LivePhase
-	ParticipantsCount int
-	StartedAt         *time.Time
-	FinishedAt        *time.Time
+	TotalTimeLimitSec *int
+	SessionStartedAt  *time.Time
+	SessionFinishedAt *time.Time
+	AttemptID         *uuid.UUID
+	AttemptStatus     *AttemptStatus
+}
+
+type StudentDashboard struct {
+	RecentGrades []RecentGradeItem
+	ActiveTests  []ActiveTestItem
+}
+
+type LiveLobbySnapshot struct {
+	SessionID            uuid.UUID
+	CourseID             uuid.UUID
+	QuizTitle            string
+	QuestionTimeLimitSec int
+}
+
+type AwaitingReviewSession struct {
+	SessionID      uuid.UUID
+	QuizTemplateID uuid.UUID
+	QuizTitle      string
+	GradingCount   int
+	GradedCount    int
+	CompletedCount int
 }
 
 type SessionStatusItem struct {
@@ -191,4 +223,13 @@ type CreateTestCourseSessionInlineParams struct {
 	ShuffleQuestions  *bool
 	StartedAt         *time.Time
 	FinishedAt        *time.Time
+}
+
+type CreateLiveCourseSessionInlineParams struct {
+	Title                string
+	Description          *string
+	CourseID             uuid.UUID
+	ModuleID             uuid.UUID
+	Questions            []AddQuestionParams
+	QuestionTimeLimitSec *int
 }

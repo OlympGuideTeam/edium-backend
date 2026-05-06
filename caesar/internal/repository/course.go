@@ -78,6 +78,23 @@ func (s *PgCourseStore) ListByClassID(ctx context.Context, classID uuid.UUID) ([
 	return scanCourseListItems(rows)
 }
 
+func (s *PgCourseStore) ListByStudentID(ctx context.Context, userID uuid.UUID) ([]domain.CourseListItem, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT c.id, c.class_id, c.owner_id, c.title, c.module_count, c.element_count,
+		       u.name || ' ' || u.surname
+		FROM course c
+		JOIN "user" u ON u.id = c.owner_id
+		JOIN class_member cm ON cm.class_id = c.class_id
+		WHERE cm.user_id = $1 AND cm.role = 'student'
+		ORDER BY c.created_at
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	return scanCourseListItems(rows)
+}
+
 func (s *PgCourseStore) Update(ctx context.Context, id uuid.UUID, title string) error {
 	exec := db.ExecutorFromContext(ctx, s.db)
 	_, err := exec.ExecContext(ctx,

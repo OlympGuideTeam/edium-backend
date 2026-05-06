@@ -12,6 +12,7 @@ type courseService interface {
 	CreateCourse(ctx context.Context, classID, userID uuid.UUID, title string) (uuid.UUID, error)
 	GetCourse(ctx context.Context, courseID, userID uuid.UUID) (*domain.CourseDetail, error)
 	GetClassCourses(ctx context.Context, classID, userID uuid.UUID) ([]domain.CourseListItem, error)
+	GetMyCourses(ctx context.Context, userID uuid.UUID) ([]domain.CourseListItem, error)
 	UpdateCourse(ctx context.Context, courseID, userID uuid.UUID, title string) error
 	DeleteCourse(ctx context.Context, courseID, userID uuid.UUID) error
 
