@@ -31,6 +31,8 @@ const (
 
 	TaskTypeGradingRequestedPublisher TaskType = "grading_requested_publisher"
 	TaskTypeGradingCompleted          TaskType = "grading_completed"
+
+	TaskTypeQuizGenerationNotify TaskType = "quiz_generation_notify"
 )
 
 type CourseSessionCreatedPayload struct {

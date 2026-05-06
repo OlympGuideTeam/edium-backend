@@ -40,6 +40,7 @@ type App struct {
 	QuizTemplateAttachedProcessor  *worker.QuizTemplateAttachedProcessor
 	CourseSessionCreatedConsumer   *worker.CourseSessionCreatedConsumer
 	CourseSessionCreatedProcessor  *worker.CourseSessionCreatedProcessor
+	CourseSessionNotifyPublisher   *worker.CourseSessionNotifyPublisher
 	CourseSessionDeletedPublisher  *worker.CourseSessionDeletedPublisher
 	CourseSessionCanceledConsumer  *worker.CourseSessionCanceledConsumer
 	CourseSessionCanceledProcessor *worker.CourseSessionCanceledProcessor
@@ -100,7 +101,8 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		QuizTemplateAttachedConsumer:   worker.NewQuizTemplateAttachedConsumer(natsSubscriber, taskRepo),
 		QuizTemplateAttachedProcessor:  worker.NewQuizTemplateAttachedProcessor(taskRepo, courseStore),
 		CourseSessionCreatedConsumer:   worker.NewCourseSessionCreatedConsumer(natsSubscriber, taskRepo),
-		CourseSessionCreatedProcessor:  worker.NewCourseSessionCreatedProcessor(taskRepo, courseStore, courseStore),
+		CourseSessionCreatedProcessor:  worker.NewCourseSessionCreatedProcessor(taskRepo, courseStore, courseStore, courseStore),
+		CourseSessionNotifyPublisher:   worker.NewCourseSessionNotifyPublisher(taskRepo, publisher),
 		CourseSessionDeletedPublisher:  worker.NewCourseSessionDeletedPublisher(taskRepo, publisher),
 		CourseSessionCanceledConsumer:  worker.NewCourseSessionCanceledConsumer(natsSubscriber, taskRepo),
 		CourseSessionCanceledProcessor: worker.NewCourseSessionCanceledProcessor(taskRepo, courseStore),
@@ -124,6 +126,7 @@ func (a *App) Workers() map[string]func(context.Context) error {
 		"QuizTemplateAttachedProcessor":  a.QuizTemplateAttachedProcessor.Run,
 		"CourseSessionCreatedConsumer":   a.CourseSessionCreatedConsumer.Run,
 		"CourseSessionCreatedProcessor":  a.CourseSessionCreatedProcessor.Run,
+		"CourseSessionNotifyPublisher":   a.CourseSessionNotifyPublisher.Run,
 		"CourseSessionDeletedPublisher":  a.CourseSessionDeletedPublisher.Run,
 		"CourseSessionCanceledConsumer":  a.CourseSessionCanceledConsumer.Run,
 		"CourseSessionCanceledProcessor": a.CourseSessionCanceledProcessor.Run,

@@ -72,6 +72,8 @@ services:
       VK_GROUP_ID: ${VK_GROUP_ID}
       SMS_API_KEY: ${SMS_API_KEY}
       SMS_ALLOWED_PHONES: ${SMS_ALLOWED_PHONES}
+      DOORMAN_JWKS_URL: "http://doorman/.well-known/jwks.json"
+      FIREBASE_CREDENTIALS_JSON: ${FIREBASE_CREDENTIALS_JSON}
       OTEL_ENDPOINT: "jaeger:4317"
     deploy:
       resources:
@@ -83,6 +85,8 @@ services:
       nats:
         condition: service_started
       jaeger:
+        condition: service_started
+      doorman:
         condition: service_started
     networks:
       - edium

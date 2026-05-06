@@ -45,6 +45,7 @@ type App struct {
 	generationRequestedPublisher   *worker.GenerationRequestedPublisher
 	generationCompletedConsumer    *worker.GenerationCompletedConsumer
 	generationCompletedProcessor   *worker.GenerationCompletedProcessor
+	quizGenerationNotifyPublisher  *worker.QuizGenerationNotifyPublisher
 	courseSessionDeletedConsumer   *worker.CourseSessionDeletedConsumer
 	courseSessionDeletedProcessor  *worker.CourseSessionDeletedProcessor
 	courseSessionCanceledPublisher *worker.CourseSessionCanceledPublisher
@@ -130,7 +131,8 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 
 		generationRequestedPublisher:   worker.NewGenerationRequestedPublisher(taskRepo, natsJSPublisher),
 		generationCompletedConsumer:    worker.NewGenerationCompletedConsumer(natsJSSubscriber, taskRepo),
-		generationCompletedProcessor:   worker.NewGenerationCompletedProcessor(taskRepo, quizService),
+		generationCompletedProcessor:   worker.NewGenerationCompletedProcessor(taskRepo, quizService, quizRepo),
+		quizGenerationNotifyPublisher:  worker.NewQuizGenerationNotifyPublisher(taskRepo, natsPublisher),
 		courseSessionDeletedConsumer:   worker.NewCourseSessionDeletedConsumer(natsSubscriber, taskRepo),
 		courseSessionDeletedProcessor:  worker.NewCourseSessionDeletedProcessor(taskRepo, sessionRepo),
 		courseSessionCanceledPublisher: worker.NewCourseSessionCanceledPublisher(taskRepo, natsPublisher),
@@ -154,6 +156,7 @@ func (a *App) workers() map[string]func(context.Context) error {
 		"generation-requested-publisher":    a.generationRequestedPublisher.Run,
 		"generation-completed-consumer":     a.generationCompletedConsumer.Run,
 		"generation-completed-processor":    a.generationCompletedProcessor.Run,
+		"quiz-generation-notify-publisher":  a.quizGenerationNotifyPublisher.Run,
 		"course-session-deleted-consumer":   a.courseSessionDeletedConsumer.Run,
 		"course-session-deleted-processor":  a.courseSessionDeletedProcessor.Run,
 		"course-session-canceled-publisher": a.courseSessionCanceledPublisher.Run,
