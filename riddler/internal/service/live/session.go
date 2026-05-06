@@ -39,6 +39,7 @@ func (s *Service) CreateLiveCourseSession(ctx context.Context, authorID, quizTem
 			QuizTemplateID:       quizTemplateID,
 			Mode:                 domain.SessionModeLive,
 			Source:               domain.LiveSourceCourse,
+			TeacherID:            authorID,
 			MaxScore:             quiz.MaxScore,
 			QuestionTimeLimitSec: &timeLimitSec,
 			Status:               domain.SessionStatusNotStarted,
@@ -83,12 +84,11 @@ func (s *Service) CreateLiveLibrarySession(ctx context.Context, authorID, quizTe
 
 	timeLimitSec := resolveTimeLimitSec(questionTimeLimitSec, quiz.DefaultSettings.QuestionTimeLimitSec)
 
-	hostID := authorID
 	return s.sessions.Create(ctx, domain.CreateSessionParams{
 		QuizTemplateID:       quizTemplateID,
 		Mode:                 domain.SessionModeLive,
 		Source:               domain.LiveSourceLibrary,
-		LiveHostUserID:       &hostID,
+		TeacherID:            authorID,
 		MaxScore:             quiz.MaxScore,
 		QuestionTimeLimitSec: &timeLimitSec,
 		Status:               domain.SessionStatusNotStarted,
@@ -107,28 +107,16 @@ func (s *Service) StartLiveSession(ctx context.Context, sessionID, callerID uuid
 		return "", "", apperr.ErrSessionCompleted
 	}
 
+	if session.TeacherID != callerID {
+		return "", "", apperr.ErrQuizForbidden
+	}
+
 	quiz, err := s.quizzes.GetByID(ctx, session.QuizTemplateID)
 	if err != nil {
 		return "", "", fmt.Errorf("get quiz: %w", err)
 	}
 	if quiz == nil {
 		return "", "", apperr.ErrQuizNotFound
-	}
-
-	switch session.Source {
-	case domain.LiveSourceCourse:
-		if quiz.AuthorID != callerID {
-			return "", "", apperr.ErrQuizForbidden
-		}
-	case domain.LiveSourceLibrary:
-		if session.LiveHostUserID != nil {
-			if *session.LiveHostUserID != callerID {
-				return "", "", apperr.ErrQuizForbidden
-			}
-		} else if quiz.AuthorID != callerID {
-			// Сессии до миграции live_host_user_id создавал только автор шаблона.
-			return "", "", apperr.ErrQuizForbidden
-		}
 	}
 
 	currentPhase, phaseErr := s.liveSession.GetPhase(ctx, sessionID)

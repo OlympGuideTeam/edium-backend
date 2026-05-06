@@ -25,13 +25,12 @@ func (r *PgSessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*domai
 	exec := db.ExecutorFromContext(ctx, r.db)
 
 	var s domain.QuizSession
-	var liveHost sql.NullString
 	err := exec.QueryRowContext(ctx,
-		`SELECT id, quiz_template_id, mode, source, live_host_user_id, status, max_score, total_time_limit_sec, question_time_limit_sec,
+		`SELECT id, quiz_template_id, mode, source, teacher_id, status, max_score, total_time_limit_sec, question_time_limit_sec,
 		        shuffle_questions, started_at, finished_at
 		 FROM quiz_session WHERE id = $1`,
 		id,
-	).Scan(&s.ID, &s.QuizTemplateID, &s.Mode, &s.Source, &liveHost, &s.Status, &s.MaxScore,
+	).Scan(&s.ID, &s.QuizTemplateID, &s.Mode, &s.Source, &s.TeacherID, &s.Status, &s.MaxScore,
 		&s.TotalTimeLimitSec, &s.QuestionTimeLimitSec, &s.ShuffleQuestions,
 		&s.StartedAt, &s.FinishedAt)
 	if err == sql.ErrNoRows {
@@ -39,12 +38,6 @@ func (r *PgSessionRepository) GetByID(ctx context.Context, id uuid.UUID) (*domai
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get session by id: %w", err)
-	}
-	if liveHost.Valid {
-		hid, perr := uuid.Parse(liveHost.String)
-		if perr == nil {
-			s.LiveHostUserID = &hid
-		}
 	}
 	return &s, nil
 }
@@ -61,21 +54,17 @@ func (r *PgSessionRepository) Create(ctx context.Context, p domain.CreateSession
 
 	exec := db.ExecutorFromContext(ctx, r.db)
 
-	var liveHost any
-	if p.LiveHostUserID != nil {
-		liveHost = *p.LiveHostUserID
-	}
-
 	var id uuid.UUID
 	err := exec.QueryRowContext(ctx,
 		`INSERT INTO quiz_session
-		 (quiz_template_id, mode, source, max_score, total_time_limit_sec, question_time_limit_sec,
-		  shuffle_questions, status, settings, started_at, finished_at, live_host_user_id)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, now()), $11, $12)
+		 (quiz_template_id, mode, source, teacher_id, max_score, total_time_limit_sec, question_time_limit_sec,
+		  shuffle_questions, status, settings, started_at, finished_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE($11, now()), $12)
 		 RETURNING id`,
 		p.QuizTemplateID,
 		p.Mode,
 		p.Source,
+		p.TeacherID,
 		p.MaxScore,
 		p.TotalTimeLimitSec,
 		p.QuestionTimeLimitSec,
@@ -84,7 +73,6 @@ func (r *PgSessionRepository) Create(ctx context.Context, p domain.CreateSession
 		settingsJSON,
 		p.StartedAt,
 		p.FinishedAt,
-		liveHost,
 	).Scan(&id)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("insert quiz_session: %w", err)
@@ -206,7 +194,7 @@ func (r *PgSessionRepository) ListLiveSessions(ctx context.Context, authorID uui
 		 FROM quiz_session qs
 		 JOIN quiz_template qt ON qt.id = qs.quiz_template_id
 		 WHERE qs.mode = 'live'
-		   AND (qs.live_host_user_id = $1 OR (qs.live_host_user_id IS NULL AND qt.author_id = $1))
+		   AND qs.teacher_id = $1
 		   AND ($2::text IS NULL OR qs.source = $2)
 		 ORDER BY qs.created_at DESC
 		 LIMIT $3`,
