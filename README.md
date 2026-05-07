@@ -30,9 +30,9 @@ flowchart TD
     
 
     Client --> Caddy
-    Caddy --> Doorman & Caesar & Riddler & Louvre
+    Caddy --> Doorman & Caesar & Riddler & Louvre & Herald
 
-    Caesar & Louvre & Riddler --> Doorman
+    Caesar & Louvre & Riddler & Herald --> Doorman
 
     Doorman & Herald & Caesar & Riddler & Charon & Sphinx <-.-> NATS
 
