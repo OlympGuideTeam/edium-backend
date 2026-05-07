@@ -2,6 +2,7 @@ package live
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -10,6 +11,12 @@ import (
 	"riddler/internal/pkg/apperr"
 	"riddler/internal/repository"
 )
+
+type attemptCreatedPayload struct {
+	AttemptID uuid.UUID `json:"attempt_id"`
+	SessionID uuid.UUID `json:"session_id"`
+	UserID    uuid.UUID `json:"user_id"`
+}
 
 func (s *Service) JoinLiveSession(ctx context.Context, sessionID uuid.UUID, userID *uuid.UUID, name *string) (attemptID uuid.UUID, wsToken string, err error) {
 	session, err := s.sessions.GetByID(ctx, sessionID)
@@ -69,6 +76,13 @@ func (s *Service) JoinLiveSession(ctx context.Context, sessionID uuid.UUID, user
 	attemptID, err = s.attempts.CreateLiveAttempt(ctx, sessionID, userID, name)
 	if err != nil {
 		return uuid.Nil, "", fmt.Errorf("create attempt: %w", err)
+	}
+
+	if session.Source == domain.LiveSourceCourse && userID != nil {
+		payload, _ := json.Marshal(attemptCreatedPayload{AttemptID: attemptID, SessionID: sessionID, UserID: *userID})
+		if err := s.tasks.Schedule(ctx, domain.TaskTypeAttemptCreatedPublisher, payload); err != nil {
+			return uuid.Nil, "", fmt.Errorf("schedule attempt.created: %w", err)
+		}
 	}
 
 	participant := domain.LiveParticipant{
