@@ -623,6 +623,7 @@ jobs:
             ALERTMANAGER_TG_TOKEN=${{ secrets.ALERTMANAGER_TG_TOKEN }}
             ALERTMANAGER_TG_CHAT_ID=${{ secrets.ALERTMANAGER_TG_CHAT_ID }}
             JAEGER_BASIC_AUTH_HASH=${{ secrets.JAEGER_BASIC_AUTH_HASH }}
+            FIREBASE_CREDENTIALS_JSON=${{ secrets.FIREBASE_CREDENTIALS_JSON }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 
@@ -803,6 +804,7 @@ jobs:
             ALERTMANAGER_TG_TOKEN=${{ secrets.ALERTMANAGER_TG_TOKEN }}
             ALERTMANAGER_TG_CHAT_ID=${{ secrets.ALERTMANAGER_TG_CHAT_ID }}
             JAEGER_BASIC_AUTH_HASH=${{ secrets.JAEGER_BASIC_AUTH_HASH }}
+            FIREBASE_CREDENTIALS_JSON=${{ secrets.FIREBASE_CREDENTIALS_JSON }}
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 
