@@ -124,9 +124,8 @@ func (a *App) Router() *gin.Engine {
 	r.Use(metrics.Middleware(a.serviceName))
 	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	r.GET("/.well-known/jwks.json", a.KeyHandler.GetJWKS)
-
 	api := r.Group("/doorman/v1")
+	api.GET("/.well-known/jwks.json", a.KeyHandler.GetJWKS)
 	api.POST("/otp/send", a.OtpHandler.Send)
 	api.POST("/otp/verify", a.OtpHandler.Verify)
 	api.POST("/auth/register", a.RegistrationHandler.Register)
