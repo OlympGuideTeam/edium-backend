@@ -27,6 +27,7 @@ func (s *Service) CreateTestCourseSession(ctx context.Context, authorID, quizTem
 	}
 
 	params := s.buildParams(quizTemplateID, quiz, p)
+	params.TeacherID = authorID
 	params.MaxScore = quiz.MaxScore
 
 	var sessionID uuid.UUID

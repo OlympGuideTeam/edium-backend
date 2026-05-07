@@ -42,7 +42,7 @@ const markFailedQuery = `
 UPDATE task
 SET status       = CASE WHEN attempts >= max_attempts THEN $1::task_status ELSE $2::task_status END,
     last_error   = $3,
-    available_at = NOW() + $4,
+    available_at = NOW() + make_interval(secs => $4),
     updated_at   = NOW()
 WHERE id = $5`
 
@@ -112,7 +112,7 @@ func (r *PgTaskRepository) MarkFailed(ctx context.Context, id uuid.UUID, reason 
 	return nil
 }
 
-func nullableString(s string) interface{} {
+func nullableString(s string) any {
 	if s == "" {
 		return nil
 	}
