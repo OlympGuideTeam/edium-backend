@@ -249,7 +249,7 @@ func (r *PgQuizRepository) GetQuestionByID(ctx context.Context, id uuid.UUID) (*
 	if err != nil {
 		return nil, fmt.Errorf("get question: %w", err)
 	}
-ок	if metaJSON != nil {
+	if metaJSON != nil {
 		if err := json.Unmarshal(metaJSON, &q.Metadata); err != nil {
 			return nil, fmt.Errorf("unmarshal metadata: %w", err)
 		}
