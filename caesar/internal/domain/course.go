@@ -84,6 +84,7 @@ type CourseUserItemProgress struct {
 type CourseSheetItem struct {
 	ID    uuid.UUID
 	RefID uuid.UUID
+	Title string
 }
 
 // UserItemScore — оценка пользователя за один элемент курса.

@@ -248,6 +248,7 @@ func (a *App) Run(ctx context.Context) error {
 
 	go a.attemptService.RunExpiryWorker(ctx)
 	go a.attemptService.RunSessionGradingWorker(ctx)
+	go a.attemptService.RunSessionAutoCloseWorker(ctx)
 
 	srv := &http.Server{Addr: a.httpAddr, Handler: a.Router()}
 	go func() {

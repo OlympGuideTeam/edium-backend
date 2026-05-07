@@ -385,8 +385,10 @@ func (r *PgAttemptRepository) FindExpiredInProgress(ctx context.Context) ([]doma
 		 FROM attempt a
 		 JOIN quiz_session qs ON qs.id = a.session_id
 		 WHERE a.status = $1
-		   AND qs.total_time_limit_sec IS NOT NULL
-		   AND a.started_at + (qs.total_time_limit_sec * interval '1 second') < now()`,
+		   AND (
+		     (qs.total_time_limit_sec IS NOT NULL AND a.started_at + (qs.total_time_limit_sec * interval '1 second') < now())
+		     OR (qs.finished_at IS NOT NULL AND qs.finished_at < now())
+		   )`,
 		domain.AttemptStatusInProgress,
 	)
 	if err != nil {

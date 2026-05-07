@@ -37,7 +37,12 @@ func (h *Handler) GetSessionStatuses(c *gin.Context) {
 		ids = append(ids, id)
 	}
 
-	items, err := h.svc.GetSessionStatuses(c.Request.Context(), ids)
+	userID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	items, err := h.svc.GetSessionStatuses(c.Request.Context(), ids, userID)
 	if err != nil {
 		httpx.WriteError(c, err)
 		return
@@ -56,6 +61,11 @@ func (h *Handler) GetSessionStatuses(c *gin.Context) {
 			s := string(*it.Phase)
 			item.Phase = &s
 		}
+		if it.AttemptStatus != nil {
+			s := string(*it.AttemptStatus)
+			item.AttemptStatus = &s
+		}
+		item.Score = it.Score
 		resp.Items = append(resp.Items, item)
 	}
 

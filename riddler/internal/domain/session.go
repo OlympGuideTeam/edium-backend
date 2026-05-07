@@ -207,10 +207,12 @@ type AwaitingReviewSession struct {
 }
 
 type SessionStatusItem struct {
-	SessionID uuid.UUID
-	Mode      SessionMode
-	Status    SessionStatus
-	Phase     *LivePhase // nil для test-сессий
+	SessionID     uuid.UUID
+	Mode          SessionMode
+	Status        SessionStatus
+	Phase         *LivePhase    // nil для test-сессий
+	AttemptStatus *AttemptStatus // nil если caller — учитель
+	Score         *float64       // заполняется только если attempt published
 }
 
 type CreateTestCourseSessionInlineParams struct {

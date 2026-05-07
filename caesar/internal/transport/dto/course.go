@@ -125,6 +125,7 @@ type SheetRow struct {
 type SheetColumn struct {
 	ID    string `json:"id"`
 	RefID string `json:"ref_id"`
+	Title string `json:"title"`
 }
 
 type CourseSheet struct {

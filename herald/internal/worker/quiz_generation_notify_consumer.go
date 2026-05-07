@@ -44,7 +44,7 @@ func (c *QuizGenerationNotifyConsumer) handle(ctx context.Context, data []byte) 
 		Title:  "Генерация завершена",
 		Body:   fmt.Sprintf("Вопросы для квиза «%s» готовы", msg.Title),
 		Data: map[string]string{
-			"route": "/quiz/" + msg.QuizID.String(),
+			"route": "/template/" + msg.QuizID.String(),
 			"role":  "teacher",
 		},
 	})

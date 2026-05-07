@@ -232,7 +232,7 @@ func (s *Service) ListLiveSessions(ctx context.Context, authorID uuid.UUID, sour
 	return sessions, nil
 }
 
-func (s *Service) GetSessionStatuses(ctx context.Context, ids []uuid.UUID) ([]domain.SessionStatusItem, error) {
+func (s *Service) GetSessionStatuses(ctx context.Context, ids []uuid.UUID, userID uuid.UUID) ([]domain.SessionStatusItem, error) {
 	sessions, err := s.sessions.GetManyByIDs(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("get sessions: %w", err)
@@ -258,6 +258,18 @@ func (s *Service) GetSessionStatuses(ctx context.Context, ids []uuid.UUID) ([]do
 				} else {
 					phase := meta.Phase
 					item.Phase = &phase
+				}
+			}
+		}
+		if sess.TeacherID != userID {
+			attempt, err := s.attempts.GetBySessionAndUser(ctx, sess.ID, userID)
+			if err != nil {
+				return nil, fmt.Errorf("get attempt: %w", err)
+			}
+			if attempt != nil {
+				item.AttemptStatus = &attempt.Status
+				if attempt.Status == domain.AttemptStatusPublished {
+					item.Score = attempt.Score
 				}
 			}
 		}

@@ -30,6 +30,24 @@ func (s *Service) Create(ctx context.Context, sessionID, userID uuid.UUID) (*dom
 		return nil, nil, err
 	}
 
+	quiz, err := s.quizzes.GetByID(ctx, session.QuizTemplateID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("get quiz: %w", err)
+	}
+	if quiz == nil {
+		return nil, nil, apperr.ErrQuizNotFound
+	}
+
+	if session.Mode == domain.SessionModeTest && quiz.Source == domain.QuizSourceCourse {
+		existing, err := s.attempts.GetBySessionAndUser(ctx, sessionID, userID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("check existing attempt: %w", err)
+		}
+		if existing != nil {
+			return nil, nil, apperr.ErrAttemptAlreadyExists
+		}
+	}
+
 	questions, err := s.quizzes.GetQuestionsWithOptions(ctx, session.QuizTemplateID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get questions: %w", err)

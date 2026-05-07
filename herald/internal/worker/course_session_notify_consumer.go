@@ -43,7 +43,7 @@ func (c *CourseSessionNotifyConsumer) handle(ctx context.Context, data []byte) e
 			Title:  "Новый тест назначен",
 			Body:   msg.Title,
 			Data: map[string]string{
-				"route": "/session/" + msg.SessionID,
+				"route": "/test/" + msg.SessionID,
 				"role":  "student",
 			},
 		})

@@ -175,6 +175,38 @@ func (r *PgSessionRepository) FindFinishedNeedingGrading(ctx context.Context) ([
 	return result, rows.Err()
 }
 
+func (r *PgSessionRepository) FindSessionsReadyToAutoClose(ctx context.Context) ([]domain.QuizSession, error) {
+	rows, err := r.db.QueryContext(ctx,
+		`SELECT qs.id, qs.quiz_template_id, qs.mode, qs.source, qs.teacher_id, qs.status, qs.max_score,
+		        qs.total_time_limit_sec, qs.question_time_limit_sec, qs.shuffle_questions, qs.started_at, qs.finished_at
+		 FROM quiz_session qs
+		 WHERE qs.mode = 'test'
+		   AND qs.source = 'course'
+		   AND qs.status = 'active'
+		   AND qs.finished_at IS NOT NULL
+		   AND qs.finished_at < now()
+		   AND NOT EXISTS (
+		     SELECT 1 FROM attempt a
+		     WHERE a.session_id = qs.id AND a.status = 'in_progress'
+		   )`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("find sessions ready to auto close: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var result []domain.QuizSession
+	for rows.Next() {
+		var s domain.QuizSession
+		if err := rows.Scan(&s.ID, &s.QuizTemplateID, &s.Mode, &s.Source, &s.TeacherID, &s.Status, &s.MaxScore,
+			&s.TotalTimeLimitSec, &s.QuestionTimeLimitSec, &s.ShuffleQuestions, &s.StartedAt, &s.FinishedAt); err != nil {
+			return nil, fmt.Errorf("scan session: %w", err)
+		}
+		result = append(result, s)
+	}
+	return result, rows.Err()
+}
+
 func (r *PgSessionRepository) SetGradingSent(ctx context.Context, id uuid.UUID) error {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	_, err := exec.ExecContext(ctx,

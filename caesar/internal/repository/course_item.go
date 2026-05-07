@@ -131,7 +131,7 @@ func (s *PgCourseStore) DeleteItem(ctx context.Context, id uuid.UUID) error {
 
 func (s *PgCourseStore) GetSheetItems(ctx context.Context, courseID uuid.UUID) ([]domain.CourseSheetItem, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT ci.id, ci.object_id
+		SELECT ci.id, ci.object_id, ci.payload->>'title'
 		FROM course_item ci
 		JOIN course_module cm ON cm.id = ci.module_id
 		WHERE cm.course_id = $1
@@ -145,7 +145,7 @@ func (s *PgCourseStore) GetSheetItems(ctx context.Context, courseID uuid.UUID) (
 	var items []domain.CourseSheetItem
 	for rows.Next() {
 		var item domain.CourseSheetItem
-		if err := rows.Scan(&item.ID, &item.RefID); err != nil {
+		if err := rows.Scan(&item.ID, &item.RefID, &item.Title); err != nil {
 			return nil, err
 		}
 		items = append(items, item)

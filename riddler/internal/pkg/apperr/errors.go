@@ -36,6 +36,7 @@ var (
 
 	// Попытки
 	ErrAttemptNotFound     = New("ATTEMPT_NOT_FOUND", "Попытка не найдена", http.StatusNotFound)
+	ErrAttemptAlreadyExists = New("ATTEMPT_ALREADY_EXISTS", "Попытка уже существует", http.StatusConflict)
 	ErrAttemptForbidden    = New("FORBIDDEN", "Нет доступа к попытке", http.StatusForbidden)
 	ErrAttemptNotActive    = New("ATTEMPT_NOT_ACTIVE", "Попытка уже завершена", http.StatusConflict)
 	ErrAttemptExpired      = New("ATTEMPT_EXPIRED", "Время попытки истекло", http.StatusConflict)

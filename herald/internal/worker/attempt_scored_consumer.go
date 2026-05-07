@@ -51,7 +51,7 @@ func (c *AttemptScoredConsumer) handle(ctx context.Context, data []byte) error {
 			Title:  "AI завершил проверку",
 			Body:   "Работы учеников проверены AI — ознакомьтесь с результатами",
 			Data: map[string]string{
-				"route": "/session/" + msg.SessionID.String(),
+				"route": "/test/" + msg.SessionID.String() + "/results",
 				"role":  "teacher",
 			},
 		})
@@ -69,7 +69,7 @@ func (c *AttemptScoredConsumer) handle(ctx context.Context, data []byte) error {
 		Title:  "Результаты готовы",
 		Body:   body,
 		Data: map[string]string{
-			"route": "/attempt/" + msg.AttemptID.String(),
+			"route": "/test/" + msg.SessionID.String() + "/results",
 			"role":  "student",
 		},
 	})

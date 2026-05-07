@@ -32,6 +32,7 @@ type attemptRepository interface {
 	GetAnswersWithQuestion(ctx context.Context, attemptID uuid.UUID) ([]domain.AnswerWithQuestion, error)
 	GetSubmissionByID(ctx context.Context, id uuid.UUID) (*domain.AnswerSubmission, error)
 	GetUserStatistic(ctx context.Context, userID uuid.UUID) (*domain.UserStatistic, error)
+	GetBySessionAndUser(ctx context.Context, sessionID, userID uuid.UUID) (*domain.Attempt, error)
 }
 
 type sessionReader interface {
@@ -54,6 +55,8 @@ type sessionGradingRepo interface {
 	FindFinishedNeedingGrading(ctx context.Context) ([]domain.QuizSession, error)
 	SetGradingSent(ctx context.Context, id uuid.UUID) error
 	GetFreeAnswerSubmissionsForSession(ctx context.Context, sessionID uuid.UUID) ([]domain.FreeAnswerSubmission, error)
+	FindSessionsReadyToAutoClose(ctx context.Context) ([]domain.QuizSession, error)
+	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.SessionStatus) error
 }
 
 type questionReader interface {

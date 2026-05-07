@@ -238,6 +238,7 @@ func (h *Handler) GetCourseSheet(c *gin.Context) {
 		items[i] = dto.SheetColumn{
 			ID:    item.ID.String(),
 			RefID: item.RefID.String(),
+			Title: item.Title,
 		}
 	}
 

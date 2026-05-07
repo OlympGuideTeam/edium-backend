@@ -2,7 +2,9 @@ package live
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"riddler/internal/pkg/grading"
 
@@ -56,6 +58,9 @@ func (s *Service) CompleteLiveSession(ctx context.Context, sessionID uuid.UUID) 
 		if err := s.attempts.PublishLive(ctx, p.AttemptID, totalScore, grade); err != nil {
 			return fmt.Errorf("publish attempt: %w", err)
 		}
+		if meta.Source == domain.LiveSourceCourse && p.UserID != nil {
+			s.scheduleAttemptScored(ctx, p.AttemptID, sessionID, *p.UserID, totalScore, float64(session.MaxScore))
+		}
 	}
 
 	if err := s.sessions.UpdateStatus(ctx, sessionID, domain.SessionStatusFinished); err != nil {
@@ -67,6 +72,28 @@ func (s *Service) CompleteLiveSession(ctx context.Context, sessionID uuid.UUID) 
 		code = *meta.JoinCode
 	}
 	return s.liveSession.DeleteAll(ctx, sessionID, code)
+}
+
+func (s *Service) scheduleAttemptScored(ctx context.Context, attemptID, sessionID, userID uuid.UUID, totalScore, maxScore float64) {
+	type payload struct {
+		AttemptID  uuid.UUID          `json:"attempt_id"`
+		SessionID  uuid.UUID          `json:"session_id"`
+		UserID     uuid.UUID          `json:"user_id"`
+		TotalScore float64            `json:"total_score"`
+		MaxScore   float64            `json:"max_score"`
+		GradedBy   domain.FinalSource `json:"graded_by"`
+	}
+	data, _ := json.Marshal(payload{
+		AttemptID:  attemptID,
+		SessionID:  sessionID,
+		UserID:     userID,
+		TotalScore: totalScore,
+		MaxScore:   maxScore,
+		GradedBy:   domain.FinalSourceAuto,
+	})
+	if err := s.tasks.Schedule(ctx, domain.TaskTypeAttemptScoredPublisher, data); err != nil {
+		slog.ErrorContext(ctx, "live: schedule attempt.scored", "attempt_id", attemptID, "err", err)
+	}
 }
 
 func (s *Service) collectSubmissions(ctx context.Context, sessionID, attemptID uuid.UUID, questions []domain.QuestionWithOptions) ([]repository.BulkSubmission, float64, error) {

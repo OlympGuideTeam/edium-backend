@@ -108,10 +108,12 @@ type ListLiveSessionsResponse struct {
 }
 
 type SessionStatusItemDTO struct {
-	SessionID string  `json:"session_id"`
-	Mode      string  `json:"mode"`
-	Status    string  `json:"status"`
-	Phase     *string `json:"phase"`
+	SessionID     string   `json:"session_id"`
+	Mode          string   `json:"mode"`
+	Status        string   `json:"status"`
+	Phase         *string  `json:"phase,omitempty"`
+	AttemptStatus *string  `json:"attempt_status,omitempty"`
+	Score         *float64 `json:"score,omitempty"`
 }
 
 type GetSessionStatusesResponse struct {

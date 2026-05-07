@@ -101,7 +101,7 @@ func (w *AttemptScoredProcessor) processTask(ctx context.Context, t domain.Task)
 
 	var normalizedScore float64
 	if p.MaxScore > 0 {
-		normalizedScore = (p.TotalScore / p.MaxScore) * 100.0
+		normalizedScore = (p.TotalScore / p.MaxScore) * 10.0
 	}
 
 	if err := w.items.UpdateProgressScore(ctx, item.ID, userID, normalizedScore); err != nil {
