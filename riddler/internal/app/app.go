@@ -105,7 +105,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	liveRepo := repository.NewLiveRepository(rdb)
 	studentHub := livehandler.NewStudentHub()
 	liveService := livesvc.NewService(quizRepo, sessionRepo, attemptRepo, liveRepo, liveRepo, liveRepo, liveRepo, taskRepo, txManager, studentHub)
-	testService := testsvc.NewService(quizRepo, sessionRepo, taskRepo, txManager)
+	testService := testsvc.NewService(quizRepo, sessionRepo, taskRepo, txManager, attemptService)
 
 	quizHandler := quizhandler.NewHandler(quizService)
 	attemptHandler := attempthandler.NewHandler(attemptService)

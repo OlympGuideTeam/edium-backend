@@ -151,6 +151,7 @@ func (a *App) Router() *gin.Engine {
 	api.GET("/users/me", a.UserHandler.GetMe)
 	api.PATCH("/users/me", a.UserHandler.UpdateMe)
 	api.DELETE("/users/me", a.UserHandler.DeleteMe)
+	api.GET("/users/roster", a.UserHandler.GetUsersRoster)
 
 	api.GET("/classes/me", a.ClassHandler.GetMyClasses)
 	api.POST("/classes", a.ClassHandler.CreateClass)

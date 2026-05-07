@@ -12,4 +12,5 @@ type userService interface {
 	UpdateMe(ctx context.Context, userID uuid.UUID, name, surname *string) error
 	DeleteMe(ctx context.Context, userID uuid.UUID) error
 	GetMeStatistic(ctx context.Context, userID uuid.UUID) (*domain.UserStatistic, error)
+	GetUsersRoster(ctx context.Context, ids []uuid.UUID) ([]domain.User, error)
 }

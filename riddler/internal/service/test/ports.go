@@ -25,3 +25,7 @@ type taskScheduler interface {
 type txManager interface {
 	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
+
+type attemptFinisher interface {
+	FinishInProgressBySession(ctx context.Context, sessionID uuid.UUID) error
+}

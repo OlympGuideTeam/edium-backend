@@ -62,6 +62,10 @@ type userDeletedPayload struct {
 	UserID string `json:"user_id"`
 }
 
+func (s *Service) GetUsersRoster(ctx context.Context, ids []uuid.UUID) ([]domain.User, error) {
+	return s.users.GetManyByIDs(ctx, ids)
+}
+
 func (s *Service) GetMeStatistic(ctx context.Context, userID uuid.UUID) (*domain.UserStatistic, error) {
 	if _, err := s.getActiveUser(ctx, userID); err != nil {
 		return nil, err

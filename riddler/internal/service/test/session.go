@@ -75,6 +75,9 @@ func (s *Service) FinishTestCourseSession(ctx context.Context, teacherID, sessio
 	if session.Status == domain.SessionStatusFinished {
 		return apperr.ErrSessionCompleted
 	}
+	if err := s.attempts.FinishInProgressBySession(ctx, sessionID); err != nil {
+		return fmt.Errorf("finish in-progress attempts: %w", err)
+	}
 	return s.sessions.UpdateStatus(ctx, sessionID, domain.SessionStatusFinished)
 }
 

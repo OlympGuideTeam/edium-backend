@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type PgUserStore struct {
@@ -43,6 +44,33 @@ func (s *PgUserStore) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, 
 		return nil, err
 	}
 	return &u, nil
+}
+
+func (s *PgUserStore) GetManyByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.User, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	strs := make([]string, len(ids))
+	for i, id := range ids {
+		strs[i] = id.String()
+	}
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, name, surname FROM "user" WHERE id = ANY($1::uuid[])`,
+		pq.Array(strs),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var users []domain.User
+	for rows.Next() {
+		var u domain.User
+		if err := rows.Scan(&u.ID, &u.Name, &u.Surname); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
 }
 
 func (s *PgUserStore) Update(ctx context.Context, id uuid.UUID, name, surname string) error {

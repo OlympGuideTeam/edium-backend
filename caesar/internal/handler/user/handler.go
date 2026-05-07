@@ -9,6 +9,7 @@ import (
 	"caesar/internal/transport/dto"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -84,6 +85,40 @@ func (h *Handler) GetMeStatistic(c *gin.Context) {
 		CourseTeacherCount: st.CourseTeacherCount,
 		CourseStudentCount: st.CourseStudentCount,
 	})
+}
+
+func (h *Handler) GetUsersRoster(c *gin.Context) {
+	var req dto.UsersRosterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.WriteError(c, apperr.ErrBadRequest)
+		return
+	}
+
+	ids := make([]uuid.UUID, 0, len(req.UserIDs))
+	for _, raw := range req.UserIDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			httpx.WriteError(c, apperr.ErrBadID)
+			return
+		}
+		ids = append(ids, id)
+	}
+
+	users, err := h.service.GetUsersRoster(c.Request.Context(), ids)
+	if err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	resp := dto.UsersRosterResponse{Users: make([]dto.UserProfileResponse, 0, len(users))}
+	for _, u := range users {
+		resp.Users = append(resp.Users, dto.UserProfileResponse{
+			ID:      u.ID.String(),
+			Name:    u.Name,
+			Surname: u.Surname,
+		})
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *Handler) DeleteMe(c *gin.Context) {

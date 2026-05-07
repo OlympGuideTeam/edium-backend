@@ -69,6 +69,44 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /caesar/v1/users/roster:
+    get:
+      summary: Получить профили пользователей по списку ID
+      operationId: getUsersRoster
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_ids]
+              properties:
+                user_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  example: ["a1b2c3d4-e5f6-7890-abcd-ef1234567890"]
+      responses:
+        "200":
+          description: Профили пользователей
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /caesar/v1/users/me/statistic:
     get:
       summary: Получить статистику текущего пользователя

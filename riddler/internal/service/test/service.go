@@ -7,6 +7,7 @@ type Service struct {
 	sessions sessionRepository
 	tasks    taskScheduler
 	tx       txManager
+	attempts attemptFinisher
 }
 
 func NewService(
@@ -14,11 +15,13 @@ func NewService(
 	sessions sessionRepository,
 	tasks taskScheduler,
 	tx txManager,
+	attempts attemptFinisher,
 ) *Service {
 	return &Service{
 		quizzes:  quizzes,
 		sessions: sessions,
 		tasks:    tasks,
 		tx:       tx,
+		attempts: attempts,
 	}
 }

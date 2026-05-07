@@ -9,6 +9,7 @@ import (
 
 type userStore interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+	GetManyByIDs(ctx context.Context, ids []uuid.UUID) ([]domain.User, error)
 	Update(ctx context.Context, id uuid.UUID, name, surname string) error
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.UserStatus) error
 	GetStatistic(ctx context.Context, id uuid.UUID) (*domain.UserStatistic, error)

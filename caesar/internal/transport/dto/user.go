@@ -11,6 +11,14 @@ type UpdateUserRequest struct {
 	Surname *string `json:"surname"`
 }
 
+type UsersRosterRequest struct {
+	UserIDs []string `json:"user_ids"`
+}
+
+type UsersRosterResponse struct {
+	Users []UserProfileResponse `json:"users"`
+}
+
 type UserStatisticResponse struct {
 	ClassTeacherCount  int `json:"class_teacher_count"`
 	StudentCount       int `json:"student_count"`
