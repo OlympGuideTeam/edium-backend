@@ -14,6 +14,8 @@ type quizRepository interface {
 
 type sessionRepository interface {
 	Create(ctx context.Context, p domain.CreateSessionParams) (uuid.UUID, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*domain.QuizSession, error)
+	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.SessionStatus) error
 }
 
 type taskScheduler interface {

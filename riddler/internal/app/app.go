@@ -204,6 +204,7 @@ func (a *App) Router() *gin.Engine {
 		sessions.GET("/live", a.liveHandler.ListLiveSessions)
 		sessions.POST("/live/course", a.liveHandler.CreateLiveCourseSession)
 		sessions.POST("/live/library", a.liveHandler.CreateLiveLibrarySession)
+		sessions.POST("/:session_id/finish", a.testHandler.FinishTestCourseSession)
 		sessions.POST("/:session_id/live/start", a.liveHandler.StartLiveSession)
 		sessions.GET("/:session_id/live/results/teacher", a.liveHandler.GetLiveResultsTeacher)
 		sessions.DELETE("/:session_id", a.quizHandler.DeleteCourseSession)

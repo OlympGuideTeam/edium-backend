@@ -13,6 +13,26 @@ import (
 	"riddler/internal/transport/dto"
 )
 
+func (h *Handler) FinishTestCourseSession(c *gin.Context) {
+	teacherID, ok := userIDFromCtx(c)
+	if !ok {
+		return
+	}
+
+	sessionID, err := uuid.Parse(c.Param("session_id"))
+	if err != nil {
+		httpx.WriteError(c, apperr.ErrBadID)
+		return
+	}
+
+	if err := h.svc.FinishTestCourseSession(c.Request.Context(), teacherID, sessionID); err != nil {
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
 func (h *Handler) CreateTestCourseSession(c *gin.Context) {
 	authorID, ok := userIDFromCtx(c)
 	if !ok {
