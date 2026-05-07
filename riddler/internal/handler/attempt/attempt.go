@@ -113,7 +113,7 @@ func (h *Handler) ListSessionAttempts(c *gin.Context) {
 		item := dto.AttemptSummaryResponse{
 			AttemptID: a.ID.String(),
 			Status:    string(a.Status),
-			Score:     a.Score,
+			Score:     a.Grade,
 		}
 		if a.UserID != uuid.Nil {
 			item.UserID = a.UserID.String()
