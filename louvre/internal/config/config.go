@@ -36,7 +36,7 @@ type OTelConfig struct {
 }
 
 type DoormanConfig struct {
-	JWKSEndpoint string `env:"DOORMAN_JWKS_URL" envDefault:"http://doorman/api/v1/.well-known/jwks.json"`
+	JWKSEndpoint string `env:"DOORMAN_JWKS_URL" envDefault:"http://doorman/doorman/v1/.well-known/jwks.json"`
 }
 
 type ImageConfig struct {
