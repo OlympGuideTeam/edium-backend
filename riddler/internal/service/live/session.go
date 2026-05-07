@@ -201,8 +201,8 @@ func (s *Service) ListLiveSessions(ctx context.Context, authorID uuid.UUID, sour
 	}
 
 	sessionIDs := make([]uuid.UUID, len(sessions))
-	for i, sess := range sessions {
-		sessionIDs[i] = sess.SessionID
+	for i := range sessions {
+		sessionIDs[i] = sessions[i].SessionID
 	}
 	completedCounts, err := s.attempts.CountCompletedBySessionIDs(ctx, sessionIDs)
 	if err != nil {
