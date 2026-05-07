@@ -189,16 +189,20 @@ func (r *PgSessionRepository) SetGradingSent(ctx context.Context, id uuid.UUID) 
 
 func (r *PgSessionRepository) ListLiveSessions(ctx context.Context, authorID uuid.UUID, source *string, limit int) ([]domain.LiveSession, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
+	var sourceArg any
+	if source != nil {
+		sourceArg = *source
+	}
 	rows, err := exec.QueryContext(ctx,
 		`SELECT qs.id, qs.quiz_template_id, qt.title, qs.source, qs.status, qs.created_at
 		 FROM quiz_session qs
 		 JOIN quiz_template qt ON qt.id = qs.quiz_template_id
 		 WHERE qs.mode = 'live'
 		   AND qs.teacher_id = $1
-		   AND ($2::text IS NULL OR qs.source = $2)
+		   AND ($2::text IS NULL OR qs.source::text = $2)
 		 ORDER BY qs.created_at DESC
 		 LIMIT $3`,
-		authorID, source, limit,
+		authorID, sourceArg, limit,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list live sessions: %w", err)
