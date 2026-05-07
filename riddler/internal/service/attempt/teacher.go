@@ -189,15 +189,15 @@ func (s *Service) GetAttemptReview(ctx context.Context, attemptID uuid.UUID, cal
 	for i := range questions {
 		qMap[questions[i].ID] = questions[i]
 	}
+	enriched := enrichTeacher || attempt.Status == domain.AttemptStatusPublished
 	for i := range answers {
 		if q, ok := qMap[answers[i].QuestionID]; ok {
 			answers[i].Options = q.Options
-			if enrichTeacher {
+			if enriched {
 				answers[i].Metadata = q.Metadata
 			}
 		}
 	}
 
-	enriched := enrichTeacher || attempt.Status == domain.AttemptStatusPublished
 	return attempt, answers, enriched, nil
 }
