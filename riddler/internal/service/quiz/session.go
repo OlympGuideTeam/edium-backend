@@ -72,16 +72,6 @@ func (s *Service) CreateTestCourseSessionInline(ctx context.Context, authorID uu
 			return fmt.Errorf("create session: %w", innerErr)
 		}
 
-		attachedPayload, _ := json.Marshal(quizTemplateAttachedPayload{
-			QuizTemplateID: quizTemplateID,
-			CourseID:       p.CourseID,
-			Title:          p.Title,
-			Payload:        buildCourseDraftPayload(p.Title, domain.QuizDefaultSettings{}),
-		})
-		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, attachedPayload); innerErr != nil {
-			return fmt.Errorf("schedule quiz_template.attached: %w", innerErr)
-		}
-
 		qtID := quizTemplateID
 		cID := p.CourseID
 		sessionCreatedPayload, _ := json.Marshal(domain.CourseSessionCreatedPayload{
@@ -152,17 +142,6 @@ func (s *Service) CreateLiveCourseSessionInline(ctx context.Context, authorID uu
 		})
 		if innerErr != nil {
 			return fmt.Errorf("create session: %w", innerErr)
-		}
-
-		liveMode := domain.SessionModeLive
-		attachedPayload, _ := json.Marshal(quizTemplateAttachedPayload{
-			QuizTemplateID: quizTemplateID,
-			CourseID:       p.CourseID,
-			Title:          p.Title,
-			Payload:        buildCourseDraftPayload(p.Title, domain.QuizDefaultSettings{Mode: &liveMode}),
-		})
-		if innerErr = s.tasks.Schedule(ctx, domain.TaskTypeQuizTemplateAttachedPublisher, attachedPayload); innerErr != nil {
-			return fmt.Errorf("schedule quiz_template.attached: %w", innerErr)
 		}
 
 		qtID := quizTemplateID
