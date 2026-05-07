@@ -199,10 +199,21 @@ func (s *Service) ListLiveSessions(ctx context.Context, authorID uuid.UUID, sour
 	if err != nil {
 		return nil, fmt.Errorf("list sessions: %w", err)
 	}
+
+	sessionIDs := make([]uuid.UUID, len(sessions))
+	for i := range sessions {
+		sessionIDs[i] = sessions[i].SessionID
+	}
+	completedCounts, err := s.attempts.CountCompletedBySessionIDs(ctx, sessionIDs)
+	if err != nil {
+		return nil, fmt.Errorf("count completed: %w", err)
+	}
+
 	for i := range sessions {
 		sess := &sessions[i]
 		if sess.Status == domain.SessionStatusFinished {
 			sessions[i].Phase = domain.LivePhaseCompleted
+			sessions[i].ParticipantsCount = completedCounts[sess.SessionID]
 			continue
 		}
 		meta, err := s.liveSession.GetSessionMeta(ctx, sess.SessionID)

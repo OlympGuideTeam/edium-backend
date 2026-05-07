@@ -58,6 +58,26 @@ func (s *Service) CreateTestCourseSession(ctx context.Context, authorID, quizTem
 	return sessionID, nil
 }
 
+func (s *Service) FinishTestCourseSession(ctx context.Context, teacherID, sessionID uuid.UUID) error {
+	session, err := s.sessions.GetByID(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("get session: %w", err)
+	}
+	if session == nil {
+		return apperr.ErrSessionNotFound
+	}
+	if session.TeacherID != teacherID {
+		return apperr.ErrQuizForbidden
+	}
+	if session.Source != domain.LiveSourceCourse || session.Mode != domain.SessionModeTest {
+		return apperr.ErrQuizForbidden
+	}
+	if session.Status == domain.SessionStatusFinished {
+		return apperr.ErrSessionCompleted
+	}
+	return s.sessions.UpdateStatus(ctx, sessionID, domain.SessionStatusFinished)
+}
+
 func (s *Service) buildParams(quizTemplateID uuid.UUID, quiz *domain.QuizTemplate, p domain.CreateTestCourseSessionParams) domain.CreateSessionParams {
 	totalLimit := p.TotalTimeLimitSec
 	if totalLimit == nil {

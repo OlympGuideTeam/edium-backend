@@ -76,6 +76,7 @@ type AttemptSummary struct {
 	UserID uuid.UUID
 	Status AttemptStatus
 	Score  *float64
+	Grade  *float64
 }
 
 type AnswerWithQuestion struct {

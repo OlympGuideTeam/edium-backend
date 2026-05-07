@@ -33,6 +33,7 @@ type attemptRepository interface {
 	BulkInsertSubmissions(ctx context.Context, submissions []repository.BulkSubmission) error
 	PublishLive(ctx context.Context, attemptID uuid.UUID, score, grade float64) error
 	SetKicked(ctx context.Context, attemptID uuid.UUID) error
+	CountCompletedBySessionIDs(ctx context.Context, sessionIDs []uuid.UUID) (map[uuid.UUID]int, error)
 }
 
 type liveSessionStore interface {

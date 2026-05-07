@@ -149,7 +149,7 @@ func (r *PgAttemptRepository) BulkPublishBySessionID(ctx context.Context, sessio
 func (r *PgAttemptRepository) FindBySessionID(ctx context.Context, sessionID uuid.UUID) ([]domain.AttemptSummary, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	rows, err := exec.QueryContext(ctx,
-		`SELECT id, user_id, status, score FROM attempt WHERE session_id = $1 ORDER BY started_at`,
+		`SELECT id, user_id, status, score, grade FROM attempt WHERE session_id = $1 ORDER BY started_at`,
 		sessionID,
 	)
 	if err != nil {
@@ -160,7 +160,7 @@ func (r *PgAttemptRepository) FindBySessionID(ctx context.Context, sessionID uui
 	var result []domain.AttemptSummary
 	for rows.Next() {
 		var a domain.AttemptSummary
-		if err := rows.Scan(&a.ID, &a.UserID, &a.Status, &a.Score); err != nil {
+		if err := rows.Scan(&a.ID, &a.UserID, &a.Status, &a.Score, &a.Grade); err != nil {
 			return nil, fmt.Errorf("scan attempt summary: %w", err)
 		}
 		result = append(result, a)
@@ -333,6 +333,36 @@ func (r *PgAttemptRepository) PublishLive(ctx context.Context, attemptID uuid.UU
 		return fmt.Errorf("publish live attempt: %w", err)
 	}
 	return nil
+}
+
+func (r *PgAttemptRepository) CountCompletedBySessionIDs(ctx context.Context, sessionIDs []uuid.UUID) (map[uuid.UUID]int, error) {
+	strs := make([]string, len(sessionIDs))
+	for i, id := range sessionIDs {
+		strs[i] = id.String()
+	}
+	exec := db.ExecutorFromContext(ctx, r.db)
+	rows, err := exec.QueryContext(ctx,
+		`SELECT session_id, COUNT(*)
+		 FROM attempt
+		 WHERE session_id = ANY($1::uuid[])
+		   AND status NOT IN ('in_progress', 'kicked')
+		 GROUP BY session_id`,
+		"{"+strings.Join(strs, ",")+"}")
+	if err != nil {
+		return nil, fmt.Errorf("count completed by session ids: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	result := make(map[uuid.UUID]int, len(sessionIDs))
+	for rows.Next() {
+		var sessionID uuid.UUID
+		var count int
+		if err := rows.Scan(&sessionID, &count); err != nil {
+			return nil, fmt.Errorf("scan: %w", err)
+		}
+		result[sessionID] = count
+	}
+	return result, rows.Err()
 }
 
 func (r *PgAttemptRepository) SetKicked(ctx context.Context, attemptID uuid.UUID) error {

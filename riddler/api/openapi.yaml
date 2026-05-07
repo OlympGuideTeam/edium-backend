@@ -709,6 +709,49 @@ components:
           items:
             $ref: "#/components/schemas/LiveResultsTeacherAttempt"
 
+    AnswerOptionRequest:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+          example: "Париж"
+        is_correct:
+          type: boolean
+          example: true
+
+    AddQuestionRequest:
+      type: object
+      required: [type, text, answer_options]
+      properties:
+        type:
+          type: string
+          enum: [single_choice, multiple_choice, with_given_answer, with_free_answer, drag, connection]
+          example: "single_choice"
+        text:
+          type: string
+          example: "Какая столица Франции?"
+        image_id:
+          type: string
+          format: uuid
+          nullable: true
+        metadata:
+          type: object
+          nullable: true
+          description: |
+            Зависит от типа вопроса:
+            - with_given_answer: `{"correct_answers": ["Paris", "paris"]}`
+            - drag: `{"correct_order": ["B", "A", "C"]}`
+            - connection: `{"left": ["A","B"], "right": ["1","2"], "correct_pairs": {"A":"1","B":"2"}}`
+        max_score:
+          type: integer
+          nullable: true
+          example: 1
+        answer_options:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnswerOptionRequest"
+
   responses:
     BadRequest:
       description: Некорректный запрос
@@ -1332,6 +1375,35 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+
+  /sessions/{session_id}/finish:
+    post:
+      tags: [Sessions]
+      summary: Завершить тестовую сессию курса
+      operationId: finishTestCourseSession
+      description: |
+        Принудительно завершает тестовую сессию курса — проставляет статус `finished`.
+        Доступно только автору сессии.
+        Активные попытки будут завершены воркером по истечении их таймера.
+        **Условия:**
+        - сессия принадлежит учителю
+        - `source = course`, `mode = test`
+        - статус не `finished`
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Сессия завершена
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
 
   /sessions/{session_id}:
     delete:

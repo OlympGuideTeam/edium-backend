@@ -73,10 +73,16 @@ func (s *Service) finishAttempt(ctx context.Context, attempt *domain.Attempt) er
 		}
 
 		grade := computeGrade(totalScore, session.MaxScore)
-		if err := s.attempts.Publish(ctx, attempt.ID, totalScore, grade); err != nil {
-			return err
+		if quiz.Source == domain.QuizSourceCourse {
+			if err := s.attempts.SetCompleted(ctx, attempt.ID, totalScore, grade); err != nil {
+				return err
+			}
+			s.scheduleAttemptScored(ctx, attempt, totalScore, float64(session.MaxScore), quiz.AuthorID, domain.FinalSourceAuto)
+		} else {
+			if err := s.attempts.Publish(ctx, attempt.ID, totalScore, grade); err != nil {
+				return err
+			}
 		}
-		s.scheduleAttemptScored(ctx, attempt, totalScore, float64(session.MaxScore), quiz.AuthorID, domain.FinalSourceAuto)
 		return nil
 	})
 }
