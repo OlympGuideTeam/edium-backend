@@ -69,7 +69,7 @@ func (c *AttemptScoredConsumer) handle(ctx context.Context, data []byte) error {
 		Title:  "Результаты готовы",
 		Body:   body,
 		Data: map[string]string{
-			"route": "/test/" + msg.SessionID.String() + "/results",
+			"route": "/test/" + msg.AttemptID.String() + "/review",
 			"role":  "student",
 		},
 	})

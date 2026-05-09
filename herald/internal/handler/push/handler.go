@@ -24,6 +24,7 @@ func (h *Handler) Register(rg *gin.RouterGroup) {
 	rg.POST("/devices", h.registerDevice)
 	rg.DELETE("/devices/:token", h.deleteDevice)
 	rg.GET("/notifications", h.listNotifications)
+	rg.GET("/notifications/count", h.countUnread)
 	rg.PATCH("/notifications/:id/read", h.markRead)
 }
 
@@ -104,6 +105,23 @@ func (h *Handler) listNotifications(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
+}
+
+func (h *Handler) countUnread(c *gin.Context) {
+	userID, ok := middleware.UserIDFromContext(c.Request.Context())
+	if !ok {
+		httpx.WriteError(c, apperr.ErrUnauthorized)
+		return
+	}
+
+	count, err := h.service.CountUnread(c.Request.Context(), userID)
+	if err != nil {
+		slog.ErrorContext(c.Request.Context(), "push-handler: CountUnread", "err", err)
+		httpx.WriteError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"count": count})
 }
 
 func (h *Handler) markRead(c *gin.Context) {
