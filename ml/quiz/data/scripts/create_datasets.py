@@ -1,6 +1,5 @@
 import json
 import os
-import random
 import re
 import time
 
@@ -10,7 +9,59 @@ API_KEY = ""
 URL = "https://api.deepseek.com/v1/chat/completions"
 
 CACHE_FILE = "cache.json"
-PROGRESS_FILE = "progress.json"  # Файл для сохранения прогресса
+PROGRESS_FILE = "progress.json"
+
+# Промпты синхронизированы с sphinx/app/pipeline.py
+EXTRACTION_SYSTEM = """\
+Извлеки 5-15 ключевых фактов из текста.
+
+Формат — строгий JSON-массив:
+[
+  {"question": "...", "answer": "...", "type": "person | date | term | number | location | event | definition | process"}
+]
+
+ЖЕСТКИЕ ПРАВИЛА:
+1. Только факты из текста.
+2. Ответ (answer) должен быть УЛЬТРАКОРОТКИМ: максимум 1-3 слова. Это должно быть конкретное имя, год, место, число или термин.
+3. НИКАКИХ предложений, описаний и причастных оборотов в answer.
+   - ПЛОХО: "На территории, где находились хижины строителей"
+   - ХОРОШО: "Возле Луксора"
+   - ПЛОХО: "Золотая посмертная маска властелина Египта"
+   - ХОРОШО: "Золотая маска"
+4. Формулируй вопрос (question) так, чтобы на него можно было ответить одним-двумя словами.
+5. Используй русский язык.
+6. Выведи ТОЛЬКО валидный JSON, без вступительных слов и без разметки ```json."""
+
+GENERATION_SYSTEM = """\
+Создай образовательный квиз по фактам.
+
+Формат — строгий JSON:
+{
+  "questions": [
+    {"type": "single_choice", "question": "строка", "answer": "строка", "options": ["строка", "строка", "строка", "строка"]},
+    {"type": "multiple_choice", "question": "строка", "answer": ["строка", "строка"], "options": ["строка", "строка", "строка", "строка", "строка"]},
+    {"type": "short_answer", "question": "строка", "answer": "строка"}
+  ]
+}
+
+ЖЕСТКИЕ ПРАВИЛА (ШТРАФ ЗА НАРУШЕНИЕ):
+1. Сгенерируй РОВНО 6-8 вопросов. Не меньше 6, не больше 8.
+2. ОБЯЗАТЕЛЬНОЕ РАСПРЕДЕЛЕНИЕ ТИПОВ:
+   - single_choice: МИНИМУМ 3 вопроса (самый частый тип)
+   - multiple_choice: МИНИМУМ 1 вопрос
+   - short_answer: НЕ БОЛЕЕ 2 вопросов (редкий тип — только для имён, дат, терминов)
+   Пример допустимого распределения: 4 single_choice + 2 multiple_choice + 2 short_answer.
+   ЗАПРЕЩЕНО: более 2 short_answer подряд или более 2 short_answer всего.
+3. Для short_answer: "answer" — 1-3 слова (имя, дата, термин). ЗАПРЕЩЕНЫ предложения. Если факт сложнее — делай single_choice.
+4. Для single_choice: "answer" должен БУКВА В БУКВУ совпадать с одним из элементов "options".
+5. Для multiple_choice:
+   - "answer" — ровно 2 или 3 элемента.
+   - Каждый элемент "answer" должен БУКВА В БУКВУ совпадать с элементом из "options".
+6. Варианты ответов "options" — правдоподобные, без явных подсказок.
+7. Используй русский язык.
+8. Верни ТОЛЬКО валидный JSON, начинающийся с символа {, без маркдауна и комментариев."""
+
+MAX_SHORT_ANSWER = 2  # не более 2 short_answer из 8 вопросов
 
 # CACHE
 
@@ -27,13 +78,11 @@ def save_cache():
 
 
 def save_progress(processed_ids):
-    """Сохраняет список обработанных ID"""
     with open(PROGRESS_FILE, "w", encoding="utf-8") as f:
-        json.dump({"processed_ids": processed_ids}, f, ensure_ascii=False)
+        json.dump({"processed_ids": list(processed_ids)}, f, ensure_ascii=False)
 
 
 def load_progress():
-    """Загружает список обработанных ID"""
     if os.path.exists(PROGRESS_FILE):
         with open(PROGRESS_FILE, encoding="utf-8") as f:
             data = json.load(f)
@@ -41,24 +90,25 @@ def load_progress():
     return set()
 
 
-def cached_call(prompt, temperature=0.3):
-    key = f"{temperature}:{prompt}"
+def _cache_key(messages, temperature):
+    return f"{temperature}:{json.dumps(messages, ensure_ascii=False)}"
 
+
+def cached_call(messages, temperature=0.3):
+    key = _cache_key(messages, temperature)
     if key in CACHE:
         return CACHE[key]
-
-    result = call_deepseek(prompt, temperature)
-
+    result = call_deepseek(messages, temperature)
     if result:
         CACHE[key] = result
-
     return result
 
 
 # API
 
 
-def call_deepseek(prompt, temperature=0.3, retries=3):
+def call_deepseek(messages, temperature=0.3, retries=3):
+    """messages — список {"role": ..., "content": ...}"""
     for _ in range(retries):
         try:
             r = requests.post(
@@ -66,7 +116,7 @@ def call_deepseek(prompt, temperature=0.3, retries=3):
                 headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"},
                 json={
                     "model": "deepseek-chat",
-                    "messages": [{"role": "user", "content": prompt}],
+                    "messages": messages,
                     "temperature": temperature,
                 },
                 timeout=60,
@@ -79,21 +129,6 @@ def call_deepseek(prompt, temperature=0.3, retries=3):
     return None
 
 
-def best_of_n(prompt, n=3, temperature=0.5):
-    results = []
-
-    for _ in range(n):
-        res = cached_call(prompt, temperature)
-        if res:
-            results.append(res)
-
-    if not results:
-        return None
-
-    # простая эвристика — самый длинный ответ
-    return max(results, key=len)
-
-
 def safe_json_load(s):
     try:
         return json.loads(s)
@@ -103,212 +138,120 @@ def safe_json_load(s):
 
 def clean_json_text(text):
     text = text.strip()
-
-    # убрать ```json ... ```
     if text.startswith("```"):
         text = text.split("```")[1]
         text = text.replace("json", "", 1).strip()
-
     return text
 
 
 def extract_json_array(text):
-    """Пытается извлечь JSON массив из текста"""
     text = text.strip()
-
-    # Сначала пробуем найти массив в тексте
     match = re.search(r"\[.*]", text, re.DOTALL)
     if match:
         try:
             return json.loads(match.group())
         except json.JSONDecodeError:
             pass
-
-    # Если не нашли, пробуем распарсить весь текст
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
-
-    # Пробуем найти массивы, которые могут быть разделены переносами строк
-    lines = text.split("\n")
-    for line in lines:
-        line = line.strip()
-        if line.startswith("[") and line.endswith("]"):
-            try:
-                return json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
     return None
 
 
 # PROMPTS
 
 
-def prompt_facts(text):
-    return f"""
-{text}
-
-Извлеки 5-15 фактов.
-
-Формат JSON:
-[
-  {{
-    "question": "...",
-    "answer": "...",
-    "type": "person | date | term | number | location | event | definition | process"
-  }}
-]
-
-Правила:
-- только факты из текста
-- короткие ответы
-- без объяснений
-"""
+def messages_facts(text):
+    return [
+        {"role": "system", "content": EXTRACTION_SYSTEM},
+        {"role": "user", "content": text},
+    ]
 
 
-def prompt_quiz(facts):
-    return f"""
-Факты:
-{json.dumps(facts, ensure_ascii=False)}
-
-Создай квиз.
-
-ТРЕБОВАНИЯ:
-- 5-10 вопросов
-- используй типы (необязательно все):
-  - single_choice
-  - multiple_choice
-  - short_answer
-
-СТРОГИЙ ФОРМАТ JSON (без комментариев, без markdown):
-
-{{
-  "questions": [
-    {{
-      "type": "single_choice",
-      "question": "строка",
-      "answer": "строка"
-    }},
-    {{
-      "type": "multiple_choice",
-      "question": "строка",
-      "answer": ["строка", "строка"]
-    }},
-    {{
-      "type": "short_answer",
-      "question": "строка",
-      "answer": "строка"
-    }}
-  ]
-}}
-
-ПРАВИЛА ДЛЯ MULTIPLE_CHOICE:
-- answer должен быть МАССИВОМ из 2-3 правильных ответов
-- Каждый правильный ответ - ЭТО ЦЕЛАЯ ФРАЗА, а не её часть
-- НЕ разбивай один правильный ответ на несколько элементов массива
-- Пример ХОРОШЕГО ответа: ["Многократное совпадение во времени условного и безусловного раздражителя", "условный раздражитель должен предшествовать безусловному"]
-- Пример ПЛОХОГО ответа: ["Многократное совпадение", "во времени условного и безусловного раздражителя"] (это одна мысль, разбитая на части)
-- НЕ добавляй точку в конце каждого ответа
-
-ЖЁСТКИЕ ПРАВИЛА:
-- НЕ используй поля: text, correct_answer, id, options
-- ТОЛЬКО: type, question, answer (для multiple_choice answer - массив строк)
-- JSON должен начинаться с {{ и заканчиваться }}
-- без ```json
-- answer должен быть точным фактом из предоставленных данных
-- не добавляй лишний текст
-- Для short_answer ответ должен быть кратким (1-5 слов)
-
-Верни ТОЛЬКО JSON.
-"""
-
-
-def prompt_distractors(answer, text):
-    return f"""
-Контекст:
-{text}
-
-Правильный ответ: "{answer}"
-
-Сгенерируй 3 неправильных, но правдоподобных ответа на основе контекста.
-Эти ответы должны быть:
-- Правдоподобными (могут встретиться в теме)
-- Но неправильными с точки зрения фактов
-- Краткими (1-5 слов)
-- Разными по смыслу
-
-ВАЖНО: Верни ТОЛЬКО JSON массив из 3 строк.
-НЕ добавляй никакой текст до или после массива.
-НЕ используй markdown форматирование.
-
-Пример правильного ответа:
-["неправильный ответ 1", "неправильный ответ 2", "неправильный ответ 3"]
-
-Твой ответ (только JSON):
-"""
+def messages_quiz(facts):
+    return [
+        {"role": "system", "content": GENERATION_SYSTEM},
+        {"role": "user", "content": f"Факты:\n{json.dumps(facts, ensure_ascii=False)}"},
+    ]
 
 
 # VALIDATION
 
 
 def validate_quiz(quiz):
-    """Возвращает список валидных вопросов или пустой список"""
+    """Возвращает список валидных вопросов, соответствующих sphinx-схеме."""
     if not isinstance(quiz, dict) or "questions" not in quiz:
         return []
 
     valid = []
-
     for q in quiz["questions"]:
         if "type" not in q or "question" not in q or "answer" not in q:
             continue
 
         t = q["type"]
 
-        # Проверка для multiple_choice - answer должен быть списком
-        if t == "multiple_choice":
-            if not isinstance(q["answer"], list) or len(q["answer"]) < 1:
-                continue
-            # Преобразуем в список строк
-            q["answer"] = [str(a) for a in q["answer"]]
-
-        # Проверка для остальных типов - answer должен быть строкой
-        elif t in ["single_choice", "short_answer"]:
+        if t == "single_choice":
             if not isinstance(q["answer"], str):
                 continue
-            q["answer"] = str(q["answer"])
+            options = q.get("options")
+            if not isinstance(options, list) or len(options) < 3:
+                continue
+            if q["answer"] not in options:
+                continue
+
+        elif t == "multiple_choice":
+            if not isinstance(q["answer"], list) or len(q["answer"]) < 2:
+                continue
+            options = q.get("options")
+            if not isinstance(options, list) or len(options) < 3:
+                continue
+            if not all(a in options for a in q["answer"]):
+                continue
+            q["answer"] = [str(a) for a in q["answer"]]
+
+        elif t == "short_answer":
+            if not isinstance(q["answer"], str):
+                continue
+
         else:
             continue
 
         valid.append(q)
 
-    return valid
+    # Ограничение: не более MAX_SHORT_ANSWER вопросов с письменным ответом
+    sa_count = 0
+    filtered = []
+    for q in valid:
+        if q["type"] == "short_answer":
+            sa_count += 1
+            if sa_count > MAX_SHORT_ANSWER:
+                continue
+        filtered.append(q)
+
+    return filtered
 
 
 def normalize_question(q):
     t = q["type"].lower()
-
     if "single" in t:
         q["type"] = "single_choice"
     elif "multiple" in t:
         q["type"] = "multiple_choice"
     else:
         q["type"] = "short_answer"
-
     return q
 
 
 def generate_quiz_with_retry(facts, max_retries=3):
-    """Генерирует квиз с повторными попытками при пустом результате"""
     for attempt in range(max_retries):
-        quiz_raw = best_of_n(prompt_quiz(facts), n=1)
-        if not quiz_raw:
+        raw = cached_call(messages_quiz(facts), temperature=0.5)
+        if not raw:
             print(f"  Attempt {attempt + 1}: No response from API")
             continue
 
-        quiz_raw = clean_json_text(quiz_raw)
-        quiz = safe_json_load(quiz_raw)
+        raw = clean_json_text(raw)
+        quiz = safe_json_load(raw)
 
         if not quiz:
             print(f"  Attempt {attempt + 1}: Failed to parse JSON")
@@ -316,93 +259,17 @@ def generate_quiz_with_retry(facts, max_retries=3):
 
         questions = validate_quiz(quiz)
 
-        if len(questions) >= 3:
-            print(f"Generated valid quiz with {len(questions)} questions")
-            return questions
-        else:
-            print(f"  Attempt {attempt + 1}: Quiz validation failed ({len(questions)} valid questions)")
+        if len(questions) >= 4:
+            # Проверяем минимальное распределение типов
+            types = {q["type"] for q in questions}
+            sc_count = sum(1 for q in questions if q["type"] == "single_choice")
+            if "single_choice" in types and sc_count >= 2 and len(types) >= 2:
+                print(f"  Generated valid quiz with {len(questions)} questions")
+                return questions
+
+        print(f"  Attempt {attempt + 1}: Quiz validation failed ({len(questions)} valid questions)")
 
     print(f"  ✗ Failed to generate valid quiz after {max_retries} attempts")
-    return []
-
-
-# DISTRACTORS
-
-
-def generate_distractors(answer, text):
-    """Генерирует дистракторы для ответа"""
-    # Пробуем сгенерировать дистракторы несколько раз
-    for attempt in range(3):
-        res = best_of_n(prompt_distractors(answer, text), n=1, temperature=0.8)
-        if not res:
-            print(f"      Attempt {attempt + 1}: No response")
-            continue
-
-        # Очищаем текст от markdown и лишних символов
-        res = clean_json_text(res)
-
-        # Удаляем возможные обратные кавычки и пробелы
-        res = res.strip()
-        if res.startswith('"') and res.endswith('"'):
-            # Если ответ в кавычках, пробуем распарсить как JSON строку
-            try:
-                res = json.loads(res)
-            except json.JSONDecodeError:
-                pass
-
-        # Пробуем извлечь JSON массив
-        distractors = extract_json_array(res)
-
-        if isinstance(distractors, list) and len(distractors) > 0:
-            # Очищаем дистракторы
-            distractors = [str(d).strip() for d in distractors if d and str(d).strip()]
-            # Убираем дубликаты и правильный ответ
-            distractors = list(set(distractors) - {answer})
-
-            if len(distractors) >= 3:
-                return distractors[:3]
-            elif len(distractors) > 0:
-                print(f"      Generated {len(distractors)} distractors, need 3")
-                continue
-            else:
-                print(f"      Attempt {attempt + 1}: Empty or duplicate distractors")
-                continue
-        else:
-            print(f"      Attempt {attempt + 1}: Failed to parse JSON array")
-            # Пробуем другой подход - если модель вернула строки через запятую
-            if "," in res and not res.startswith("["):
-                parts = [p.strip().strip('"') for p in res.split(",")]
-                if len(parts) >= 3:
-                    print(f"      Found comma-separated values: {parts[:3]}")
-                    return parts[:3]
-            continue
-
-    print("    ✗ Failed to generate distractors")
-    return []
-
-
-def build_options(answer, distractors):
-    """Собирает опции из правильного ответа и дистракторов"""
-    # Для single_choice
-    if isinstance(answer, str):
-        options = [answer] + distractors
-        # Если дистракторов меньше 3, добавляем заглушки
-        while len(options) < 4:
-            options.append(f"Вариант {len(options)}")
-        random.shuffle(options)
-        return options
-
-    # Для multiple_choice (answer - список)
-    elif isinstance(answer, list):
-        all_options = answer + distractors
-        # Убираем дубликаты
-        all_options = list(set(all_options))
-        # Если мало опций, добавляем заглушки
-        while len(all_options) < 4:
-            all_options.append(f"Вариант {len(all_options)}")
-        random.shuffle(all_options)
-        return all_options
-
     return []
 
 
@@ -412,11 +279,9 @@ def build_options(answer, distractors):
 def is_good_sample(facts, questions):
     if len(facts) < 3:
         return False
-
-    if len(questions) < 3:
+    if len(questions) < 4:
         return False
-
-    types = set(q["type"] for q in questions)
+    types = {q["type"] for q in questions}
     return len(types) >= 2
 
 
@@ -432,7 +297,6 @@ def log_error(msg):
 
 
 def process_file(input_path, dataset_out, lora_out, start=0):
-    # Загружаем прогресс
     processed_ids = load_progress()
     print(f"Already processed {len(processed_ids)} items")
 
@@ -441,31 +305,28 @@ def process_file(input_path, dataset_out, lora_out, start=0):
 
     total = len(lines)
 
-    # Открываем файлы в режиме добавления
     with open(dataset_out, "a", encoding="utf-8") as dataset_file, open(lora_out, "a", encoding="utf-8") as lora_file:
         for i, line in enumerate(lines[start:], start=start):
             data = json.loads(line)
             item_id = data["id"]
 
-            # Пропускаем уже обработанные
             if item_id in processed_ids:
                 print(f"\n[{i + 1}/{total}] Skipping {item_id} (already processed)")
                 continue
 
             text = data["text"]
-
             print(f"\n[{i + 1}/{total}] Processing {item_id}")
 
             try:
                 # === FACTS ===
                 print("  Extracting facts...")
-                facts_raw = best_of_n(prompt_facts(text), n=1)
+                facts_raw = cached_call(messages_facts(text), temperature=0.3)
                 if not facts_raw:
                     log_error(f"{item_id} no facts response")
                     continue
 
                 facts_raw = clean_json_text(facts_raw)
-                facts = safe_json_load(facts_raw)
+                facts = extract_json_array(facts_raw) or safe_json_load(facts_raw)
 
                 if not facts or len(facts) < 3:
                     log_error(f"{item_id} bad facts (got {len(facts) if facts else 0})")
@@ -473,7 +334,7 @@ def process_file(input_path, dataset_out, lora_out, start=0):
 
                 print(f"  ✓ Extracted {len(facts)} facts")
 
-                # === QUIZ WITH RETRY ===
+                # === QUIZ (options генерируются inline) ===
                 print("  Generating quiz...")
                 questions = generate_quiz_with_retry(facts, max_retries=3)
 
@@ -481,31 +342,8 @@ def process_file(input_path, dataset_out, lora_out, start=0):
                     log_error(f"{item_id} bad quiz after retries")
                     continue
 
-                # === ADD DISTRACTORS ONLY FOR CHOICE TYPES ===
-                print("  Adding distractors...")
-                for idx, q in enumerate(questions):
-                    q = normalize_question(q)
-
-                    # Генерируем дистракторы ТОЛЬКО для choice типов
-                    if q["type"] in ["single_choice", "multiple_choice"]:
-                        # Для multiple_choice answer - это список
-                        if isinstance(q["answer"], list):
-                            # Генерируем дистракторы для каждого правильного ответа?
-                            # Пока генерируем на основе первого
-                            answer_for_distractors = q["answer"][0] if q["answer"] else ""
-                            if answer_for_distractors:
-                                distractors = generate_distractors(answer_for_distractors, text)
-                                q["options"] = build_options(q["answer"], distractors)
-                            else:
-                                q["options"] = q["answer"]
-                        else:
-                            distractors = generate_distractors(q["answer"], text)
-                            q["options"] = build_options(q["answer"], distractors)
-
-                        print(f"    Question {idx + 1} ({q['type']}): options count = {len(q['options'])}")
-                    else:
-                        # Для short_answer не нужны опции
-                        print(f"    Question {idx + 1} ({q['type']}): no options needed")
+                for q in questions:
+                    normalize_question(q)
 
                 if not is_good_sample(facts, questions):
                     log_error(f"{item_id} bad sample (facts: {len(facts)}, questions: {len(questions)})")
@@ -515,27 +353,23 @@ def process_file(input_path, dataset_out, lora_out, start=0):
 
                 # === SAVE DATASET ===
                 dataset_file.write(json.dumps(sample, ensure_ascii=False) + "\n")
-                dataset_file.flush()  # Сразу сохраняем на диск
+                dataset_file.flush()
 
-                # === LORA FORMAT ===
+                # === LORA FORMAT (generation task) ===
                 lora_sample = {
                     "messages": [
-                        {"role": "system", "content": "Ты создаёшь образовательные квизы"},
+                        {"role": "system", "content": GENERATION_SYSTEM},
                         {"role": "user", "content": f"Факты:\n{json.dumps(facts, ensure_ascii=False)}"},
                         {"role": "assistant", "content": json.dumps({"questions": questions}, ensure_ascii=False)},
                     ]
                 }
-
                 lora_file.write(json.dumps(lora_sample, ensure_ascii=False) + "\n")
-                lora_file.flush()  # Сразу сохраняем на диск
+                lora_file.flush()
 
-                # Сохраняем прогресс
                 processed_ids.add(item_id)
-                save_progress(list(processed_ids))
+                save_progress(processed_ids)
+                print(f"  ✓ Saved (total processed: {len(processed_ids)})")
 
-                print(f"  ✓ Successfully saved sample (total processed: {len(processed_ids)})")
-
-                # сохраняем кэш иногда
                 if len(processed_ids) % 10 == 0:
                     save_cache()
 
@@ -547,7 +381,6 @@ def process_file(input_path, dataset_out, lora_out, start=0):
                 import traceback
 
                 traceback.print_exc()
-                # Не прерываем программу, продолжаем со следующим
 
     save_cache()
     print(f"\nProcessing complete! Processed {len(processed_ids)} items")
@@ -560,5 +393,5 @@ if __name__ == "__main__":
         input_path="../foxford_data/texts.jsonl",
         dataset_out="../foxford_data/dataset.jsonl",
         lora_out="../foxford_data/lora_dataset.jsonl",
-        start=0,  # можно менять для продолжения
+        start=0,
     )

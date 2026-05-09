@@ -11,9 +11,14 @@ def clean_text(text):
     return text.strip()
 
 
+MIN_LENGTH = 1000
+MAX_LENGTH = 4000
+
+
 def collect_texts(root_dir, output_file):
     root_path = Path(root_dir)
     processed_count = 0
+    skipped_count = 0
 
     with open(output_file, "w", encoding="utf-8") as out:
         for file_path in root_path.rglob("*.txt"):
@@ -21,25 +26,30 @@ def collect_texts(root_dir, output_file):
                 with open(file_path, encoding="utf-8") as f:
                     text = f.read().strip()
 
-                # Очищаем текст
                 cleaned_text = clean_text(text)
+                length = len(cleaned_text)
 
-                # Создаём уникальный ID
+                if length < MIN_LENGTH or length > MAX_LENGTH:
+                    skipped_count += 1
+                    continue
+
                 relative_path = file_path.relative_to(root_path)
                 file_id = str(relative_path).replace(os.sep, "_")
 
                 record = {
                     "id": file_id,
                     "text": cleaned_text,
-                    "length": len(cleaned_text),
+                    "length": length,
                 }
 
                 out.write(json.dumps(record, ensure_ascii=False) + "\n")
                 processed_count += 1
 
-    return processed_count
+    return processed_count, skipped_count
 
 
 if __name__ == "__main__":
-    processed = collect_texts("../foxford_data", "../foxford_data/texts.jsonl")
-    print(f"Итог: собрано {processed} текстовых файлов")
+    processed, skipped = collect_texts("../foxford_data", "../foxford_data/texts.jsonl")
+    print(
+        f"Итог: собрано {processed} текстовых файлов, пропущено {skipped} (вне диапазона {MIN_LENGTH}–{MAX_LENGTH} симв.)"
+    )
