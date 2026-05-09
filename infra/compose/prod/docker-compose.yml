@@ -366,11 +366,10 @@ services:
       STUNNEL_SERVICE: nats
       STUNNEL_ACCEPT: "4223"
       STUNNEL_CONNECT: "nats:4222"
-      STUNNEL_CRT: /etc/stunnel/tls.crt
-      STUNNEL_KEY: /etc/stunnel/tls.key
+      STUNNEL_CRT: /tls/tls.crt
+      STUNNEL_KEY: /tls/tls.key
     volumes:
-      - ./nats/tls.crt:/etc/stunnel/tls.crt:ro
-      - ./nats/tls.key:/etc/stunnel/tls.key:ro
+      - ./nats:/tls:ro
     depends_on:
       - nats
     deploy:
