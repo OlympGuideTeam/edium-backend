@@ -32,11 +32,13 @@ type pushFCMDeviceRepo interface {
 
 type pushNotificationRepo interface {
 	Save(ctx context.Context, n *domain.Notification) error
+	CountUnread(ctx context.Context, userID uuid.UUID) (int, error)
 }
 
 // PushSender определён в service/push/ports.go и передаётся через интерфейс.
 type pushSender interface {
 	Send(ctx context.Context, tokens []string, title, body string, data map[string]string) (invalidTokens []string, err error)
+	SendBadge(ctx context.Context, tokens []string, badge int) (invalidTokens []string, err error)
 }
 
 type PushNotificationProcessor struct {
@@ -154,6 +156,23 @@ func (w *PushNotificationProcessor) processTask(ctx context.Context, t domain.Ta
 	if len(invalid) > 0 {
 		if delErr := w.devices.DeleteTokens(ctx, invalid); delErr != nil {
 			slog.ErrorContext(ctx, "push-notification-processor: не удалось удалить невалидные токены", "err", delErr)
+		}
+	}
+
+	unread, err := w.notifications.CountUnread(ctx, payload.UserID)
+	if err != nil {
+		slog.ErrorContext(ctx, "push-notification-processor: не удалось посчитать unread", "user_id", payload.UserID, "err", err)
+	} else {
+		badgeTokens := make([]string, len(devices))
+		for i, d := range devices {
+			badgeTokens[i] = d.FCMToken
+		}
+		if invalidBadge, badgeErr := w.sender.SendBadge(ctx, badgeTokens, unread); badgeErr != nil {
+			slog.ErrorContext(ctx, "push-notification-processor: не удалось отправить badge", "user_id", payload.UserID, "err", badgeErr)
+		} else if len(invalidBadge) > 0 {
+			if delErr := w.devices.DeleteTokens(ctx, invalidBadge); delErr != nil {
+				slog.ErrorContext(ctx, "push-notification-processor: не удалось удалить невалидные токены badge", "err", delErr)
+			}
 		}
 	}
 
