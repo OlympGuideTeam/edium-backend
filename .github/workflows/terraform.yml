@@ -5,11 +5,8 @@ on:
     branches: [main]
     paths:
       - 'infra/terraform/**'
-  push:
-    branches: [main]
-    paths:
-      - 'infra/terraform/**'
 
+# Apply выполняется в deploy-test.yml (после сборки образов, до деплоя)
 permissions:
   contents: read
   pull-requests: write
@@ -105,13 +102,6 @@ jobs:
               body: output.substring(0, 65536)
             });
 
-      - name: Terraform apply
-        if: github.event_name == 'push' && steps.plan.outcome == 'success'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.TF_S3_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_S3_SECRET_KEY }}
-        run: terraform apply -auto-approve tfplan
-
       - name: Очистка
         if: always()
         run: rm -f key.json terraform.tfvars tfplan
@@ -184,13 +174,6 @@ jobs:
               repo: context.repo.repo,
               body: output.substring(0, 65536)
             });
-
-      - name: Terraform apply
-        if: github.event_name == 'push' && steps.plan.outcome == 'success'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.TF_S3_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_S3_SECRET_KEY }}
-        run: terraform apply -auto-approve tfplan
 
       - name: Очистка
         if: always()
