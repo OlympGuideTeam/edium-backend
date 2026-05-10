@@ -32,10 +32,12 @@ type TelegramConfig struct {
 	BotToken string `env:"TELEGRAM_BOT_TOKEN,required"`
 }
 
-// AllowedPhones — белый список телефонов, на которые разрешена отправка.
+// AllowedPhones — белый список телефонов, на которые разрешена отправка (пусто = без ограничения).
+// BlockedPhones — номера, на которые SMS не отправляются; проверяется после белого списка.
 type SMSConfig struct {
 	APIKey        string   `env:"SMS_API_KEY"`
 	AllowedPhones []string `env:"SMS_ALLOWED_PHONES" envSeparator:","`
+	BlockedPhones []string `env:"SMS_BLOCKED_PHONES" envSeparator:","`
 }
 
 type OTelConfig struct {

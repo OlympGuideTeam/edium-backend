@@ -83,9 +83,9 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	var smsSender worker.SMSSender
 	var sh *smshandler.Handler
 	if cfg.SMS.APIKey != "" {
-		smsSender = smsinf.NewSender(smsTaskRepo, cfg.SMS.AllowedPhones)
+		smsSender = smsinf.NewSender(smsTaskRepo, cfg.SMS.AllowedPhones, cfg.SMS.BlockedPhones)
 		sh = smshandler.NewHandler(smsTaskRepo, cfg.SMS.APIKey)
-		slog.Info("sms-шлюз: активирован", "allowed_phones", cfg.SMS.AllowedPhones)
+		slog.Info("sms-шлюз: активирован", "allowed_phones", cfg.SMS.AllowedPhones, "blocked_phones", cfg.SMS.BlockedPhones)
 	}
 
 	// Firebase: опционален — если credentials не заданы, push-отправка будет пропущена.
