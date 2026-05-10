@@ -15,6 +15,7 @@ on:
       - "infra/grafana/**"
       - "infra/alertmanager/**"
       - "infra/prometheus/**"
+      - "e2e/**"
   workflow_dispatch:
 
 permissions:
@@ -58,312 +59,6 @@ jobs:
               - 'louvre/**'
               - 'infra/compose/test/docker-compose.yml'
               - 'infra/compose/prod/docker-compose.yml'
-
-  # ========================
-  # Go — Doorman
-  # ========================
-
-  lint-doorman:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-      - uses: golangci/golangci-lint-action@v7
-        with:
-          working-directory: doorman
-          version: v2.11.4
-
-  test-doorman:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    needs: lint-doorman
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: doorman_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:8
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-      - name: Запуск тестов
-        working-directory: doorman
-        run: go test -race -coverprofile=coverage.out ./...
-        env:
-          POSTGRES_HOST: localhost
-          POSTGRES_PORT: "5432"
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: doorman_test
-          REDIS_HOST: localhost
-          REDIS_PORT: "6379"
-          REDIS_PASSWORD: ""
-          JWT_RSA_PRIVATE_KEY: ${{ secrets.TEST_JWT_RSA_PRIVATE_KEY }}
-      - name: Загрузка покрытия
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-doorman
-          path: doorman/coverage.out
-
-  # ========================
-  # Go — Herald
-  # ========================
-
-  lint-herald:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-      - uses: golangci/golangci-lint-action@v7
-        with:
-          working-directory: herald
-          version: v2.11.4
-
-  test-herald:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    needs: lint-herald
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: herald_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-      - name: Запуск тестов
-        working-directory: herald
-        run: go test -race -coverprofile=coverage.out ./...
-        env:
-          POSTGRES_DSN: "postgres://test:test@localhost:5432/herald_test?sslmode=disable"
-          TELEGRAM_BOT_TOKEN: "fake-token-for-tests"
-          VK_GROUP_TOKEN: "fake-token-for-tests"
-          VK_GROUP_ID: "0"
-          SMS_API_KEY: "fake-key-for-tests"
-          SMS_ALLOWED_PHONES: ""
-          SMS_BLOCKED_PHONES: ""
-          NATS_URL: ""
-      - name: Загрузка покрытия
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-herald
-          path: herald/coverage.out
-
-  # ========================
-  # Go — Charon
-  # ========================
-
-  lint-charon:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-      - uses: golangci/golangci-lint-action@v7
-        with:
-          working-directory: charon
-          version: v2.11.4
-
-  test-charon:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    needs: lint-charon
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: charon_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:8
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-      - name: Run tests
-        working-directory: charon
-        run: go test -race -coverprofile=coverage.out ./...
-        env:
-          POSTGRES_DSN: "postgres://test:test@localhost:5432/charon_test?sslmode=disable"
-          REDIS_URL: "redis://localhost:6379/0"
-          DEEPSEEK_API_KEY: "fake-key-for-tests"
-          NATS_URL: ""
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-charon
-          path: charon/coverage.out
-
-  # ========================
-  # Go — Caesar
-  # ========================
-
-  lint-caesar:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-      - uses: golangci/golangci-lint-action@v7
-        with:
-          working-directory: caesar
-          version: v2.11.4
-
-  test-caesar:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    needs: lint-caesar
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: caesar_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-      - name: Запуск тестов
-        working-directory: caesar
-        run: go test -race -coverprofile=coverage.out ./...
-        env:
-          POSTGRES_DSN: "postgres://test:test@localhost:5432/caesar_test?sslmode=disable"
-      - name: Загрузка покрытия
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-caesar
-          path: caesar/coverage.out
-
-  # ========================
-  # Go — Riddler
-  # ========================
-
-  lint-riddler:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-      - uses: golangci/golangci-lint-action@v7
-        with:
-          working-directory: riddler
-          version: v2.11.4
-
-  test-riddler:
-    # ВРЕМЕННО ОТКЛЮЧЕНО
-    if: false
-    needs: lint-riddler
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: riddler_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-      - name: Запуск тестов
-        working-directory: riddler
-        run: go test -race -coverprofile=coverage.out ./...
-        env:
-          POSTGRES_DSN: "postgres://test:test@localhost:5432/riddler_test?sslmode=disable"
-      - name: Загрузка покрытия
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-riddler
-          path: riddler/coverage.out
 
   # ========================
   # Build и push образов
@@ -512,8 +207,6 @@ jobs:
   # ========================
 
   deploy-test:
-    # ВРЕМЕННО: lint и test отключены, depends только на build-джобах
-    # needs: [test-doorman, test-herald, test-charon, test-caesar, test-riddler, build-doorman, build-herald, build-charon, build-caesar, build-riddler, build-louvre]
     needs: [build-doorman, build-herald, build-charon, build-caesar, build-riddler, build-louvre]
     if: |
       always() &&
@@ -591,7 +284,6 @@ jobs:
             VK_GROUP_ID=${{ secrets.VK_GROUP_ID }}
             SMS_API_KEY=${{ secrets.SMS_API_KEY }}
             SMS_ALLOWED_PHONES=${{ secrets.SMS_ALLOWED_PHONES }}
-            SMS_BLOCKED_PHONES=${{ secrets.SMS_BLOCKED_PHONES }}
             CAESAR_PG_USER=${{ secrets.CAESAR_PG_USER }}
             CAESAR_PG_PWD=${{ secrets.CAESAR_PG_PWD }}
             CAESAR_PG_DB=${{ secrets.CAESAR_PG_DB }}
@@ -692,12 +384,28 @@ jobs:
             echo "Deploy завершён"
 
   # ========================
-  # Deploy на prod VM (ручной запуск)
+  # E2E smoke tests
+  # ========================
+
+  e2e:
+    needs: [deploy-test]
+    if: always() && needs.deploy-test.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Smoke tests
+        run: |
+          chmod +x e2e/smoke.sh
+          e2e/smoke.sh https://test.edium.online
+
+  # ========================
+  # Deploy на prod VM (требует подтверждения)
   # ========================
 
   deploy-prod:
-    needs: [deploy-test]
-    if: always() && needs.deploy-test.result == 'success'
+    needs: [e2e]
+    if: always() && needs.e2e.result == 'success'
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -773,7 +481,6 @@ jobs:
             VK_GROUP_ID=${{ secrets.VK_GROUP_ID }}
             SMS_API_KEY=${{ secrets.SMS_API_KEY }}
             SMS_ALLOWED_PHONES=${{ secrets.SMS_ALLOWED_PHONES }}
-            SMS_BLOCKED_PHONES=${{ secrets.SMS_BLOCKED_PHONES }}
             CAESAR_PG_USER=${{ secrets.CAESAR_PG_USER }}
             CAESAR_PG_PWD=${{ secrets.CAESAR_PG_PWD }}
             CAESAR_PG_DB=${{ secrets.CAESAR_PG_DB }}
