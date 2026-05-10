@@ -61,140 +61,31 @@ jobs:
               - 'infra/compose/prod/docker-compose.yml'
 
   # ========================
-  # Build и push образов
+  # Build и push образов (параллельно)
   # ========================
 
-  build-doorman:
+  build:
     needs: [detect-changes]
-    if: needs.detect-changes.outputs.doorman == 'true'
+    if: github.event_name == 'push' && needs.detect-changes.result == 'success'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [doorman, herald, charon, caesar, riddler, louvre]
     steps:
       - uses: actions/checkout@v4
 
       - name: Авторизация в Container Registry
+        if: needs.detect-changes.outputs[matrix.service] == 'true'
         run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
 
       - name: Build и push
+        if: needs.detect-changes.outputs[matrix.service] == 'true'
         run: |
-          IMAGE=${{ env.REGISTRY }}/edium-doorman
+          IMAGE=${{ env.REGISTRY }}/edium-${{ matrix.service }}
           TAG=main-${GITHUB_SHA::7}
 
-          docker build -t ${IMAGE}:${TAG} doorman/
-          docker push ${IMAGE}:${TAG}
-
-          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
-          docker push ${IMAGE}:latest
-
-          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
-
-  build-herald:
-    needs: [detect-changes]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.herald == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Авторизация в Container Registry
-        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
-
-      - name: Build и push
-        run: |
-          IMAGE=${{ env.REGISTRY }}/edium-herald
-          TAG=main-${GITHUB_SHA::7}
-
-          docker build -t ${IMAGE}:${TAG} herald/
-          docker push ${IMAGE}:${TAG}
-
-          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
-          docker push ${IMAGE}:latest
-
-          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
-
-  build-charon:
-    needs: [detect-changes]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.charon == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Авторизация в Container Registry
-        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
-
-      - name: Build и push
-        run: |
-          IMAGE=${{ env.REGISTRY }}/edium-charon
-          TAG=main-${GITHUB_SHA::7}
-
-          docker build -t ${IMAGE}:${TAG} charon/
-          docker push ${IMAGE}:${TAG}
-
-          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
-          docker push ${IMAGE}:latest
-
-          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
-
-  build-caesar:
-    needs: [detect-changes]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.caesar == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Авторизация в Container Registry
-        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
-
-      - name: Build и push
-        run: |
-          IMAGE=${{ env.REGISTRY }}/edium-caesar
-          TAG=main-${GITHUB_SHA::7}
-
-          docker build -t ${IMAGE}:${TAG} caesar/
-          docker push ${IMAGE}:${TAG}
-
-          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
-          docker push ${IMAGE}:latest
-
-          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
-
-  build-riddler:
-    needs: [detect-changes]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.riddler == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Авторизация в Container Registry
-        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
-
-      - name: Build и push
-        run: |
-          IMAGE=${{ env.REGISTRY }}/edium-riddler
-          TAG=main-${GITHUB_SHA::7}
-
-          docker build -t ${IMAGE}:${TAG} riddler/
-          docker push ${IMAGE}:${TAG}
-
-          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
-          docker push ${IMAGE}:latest
-
-          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
-
-  build-louvre:
-    needs: [detect-changes]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.louvre == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Авторизация в Container Registry
-        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
-
-      - name: Build и push
-        run: |
-          IMAGE=${{ env.REGISTRY }}/edium-louvre
-          TAG=main-${GITHUB_SHA::7}
-
-          docker build -t ${IMAGE}:${TAG} louvre/
+          docker build -t ${IMAGE}:${TAG} ${{ matrix.service }}/
           docker push ${IMAGE}:${TAG}
 
           docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
@@ -207,15 +98,8 @@ jobs:
   # ========================
 
   deploy-test:
-    needs: [build-doorman, build-herald, build-charon, build-caesar, build-riddler, build-louvre]
-    if: |
-      always() &&
-      (needs.build-doorman.result == 'success' || needs.build-doorman.result == 'skipped') &&
-      (needs.build-herald.result == 'success' || needs.build-herald.result == 'skipped') &&
-      (needs.build-charon.result == 'success' || needs.build-charon.result == 'skipped') &&
-      (needs.build-caesar.result == 'success' || needs.build-caesar.result == 'skipped') &&
-      (needs.build-riddler.result == 'success' || needs.build-riddler.result == 'skipped') &&
-      (needs.build-louvre.result == 'success' || needs.build-louvre.result == 'skipped')
+    needs: [build]
+    if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
     runs-on: ubuntu-latest
     environment: test
     steps:
