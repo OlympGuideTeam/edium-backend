@@ -349,13 +349,17 @@ def merge_outputs(out_dir: Path, num_workers: int, dataset_out: Path, lora_out: 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+_DATA_DIR = _SCRIPTS_DIR / "foxford_data"
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", default="../foxford_data/texts.jsonl")
-    parser.add_argument("--out-dir", default="../foxford_data/workers")
-    parser.add_argument("--dataset-out", default="../foxford_data/dataset.jsonl")
-    parser.add_argument("--lora-out", default="../foxford_data/lora_dataset.jsonl")
-    parser.add_argument("--workers", type=int, default=4, help="Число параллельных воркеров")
+    parser.add_argument("--input", default=str(_DATA_DIR / "texts.jsonl"))
+    parser.add_argument("--out-dir", default=str(_DATA_DIR / "workers"))
+    parser.add_argument("--dataset-out", default=str(_DATA_DIR / "dataset.jsonl"))
+    parser.add_argument("--lora-out", default=str(_DATA_DIR / "lora_dataset.jsonl"))
+    parser.add_argument("--workers", type=int, default=6, help="Число параллельных воркеров")
     parser.add_argument("--worker-id", type=int, default=None, help="Запустить только этот воркер (0-based)")
     parser.add_argument("--merge-only", action="store_true", help="Только слить готовые файлы воркеров")
     args = parser.parse_args()
