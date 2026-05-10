@@ -15,6 +15,8 @@ on:
       - "infra/grafana/**"
       - "infra/alertmanager/**"
       - "infra/prometheus/**"
+      - "infra/terraform/modules/**"
+      - "infra/terraform/accounts/platform/**"
       - "e2e/**"
   workflow_dispatch:
 
@@ -23,6 +25,8 @@ permissions:
 
 env:
   REGISTRY: cr.yandex/${{ secrets.YC_REGISTRY_ID }}
+  TF_VERSION: "1.9"
+  YC_MIRROR: "https://terraform-mirror.yandexcloud.net/"
 
 jobs:
   # ========================
@@ -39,6 +43,7 @@ jobs:
       caesar: ${{ steps.filter.outputs.caesar }}
       riddler: ${{ steps.filter.outputs.riddler }}
       louvre: ${{ steps.filter.outputs.louvre }}
+      terraform_platform: ${{ steps.filter.outputs.terraform_platform }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -59,38 +64,229 @@ jobs:
               - 'louvre/**'
               - 'infra/compose/test/docker-compose.yml'
               - 'infra/compose/prod/docker-compose.yml'
+            terraform_platform:
+              - 'infra/terraform/modules/**'
+              - 'infra/terraform/accounts/platform/**'
 
   # ========================
-  # Build и push образов (параллельно)
+  # Terraform — Platform
   # ========================
 
-  build:
+  terraform-plan:
     needs: [detect-changes]
-    if: github.event_name == 'push' && needs.detect-changes.result == 'success'
+    if: needs.detect-changes.outputs.terraform_platform == 'true'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        service: [doorman, herald, charon, caesar, riddler, louvre]
+    defaults:
+      run:
+        working-directory: infra/terraform/accounts/platform
     steps:
       - uses: actions/checkout@v4
 
-      - name: Авторизация в Container Registry
-        if: needs.detect-changes.outputs[matrix.service] == 'true'
-        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
 
-      - name: Build и push
-        if: needs.detect-changes.outputs[matrix.service] == 'true'
+      - name: Настройка YC провайдера
         run: |
-          IMAGE=${{ env.REGISTRY }}/edium-${{ matrix.service }}
+          cat > ~/.terraformrc <<'EOF'
+          provider_installation {
+            network_mirror {
+              url = "${{ env.YC_MIRROR }}"
+              include = ["registry.terraform.io/*/*"]
+            }
+            direct {
+              exclude = ["registry.terraform.io/*/*"]
+            }
+          }
+          EOF
+          echo '${{ secrets.YC_SA_KEY_JSON }}' > key.json
+          echo '${{ secrets.TF_VARS_PLATFORM }}' > terraform.tfvars
+
+      - name: Terraform init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.TF_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_S3_SECRET_KEY }}
+        run: terraform init
+
+      - name: Terraform plan
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.TF_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_S3_SECRET_KEY }}
+        run: terraform plan -no-color -out=tfplan
+
+      - name: Сохранение плана
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-platform
+          path: infra/terraform/accounts/platform/tfplan
+          retention-days: 1
+
+      - name: Очистка
+        if: always()
+        run: rm -f key.json terraform.tfvars
+
+  terraform-apply:
+    needs: [terraform-plan]
+    if: always() && needs.terraform-plan.result == 'success'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform/accounts/platform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Настройка YC провайдера
+        run: |
+          cat > ~/.terraformrc <<'EOF'
+          provider_installation {
+            network_mirror {
+              url = "${{ env.YC_MIRROR }}"
+              include = ["registry.terraform.io/*/*"]
+            }
+            direct {
+              exclude = ["registry.terraform.io/*/*"]
+            }
+          }
+          EOF
+          echo '${{ secrets.YC_SA_KEY_JSON }}' > key.json
+          echo '${{ secrets.TF_VARS_PLATFORM }}' > terraform.tfvars
+
+      - name: Terraform init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.TF_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_S3_SECRET_KEY }}
+        run: terraform init
+
+      - name: Загрузка плана
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-platform
+          path: infra/terraform/accounts/platform
+
+      - name: Terraform apply
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.TF_S3_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_S3_SECRET_KEY }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Очистка
+        if: always()
+        run: rm -f key.json terraform.tfvars tfplan
+
+  # ========================
+  # Build и push образов
+  # ========================
+
+  build-doorman:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.doorman == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-doorman
           TAG=main-${GITHUB_SHA::7}
-
-          docker build -t ${IMAGE}:${TAG} ${{ matrix.service }}/
+          docker build -t ${IMAGE}:${TAG} doorman/
           docker push ${IMAGE}:${TAG}
-
           docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
           docker push ${IMAGE}:latest
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
+  build-herald:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.herald == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-herald
+          TAG=main-${GITHUB_SHA::7}
+          docker build -t ${IMAGE}:${TAG} herald/
+          docker push ${IMAGE}:${TAG}
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  build-charon:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.charon == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-charon
+          TAG=main-${GITHUB_SHA::7}
+          docker build -t ${IMAGE}:${TAG} charon/
+          docker push ${IMAGE}:${TAG}
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  build-caesar:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.caesar == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-caesar
+          TAG=main-${GITHUB_SHA::7}
+          docker build -t ${IMAGE}:${TAG} caesar/
+          docker push ${IMAGE}:${TAG}
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  build-riddler:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.riddler == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-riddler
+          TAG=main-${GITHUB_SHA::7}
+          docker build -t ${IMAGE}:${TAG} riddler/
+          docker push ${IMAGE}:${TAG}
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+          echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  build-louvre:
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.louvre == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
+      - name: Build и push
+        run: |
+          IMAGE=${{ env.REGISTRY }}/edium-louvre
+          TAG=main-${GITHUB_SHA::7}
+          docker build -t ${IMAGE}:${TAG} louvre/
+          docker push ${IMAGE}:${TAG}
+          docker tag ${IMAGE}:${TAG} ${IMAGE}:latest
+          docker push ${IMAGE}:latest
           echo "Образ: ${IMAGE}:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   # ========================
@@ -98,8 +294,23 @@ jobs:
   # ========================
 
   deploy-test:
-    needs: [build]
-    if: always() && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    needs:
+      - build-doorman
+      - build-herald
+      - build-charon
+      - build-caesar
+      - build-riddler
+      - build-louvre
+      - terraform-apply
+    if: |
+      always() &&
+      (needs.build-doorman.result   == 'success' || needs.build-doorman.result   == 'skipped') &&
+      (needs.build-herald.result    == 'success' || needs.build-herald.result    == 'skipped') &&
+      (needs.build-charon.result    == 'success' || needs.build-charon.result    == 'skipped') &&
+      (needs.build-caesar.result    == 'success' || needs.build-caesar.result    == 'skipped') &&
+      (needs.build-riddler.result   == 'success' || needs.build-riddler.result   == 'skipped') &&
+      (needs.build-louvre.result    == 'success' || needs.build-louvre.result    == 'skipped') &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped')
     runs-on: ubuntu-latest
     environment: test
     steps:
@@ -124,7 +335,6 @@ jobs:
           script: |
             set -e
 
-            # Подготовка файлов
             cp /tmp/edium-deploy/infra/compose/test/docker-compose.yml /opt/edium/docker-compose.yml
             cp /tmp/edium-deploy/infra/compose/test/Caddyfile /opt/edium/Caddyfile
             cp /tmp/edium-deploy/infra/compose/test/vector.yaml /opt/edium/vector.yaml
@@ -140,7 +350,6 @@ jobs:
             mkdir -p /opt/edium/prometheus
             cp /tmp/edium-deploy/infra/prometheus/alerts.yml /opt/edium/prometheus/alerts.yml
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar /opt/edium/migrations/riddler /opt/edium/migrations/louvre
-            # Полная синхронизация: простой cp .../* не удаляет на сервере переименованные/удалённые миграции
             for svc in doorman herald charon caesar riddler louvre; do
               find "/opt/edium/migrations/$svc" -mindepth 1 -delete
               cp -r "/tmp/edium-deploy/$svc/migrations/." "/opt/edium/migrations/$svc/"
@@ -150,7 +359,6 @@ jobs:
 
             cd /opt/edium
 
-            # Создание .env из секретов
             cat > .env <<'ENVEOF'
             YC_REGISTRY_ID=${{ secrets.YC_REGISTRY_ID }}
             DOORMAN_PG_USER=${{ secrets.DOORMAN_PG_USER }}
@@ -205,35 +413,28 @@ jobs:
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 
-            # RSA-ключ: многострочный PEM → одна строка с \n
             printf 'JWT_RSA_PRIVATE_KEY=' >> .env
             printf '%s' '${{ secrets.JWT_RSA_PRIVATE_KEY }}' | awk 'NR>1{printf "\\n"}{printf "%s",$0}' >> .env
             echo >> .env
 
-            # Раскрываем переменные в nats-server.conf
             export $(grep -E '^NATS_PASSWORD_' .env | xargs)
             envsubst '$NATS_PASSWORD_DOORMAN $NATS_PASSWORD_HERALD $NATS_PASSWORD_CAESAR $NATS_PASSWORD_CHARON $NATS_PASSWORD_RIDDLER $NATS_PASSWORD_SPHINX' \
               < /opt/edium/nats/nats-server.conf > /tmp/nats-expanded.conf
             mv /tmp/nats-expanded.conf /opt/edium/nats/nats-server.conf
 
-            # Раскрываем переменные в alertmanager.yml
             export $(grep -E '^ALERTMANAGER_' .env | xargs)
             envsubst '$ALERTMANAGER_TG_TOKEN $ALERTMANAGER_TG_CHAT_ID' \
               < /opt/edium/alertmanager/alertmanager.yml > /tmp/alertmanager-expanded.yml
             mv /tmp/alertmanager-expanded.yml /opt/edium/alertmanager/alertmanager.yml
 
-            # Раскрываем переменные в Caddyfile
             export JAEGER_BASIC_AUTH_HASH="$(grep '^JAEGER_BASIC_AUTH_HASH=' .env | cut -d= -f2-)"
             envsubst '$JAEGER_BASIC_AUTH_HASH' \
               < /opt/edium/Caddyfile > /tmp/Caddyfile-expanded
             mv /tmp/Caddyfile-expanded /opt/edium/Caddyfile
 
-            # Авторизация в CR
             echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
 
-            # Обновление и запуск
             docker compose pull
-            # NATS рестартуем до старта приложений — конфиг монтируется как volume
             docker compose up -d nats
             docker compose restart nats
             for i in $(seq 1 15); do nc -z 127.0.0.1 4222 2>/dev/null && break; sleep 1; done
@@ -241,7 +442,6 @@ jobs:
             docker compose restart grafana vector caddy alertmanager
             docker image prune -f
 
-            # Ждём готовности ClickHouse (до 60 сек)
             for i in $(seq 1 30); do
               docker compose exec -T clickhouse clickhouse-client \
                 --user vector --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
@@ -249,47 +449,79 @@ jobs:
               sleep 2
             done
 
-            # Init + миграции ClickHouse (init идемпотентен — CREATE TABLE IF NOT EXISTS)
             docker compose exec -T clickhouse clickhouse-client \
-              --user vector \
-              --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
-              --database logs \
-              --multiquery < /opt/edium/clickhouse/init.sql
+              --user vector --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+              --database logs --multiquery < /opt/edium/clickhouse/init.sql
 
             docker compose exec -T clickhouse clickhouse-client \
-              --user vector \
-              --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
-              --database logs \
-              --multiquery < /opt/edium/clickhouse/migrate.sql
+              --user vector --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+              --database logs --multiquery < /opt/edium/clickhouse/migrate.sql
 
-            # Очистка
             rm -rf /tmp/edium-deploy
-
             echo "Deploy завершён"
 
   # ========================
-  # E2E smoke tests
+  # E2E smoke tests (параллельно по сервисам)
   # ========================
 
-  e2e:
+  e2e-doorman:
     needs: [deploy-test]
     if: always() && needs.deploy-test.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Smoke tests — Doorman
+        run: bash e2e/smoke.sh https://test.edium.online doorman
 
-      - name: Smoke tests
-        run: |
-          chmod +x e2e/smoke.sh
-          e2e/smoke.sh https://test.edium.online
+  e2e-caesar:
+    needs: [deploy-test]
+    if: always() && needs.deploy-test.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke tests — Caesar
+        run: bash e2e/smoke.sh https://test.edium.online caesar
+
+  e2e-riddler:
+    needs: [deploy-test]
+    if: always() && needs.deploy-test.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke tests — Riddler
+        run: bash e2e/smoke.sh https://test.edium.online riddler
+
+  e2e-louvre:
+    needs: [deploy-test]
+    if: always() && needs.deploy-test.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke tests — Louvre
+        run: bash e2e/smoke.sh https://test.edium.online louvre
+
+  e2e-herald:
+    needs: [deploy-test]
+    if: always() && needs.deploy-test.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke tests — Herald
+        run: bash e2e/smoke.sh https://test.edium.online herald
 
   # ========================
   # Deploy на prod VM (требует подтверждения)
   # ========================
 
   deploy-prod:
-    needs: [e2e]
-    if: always() && needs.e2e.result == 'success'
+    needs: [e2e-doorman, e2e-caesar, e2e-riddler, e2e-louvre, e2e-herald]
+    if: |
+      always() &&
+      needs.e2e-doorman.result == 'success' &&
+      needs.e2e-caesar.result  == 'success' &&
+      needs.e2e-riddler.result == 'success' &&
+      needs.e2e-louvre.result  == 'success' &&
+      needs.e2e-herald.result  == 'success'
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -320,7 +552,6 @@ jobs:
           script: |
             set -e
 
-            # Подготовка файлов
             cp /tmp/edium-deploy/infra/compose/prod/docker-compose.yml /opt/edium/docker-compose.yml
             cp /tmp/edium-deploy/infra/compose/prod/Caddyfile /opt/edium/Caddyfile
             cp /tmp/edium-deploy/infra/compose/prod/vector.yaml /opt/edium/vector.yaml
@@ -336,7 +567,6 @@ jobs:
             mkdir -p /opt/edium/prometheus
             cp /tmp/edium-deploy/infra/prometheus/alerts.yml /opt/edium/prometheus/alerts.yml
             mkdir -p /opt/edium/migrations/doorman /opt/edium/migrations/herald /opt/edium/migrations/charon /opt/edium/migrations/caesar /opt/edium/migrations/riddler /opt/edium/migrations/louvre
-            # Полная синхронизация: простой cp .../* не удаляет на сервере переименованные/удалённые миграции
             for svc in doorman herald charon caesar riddler louvre; do
               find "/opt/edium/migrations/$svc" -mindepth 1 -delete
               cp -r "/tmp/edium-deploy/$svc/migrations/." "/opt/edium/migrations/$svc/"
@@ -346,7 +576,6 @@ jobs:
 
             cd /opt/edium
 
-            # Создание .env из секретов
             cat > .env <<'ENVEOF'
             YC_REGISTRY_ID=${{ secrets.YC_REGISTRY_ID }}
             IMAGE_TAG=latest
@@ -402,35 +631,28 @@ jobs:
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 
-            # RSA-ключ: многострочный PEM → одна строка с \n
             printf 'JWT_RSA_PRIVATE_KEY=' >> .env
             printf '%s' '${{ secrets.JWT_RSA_PRIVATE_KEY }}' | awk 'NR>1{printf "\\n"}{printf "%s",$0}' >> .env
             echo >> .env
 
-            # Раскрываем переменные в nats-server.conf
             export $(grep -E '^NATS_PASSWORD_' .env | xargs)
             envsubst '$NATS_PASSWORD_DOORMAN $NATS_PASSWORD_HERALD $NATS_PASSWORD_CAESAR $NATS_PASSWORD_CHARON $NATS_PASSWORD_RIDDLER $NATS_PASSWORD_SPHINX' \
               < /opt/edium/nats/nats-server.conf > /tmp/nats-expanded.conf
             mv /tmp/nats-expanded.conf /opt/edium/nats/nats-server.conf
 
-            # Раскрываем переменные в alertmanager.yml
             export $(grep -E '^ALERTMANAGER_' .env | xargs)
             envsubst '$ALERTMANAGER_TG_TOKEN $ALERTMANAGER_TG_CHAT_ID' \
               < /opt/edium/alertmanager/alertmanager.yml > /tmp/alertmanager-expanded.yml
             mv /tmp/alertmanager-expanded.yml /opt/edium/alertmanager/alertmanager.yml
 
-            # Раскрываем переменные в Caddyfile
             export JAEGER_BASIC_AUTH_HASH="$(grep '^JAEGER_BASIC_AUTH_HASH=' .env | cut -d= -f2-)"
             envsubst '$JAEGER_BASIC_AUTH_HASH' \
               < /opt/edium/Caddyfile > /tmp/Caddyfile-expanded
             mv /tmp/Caddyfile-expanded /opt/edium/Caddyfile
 
-            # Авторизация в CR
             echo '${{ secrets.YC_SA_KEY_JSON }}' | docker login --username json_key --password-stdin cr.yandex
 
-            # Обновление и запуск
             docker compose pull
-            # NATS рестартуем до старта приложений — конфиг монтируется как volume
             docker compose up -d nats
             docker compose restart nats
             for i in $(seq 1 15); do nc -z 127.0.0.1 4222 2>/dev/null && break; sleep 1; done
@@ -438,7 +660,6 @@ jobs:
             docker compose restart grafana vector caddy alertmanager
             docker image prune -f
 
-            # Ждём готовности ClickHouse (до 60 сек)
             for i in $(seq 1 30); do
               docker compose exec -T clickhouse clickhouse-client \
                 --user vector --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
@@ -446,22 +667,15 @@ jobs:
               sleep 2
             done
 
-            # Init + миграции ClickHouse (init идемпотентен — CREATE TABLE IF NOT EXISTS)
             docker compose exec -T clickhouse clickhouse-client \
-              --user vector \
-              --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
-              --database logs \
-              --multiquery < /opt/edium/clickhouse/init.sql
+              --user vector --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+              --database logs --multiquery < /opt/edium/clickhouse/init.sql
 
             docker compose exec -T clickhouse clickhouse-client \
-              --user vector \
-              --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
-              --database logs \
-              --multiquery < /opt/edium/clickhouse/migrate.sql
+              --user vector --password "${{ secrets.CLICKHOUSE_PASSWORD }}" \
+              --database logs --multiquery < /opt/edium/clickhouse/migrate.sql
 
-            # Очистка
             rm -rf /tmp/edium-deploy
-
             echo "Prod deploy завершён"
 
       - name: Итог
