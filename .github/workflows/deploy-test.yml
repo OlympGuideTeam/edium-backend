@@ -182,6 +182,7 @@ jobs:
           VK_GROUP_ID: "0"
           SMS_API_KEY: "fake-key-for-tests"
           SMS_ALLOWED_PHONES: ""
+          SMS_BLOCKED_PHONES: ""
           NATS_URL: ""
       - name: Загрузка покрытия
         if: always()
@@ -590,6 +591,7 @@ jobs:
             VK_GROUP_ID=${{ secrets.VK_GROUP_ID }}
             SMS_API_KEY=${{ secrets.SMS_API_KEY }}
             SMS_ALLOWED_PHONES=${{ secrets.SMS_ALLOWED_PHONES }}
+            SMS_BLOCKED_PHONES=${{ secrets.SMS_BLOCKED_PHONES }}
             CAESAR_PG_USER=${{ secrets.CAESAR_PG_USER }}
             CAESAR_PG_PWD=${{ secrets.CAESAR_PG_PWD }}
             CAESAR_PG_DB=${{ secrets.CAESAR_PG_DB }}
@@ -771,6 +773,7 @@ jobs:
             VK_GROUP_ID=${{ secrets.VK_GROUP_ID }}
             SMS_API_KEY=${{ secrets.SMS_API_KEY }}
             SMS_ALLOWED_PHONES=${{ secrets.SMS_ALLOWED_PHONES }}
+            SMS_BLOCKED_PHONES=${{ secrets.SMS_BLOCKED_PHONES }}
             CAESAR_PG_USER=${{ secrets.CAESAR_PG_USER }}
             CAESAR_PG_PWD=${{ secrets.CAESAR_PG_PWD }}
             CAESAR_PG_DB=${{ secrets.CAESAR_PG_DB }}
