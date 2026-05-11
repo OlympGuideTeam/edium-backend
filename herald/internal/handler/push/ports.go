@@ -12,4 +12,5 @@ type PushService interface {
 	DeleteDevice(ctx context.Context, fcmToken string) error
 	ListNotifications(ctx context.Context, userID uuid.UUID) ([]domain.Notification, error)
 	MarkRead(ctx context.Context, userID, notifID uuid.UUID) error
+	CountUnread(ctx context.Context, userID uuid.UUID) (int, error)
 }

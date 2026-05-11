@@ -43,7 +43,7 @@ func NewSender(ctx context.Context, credentialsJSON string) (*Sender, error) {
 
 // Send отправляет push с уведомлением на все токены.
 // Возвращает список невалидных токенов, которые нужно удалить из БД.
-func (s *Sender) Send(ctx context.Context, tokens []string, title, body string, data map[string]string) ([]string, error) {
+func (s *Sender) Send(ctx context.Context, tokens []string, title, body string, data map[string]string, badge int) ([]string, error) {
 	if len(tokens) == 0 {
 		return nil, nil
 	}
@@ -59,6 +59,9 @@ func (s *Sender) Send(ctx context.Context, tokens []string, title, body string, 
 			Headers: map[string]string{
 				"apns-push-type": "alert",
 				"apns-priority":  "10",
+			},
+			Payload: &messaging.APNSPayload{
+				Aps: &messaging.Aps{Badge: &badge},
 			},
 		},
 		Android: &messaging.AndroidConfig{

@@ -82,6 +82,10 @@ func (s *Service) MarkRead(ctx context.Context, userID, notifID uuid.UUID) error
 	return nil
 }
 
+func (s *Service) CountUnread(ctx context.Context, userID uuid.UUID) (int, error) {
+	return s.notifications.CountUnread(ctx, userID)
+}
+
 func (s *Service) DeleteUserDevices(ctx context.Context, userID uuid.UUID) error {
 	return s.devices.DeleteByUserID(ctx, userID)
 }

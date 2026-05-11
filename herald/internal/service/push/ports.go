@@ -25,6 +25,6 @@ type NotificationRepository interface {
 // PushSender отправляет FCM push-уведомления.
 // Возвращает список токенов, которые больше не действительны и должны быть удалены.
 type PushSender interface {
-	Send(ctx context.Context, tokens []string, title, body string, data map[string]string) (invalidTokens []string, err error)
+	Send(ctx context.Context, tokens []string, title, body string, data map[string]string, badge int) (invalidTokens []string, err error)
 	SendBadge(ctx context.Context, tokens []string, badge int) (invalidTokens []string, err error)
 }

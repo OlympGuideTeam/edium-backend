@@ -32,11 +32,13 @@ type pushFCMDeviceRepo interface {
 
 type pushNotificationRepo interface {
 	Save(ctx context.Context, n *domain.Notification) error
+	CountUnread(ctx context.Context, userID uuid.UUID) (int, error)
 }
 
 // PushSender определён в service/push/ports.go и передаётся через интерфейс.
 type pushSender interface {
-	Send(ctx context.Context, tokens []string, title, body string, data map[string]string) (invalidTokens []string, err error)
+	Send(ctx context.Context, tokens []string, title, body string, data map[string]string, badge int) (invalidTokens []string, err error)
+	SendBadge(ctx context.Context, tokens []string, badge int) (invalidTokens []string, err error)
 }
 
 type PushNotificationProcessor struct {
@@ -128,6 +130,11 @@ func (w *PushNotificationProcessor) processTask(ctx context.Context, t domain.Ta
 		return fmt.Errorf("save notification: %w", err)
 	}
 
+	if payload.Data == nil {
+		payload.Data = make(map[string]string)
+	}
+	payload.Data["notification_id"] = notif.ID.String()
+
 	if w.sender == nil {
 		slog.WarnContext(ctx, "push-notification-processor: Firebase не настроен, push не отправлен", "user_id", payload.UserID)
 		return w.tasks.MarkDone(ctx, t.ID)
@@ -146,7 +153,12 @@ func (w *PushNotificationProcessor) processTask(ctx context.Context, t domain.Ta
 		tokens[i] = d.FCMToken
 	}
 
-	invalid, err := w.sender.Send(ctx, tokens, payload.Title, payload.Body, payload.Data)
+	unread, err := w.notifications.CountUnread(ctx, payload.UserID)
+	if err != nil {
+		slog.ErrorContext(ctx, "push-notification-processor: не удалось посчитать unread", "user_id", payload.UserID, "err", err)
+	}
+
+	invalid, err := w.sender.Send(ctx, tokens, payload.Title, payload.Body, payload.Data, unread)
 	if err != nil {
 		return fmt.Errorf("send push: %w", err)
 	}

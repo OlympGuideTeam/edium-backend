@@ -78,6 +78,7 @@ services:
       VK_GROUP_ID: ${VK_GROUP_ID}
       SMS_API_KEY: ${SMS_API_KEY}
       SMS_ALLOWED_PHONES: ${SMS_ALLOWED_PHONES}
+      SMS_BLOCKED_PHONES: ${SMS_BLOCKED_PHONES}
       DOORMAN_JWKS_URL: "http://doorman/doorman/v1/.well-known/jwks.json"
       FIREBASE_CREDENTIALS_JSON: ${FIREBASE_CREDENTIALS_JSON}
       OTEL_ENDPOINT: "jaeger:4317"
@@ -366,11 +367,10 @@ services:
       STUNNEL_SERVICE: nats
       STUNNEL_ACCEPT: "4223"
       STUNNEL_CONNECT: "nats:4222"
-      STUNNEL_CRT: /etc/stunnel/tls.crt
-      STUNNEL_KEY: /etc/stunnel/tls.key
+      STUNNEL_CRT: /tls/tls.crt
+      STUNNEL_KEY: /tls/tls.key
     volumes:
-      - ./nats/tls.crt:/etc/stunnel/tls.crt:ro
-      - ./nats/tls.key:/etc/stunnel/tls.key:ro
+      - ./nats:/tls:ro
     depends_on:
       - nats
     deploy:
