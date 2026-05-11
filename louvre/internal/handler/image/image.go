@@ -1,24 +1,32 @@
 package image
 
 import (
+	"context"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"louvre/internal/domain"
 	"louvre/internal/pkg/apperr"
 	"louvre/internal/pkg/httpx"
-	"louvre/internal/service"
 	"louvre/internal/transport/dto"
 )
 
-type Handler struct {
-	imageService *service.ImageService
+type imageService interface {
+	Upload(ctx context.Context, fileHeader *multipart.FileHeader) (*domain.Image, error)
+	Download(ctx context.Context, id uuid.UUID) (io.Reader, string, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
-func NewHandler(imageService *service.ImageService) *Handler {
+type Handler struct {
+	imageService imageService
+}
+
+func NewHandler(imageService imageService) *Handler {
 	return &Handler{
 		imageService: imageService,
 	}
