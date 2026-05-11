@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 
 	"riddler/internal/domain"
-	"riddler/internal/infra/db"
 	"riddler/internal/pkg/apperr"
 )
 
@@ -20,10 +19,10 @@ type Service struct {
 	quizzes        quizReader
 	questions      questionReader
 	tasks          taskScheduler
-	txManager      *db.TxManager
+	txManager      txRunner
 }
 
-func NewService(attempts attemptRepository, sessions sessionReader, sessionGrading sessionGradingRepo, quizzes quizReader, questions questionReader, txManager *db.TxManager, tasks taskScheduler) *Service {
+func NewService(attempts attemptRepository, sessions sessionReader, sessionGrading sessionGradingRepo, quizzes quizReader, questions questionReader, txManager txRunner, tasks taskScheduler) *Service {
 	return &Service{attempts: attempts, sessions: sessions, sessionGrading: sessionGrading, quizzes: quizzes, questions: questions, tasks: tasks, txManager: txManager}
 }
 

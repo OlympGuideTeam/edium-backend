@@ -59,6 +59,10 @@ type sessionGradingRepo interface {
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.SessionStatus) error
 }
 
+type txRunner interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
 type questionReader interface {
 	GetQuestionByID(ctx context.Context, id uuid.UUID) (*domain.Question, error)
 }

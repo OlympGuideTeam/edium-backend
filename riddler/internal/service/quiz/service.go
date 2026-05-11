@@ -1,15 +1,13 @@
 package quiz
 
-import "riddler/internal/infra/db"
-
 type Service struct {
 	quizzes   quizRepository
 	attempts  attemptAccessor
 	sessions  sessionService
 	tasks     taskScheduler
-	txManager *db.TxManager
+	txManager txRunner
 }
 
-func NewService(quizzes quizRepository, attempts attemptAccessor, sessions sessionService, txManager *db.TxManager, tasks taskScheduler) *Service {
+func NewService(quizzes quizRepository, attempts attemptAccessor, sessions sessionService, txManager txRunner, tasks taskScheduler) *Service {
 	return &Service{quizzes: quizzes, attempts: attempts, sessions: sessions, tasks: tasks, txManager: txManager}
 }
