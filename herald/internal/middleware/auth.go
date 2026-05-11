@@ -23,6 +23,11 @@ func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	return id, ok
 }
 
+// WithUserID кладёт userID в контекст (используется в тестах и middleware).
+func WithUserID(ctx context.Context, id uuid.UUID) context.Context {
+	return context.WithValue(ctx, userIDKey, id)
+}
+
 // Auth проверяет JWT из заголовка Authorization и прокидывает user_id в контекст.
 func Auth(keys *jwks.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {

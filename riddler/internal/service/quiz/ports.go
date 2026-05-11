@@ -38,6 +38,10 @@ type taskScheduler interface {
 	Schedule(ctx context.Context, taskType domain.TaskType, payload []byte) error
 }
 
+type txRunner interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
 type attemptAccessor interface {
 	GetQuizAttemptsByUser(ctx context.Context, quizTemplateID, userID uuid.UUID) ([]domain.QuizAttemptSummary, error)
 	GetAttemptsByUserBatch(ctx context.Context, userID uuid.UUID, quizIDs []uuid.UUID) (map[uuid.UUID][]domain.QuizAttemptSummary, error)

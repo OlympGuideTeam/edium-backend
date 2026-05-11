@@ -62,7 +62,7 @@ func (c *Client) Upload(ctx context.Context, objectName string, reader io.Reader
 	return objectName, nil
 }
 
-func (c *Client) Download(ctx context.Context, objectName string) (*minio.Object, error) {
+func (c *Client) Download(ctx context.Context, objectName string) (io.ReadCloser, error) {
 	object, err := c.client.GetObject(ctx, c.bucket, objectName, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("не удалось скачать из MinIO: %w", err)

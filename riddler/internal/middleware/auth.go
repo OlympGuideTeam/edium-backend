@@ -24,6 +24,11 @@ func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	return id, ok
 }
 
+// WithUserID кладёт userID в контекст (используется в тестах и middleware).
+func WithUserID(ctx context.Context, id uuid.UUID) context.Context {
+	return context.WithValue(ctx, userIDKey, id)
+}
+
 // OptionalAuth пытается извлечь user_id из JWT. Если токена нет или он невалиден — продолжает без ошибки.
 func OptionalAuth(keys *jwks.Client) gin.HandlerFunc {
 	strict := Auth(keys)

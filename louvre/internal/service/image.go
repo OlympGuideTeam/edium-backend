@@ -15,13 +15,18 @@ import (
 	"github.com/google/uuid"
 
 	"louvre/internal/domain"
-	"louvre/internal/infra/minio"
 	"louvre/internal/repository"
 )
 
+type Storage interface {
+	Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error)
+	Download(ctx context.Context, objectName string) (io.ReadCloser, error)
+	Delete(ctx context.Context, objectName string) error
+}
+
 type ImageService struct {
 	imageRepo      repository.ImageRepository
-	minio          *minio.Client
+	storage        Storage
 	maxFileSize    int64
 	maxWidth       int
 	maxHeight      int
@@ -29,7 +34,7 @@ type ImageService struct {
 	maxUploadsHour int
 }
 
-func NewImageService(imageRepo repository.ImageRepository, min *minio.Client, maxSize int64, maxWidth, maxHeight, maxUploadsHour int, allowedTypes []string) *ImageService {
+func NewImageService(imageRepo repository.ImageRepository, storage Storage, maxSize int64, maxWidth, maxHeight, maxUploadsHour int, allowedTypes []string) *ImageService {
 	types := make(map[string]bool)
 	for _, t := range allowedTypes {
 		types[t] = true
@@ -37,7 +42,7 @@ func NewImageService(imageRepo repository.ImageRepository, min *minio.Client, ma
 
 	return &ImageService{
 		imageRepo:      imageRepo,
-		minio:          min,
+		storage:        storage,
 		maxFileSize:    maxSize,
 		maxWidth:       maxWidth,
 		maxHeight:      maxHeight,
@@ -92,7 +97,7 @@ func (s *ImageService) Upload(ctx context.Context, fileHeader *multipart.FileHea
 	imgUUID := uuid.New()
 	s3Key := fmt.Sprintf("images/%s.png", imgUUID)
 
-	objectName, err := s.minio.Upload(ctx, s3Key, bytes.NewReader(imageData), int64(len(imageData)), "image/png")
+	objectName, err := s.storage.Upload(ctx, s3Key, bytes.NewReader(imageData), int64(len(imageData)), "image/png")
 	if err != nil {
 		return nil, fmt.Errorf("загрузка в MinIO: %w", err)
 	}
@@ -129,7 +134,7 @@ func (s *ImageService) Download(ctx context.Context, id uuid.UUID) (io.Reader, s
 		return nil, "", fmt.Errorf("изображение не найдено")
 	}
 
-	objectReader, err := s.minio.Download(ctx, domainImg.S3Key)
+	objectReader, err := s.storage.Download(ctx, domainImg.S3Key)
 	if err != nil {
 		return nil, "", fmt.Errorf("скачивание из MinIO: %w", err)
 	}
@@ -150,7 +155,7 @@ func (s *ImageService) Delete(ctx context.Context, id uuid.UUID) error {
 		return fmt.Errorf("мягкое удаление из БД: %w", err)
 	}
 
-	if err := s.minio.Delete(ctx, domainImg.S3Key); err != nil {
+	if err := s.storage.Delete(ctx, domainImg.S3Key); err != nil {
 		slog.WarnContext(ctx, "не удалось удалить из MinIO", "err", err, "s3_key", domainImg.S3Key)
 	}
 
