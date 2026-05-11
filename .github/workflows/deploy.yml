@@ -12,10 +12,48 @@ env:
 
 jobs:
   # ========================
+  # Определение изменений
+  # ========================
+
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      doorman: ${{ steps.filter.outputs.doorman }}
+      herald: ${{ steps.filter.outputs.herald }}
+      charon: ${{ steps.filter.outputs.charon }}
+      caesar: ${{ steps.filter.outputs.caesar }}
+      riddler: ${{ steps.filter.outputs.riddler }}
+      louvre: ${{ steps.filter.outputs.louvre }}
+      terraform_platform: ${{ steps.filter.outputs.terraform_platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            doorman:
+              - 'doorman/**'
+            herald:
+              - 'herald/**'
+            charon:
+              - 'charon/**'
+            caesar:
+              - 'caesar/**'
+            riddler:
+              - 'riddler/**'
+            louvre:
+              - 'louvre/**'
+              - 'infra/compose/test/docker-compose.yml'
+            terraform_platform:
+              - 'infra/terraform/modules/**'
+              - 'infra/terraform/accounts/platform/**'
+
+  # ========================
   # Terraform — Platform
   # ========================
 
   terraform-plan:
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -73,6 +111,7 @@ jobs:
   # ========================
 
   build-doorman:
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -87,6 +126,7 @@ jobs:
           echo "Образ: ${{ env.REGISTRY }}/edium-doorman:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-herald:
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -101,6 +141,7 @@ jobs:
           echo "Образ: ${{ env.REGISTRY }}/edium-herald:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-charon:
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -115,6 +156,7 @@ jobs:
           echo "Образ: ${{ env.REGISTRY }}/edium-charon:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-caesar:
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -129,6 +171,7 @@ jobs:
           echo "Образ: ${{ env.REGISTRY }}/edium-caesar:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-riddler:
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -143,6 +186,7 @@ jobs:
           echo "Образ: ${{ env.REGISTRY }}/edium-riddler:${TAG}" >> $GITHUB_STEP_SUMMARY
 
   build-louvre:
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
