@@ -29,7 +29,7 @@ type mockRepo struct {
 	softDeleteErr error
 }
 
-func (m *mockRepo) Save(_ context.Context, _ domain.Image) error       { return m.saveErr }
+func (m *mockRepo) Save(_ context.Context, _ domain.Image) error { return m.saveErr }
 func (m *mockRepo) FindByID(_ context.Context, _ uuid.UUID) (*domain.Image, error) {
 	return m.findResult, m.findErr
 }
@@ -76,7 +76,7 @@ func makeFileHeader(t *testing.T, filename, contentType string, data []byte) *mu
 	body := &bytes.Buffer{}
 	w := multipart.NewWriter(body)
 	h := make(textproto.MIMEHeader)
-	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, filename))
+	h.Set("Content-Disposition", fmt.Sprintf("form-data; name=\"file\"; filename=%q", filename))
 	h.Set("Content-Type", contentType)
 	pw, err := w.CreatePart(h)
 	if err != nil {

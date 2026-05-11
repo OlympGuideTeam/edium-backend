@@ -20,14 +20,14 @@ import (
 func init() { gin.SetMode(gin.TestMode) }
 
 type mockUserService struct {
-	user        *domain.User
-	userErr     error
-	updateErr   error
-	deleteErr   error
-	statistic   *domain.UserStatistic
+	user         *domain.User
+	userErr      error
+	updateErr    error
+	deleteErr    error
+	statistic    *domain.UserStatistic
 	statisticErr error
-	rosterUsers []domain.User
-	rosterErr   error
+	rosterUsers  []domain.User
+	rosterErr    error
 }
 
 func (m *mockUserService) GetMe(_ context.Context, _ uuid.UUID) (*domain.User, error) {

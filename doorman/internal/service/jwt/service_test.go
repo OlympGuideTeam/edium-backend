@@ -15,11 +15,11 @@ import (
 )
 
 type mockKeyStore struct {
-	keys          map[string]*rsa.PublicKey
-	authTokens    *AuthTokensData
-	genErr        error
-	parsedClaims  *RefreshClaims
-	parseErr      error
+	keys         map[string]*rsa.PublicKey
+	authTokens   *AuthTokensData
+	genErr       error
+	parsedClaims *RefreshClaims
+	parseErr     error
 }
 
 func (m *mockKeyStore) GetPublicKeys() map[string]*rsa.PublicKey { return m.keys }

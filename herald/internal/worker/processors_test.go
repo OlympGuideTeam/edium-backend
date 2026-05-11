@@ -22,7 +22,7 @@ type mockTaskRepo struct {
 func (m *mockTaskRepo) ClaimPending(_ context.Context, _ domain.TaskType, _ int) ([]domain.Task, error) {
 	return nil, nil
 }
-func (m *mockTaskRepo) MarkDone(_ context.Context, _ uuid.UUID) error    { return m.markDoneErr }
+func (m *mockTaskRepo) MarkDone(_ context.Context, _ uuid.UUID) error { return m.markDoneErr }
 func (m *mockTaskRepo) MarkFailed(_ context.Context, _ uuid.UUID, _ string, _ time.Duration) error {
 	return m.markFailedErr
 }
@@ -191,9 +191,9 @@ func TestOTPSentProcessor_BadPayload(t *testing.T) {
 // --- PushNotificationProcessor ---
 
 type mockPushDevices struct {
-	listResult  []domain.FCMDevice
-	listErr     error
-	deleteErr   error
+	listResult []domain.FCMDevice
+	listErr    error
+	deleteErr  error
 }
 
 func (m *mockPushDevices) ListByUserID(_ context.Context, _ uuid.UUID) ([]domain.FCMDevice, error) {

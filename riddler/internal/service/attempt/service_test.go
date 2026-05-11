@@ -126,14 +126,14 @@ func (m *mockAttemptRepo) GetBySessionAndUser(_ context.Context, _, _ uuid.UUID)
 }
 
 type mockSessionReader struct {
-	session          *domain.QuizSession
-	sessionErr       error
-	awaitingReview   []domain.AwaitingReviewSession
-	awaitingErr      error
-	recentGrades     []domain.RecentGradeItem
-	recentGradesErr  error
-	activeTests      []domain.ActiveTestItem
-	activeTestsErr   error
+	session         *domain.QuizSession
+	sessionErr      error
+	awaitingReview  []domain.AwaitingReviewSession
+	awaitingErr     error
+	recentGrades    []domain.RecentGradeItem
+	recentGradesErr error
+	activeTests     []domain.ActiveTestItem
+	activeTestsErr  error
 }
 
 func (m *mockSessionReader) GetByID(_ context.Context, _ uuid.UUID) (*domain.QuizSession, error) {

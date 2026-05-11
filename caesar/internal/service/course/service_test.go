@@ -15,18 +15,18 @@ import (
 // --- mocks ---
 
 type mockCourseStore struct {
-	createID        uuid.UUID
-	createErr       error
-	byID            *domain.Course
-	byIDErr         error
-	detail          *domain.CourseDetail
-	detailErr       error
-	listByClass     []domain.CourseListItem
-	listByClassErr  error
-	listByStudent   []domain.CourseListItem
+	createID         uuid.UUID
+	createErr        error
+	byID             *domain.Course
+	byIDErr          error
+	detail           *domain.CourseDetail
+	detailErr        error
+	listByClass      []domain.CourseListItem
+	listByClassErr   error
+	listByStudent    []domain.CourseListItem
 	listByStudentErr error
-	updateErr       error
-	deleteErr       error
+	updateErr        error
+	deleteErr        error
 
 	moduleByID      *domain.CourseModule
 	moduleByIDErr   error
@@ -38,21 +38,21 @@ type mockCourseStore struct {
 	deleteModuleErr error
 	reorderErr      error
 
-	itemByID        *domain.CourseItem
-	itemByIDErr     error
-	deleteItemErr   error
-	findByObjID     *domain.CourseItem
-	findByObjIDErr  error
+	itemByID       *domain.CourseItem
+	itemByIDErr    error
+	deleteItemErr  error
+	findByObjID    *domain.CourseItem
+	findByObjIDErr error
 
 	draftByID      *domain.CourseDraft
 	draftByIDErr   error
 	deleteDraftErr error
 	listDrafts     []domain.CourseDraft
 
-	sheetItems      []domain.CourseSheetItem
-	sheetItemsErr   error
-	sheetScores     []domain.UserItemScore
-	sheetScoresErr  error
+	sheetItems     []domain.CourseSheetItem
+	sheetItemsErr  error
+	sheetScores    []domain.UserItemScore
+	sheetScoresErr error
 }
 
 func (m *mockCourseStore) Create(_ context.Context, _, _ uuid.UUID, _ string) (uuid.UUID, error) {
@@ -85,7 +85,9 @@ func (m *mockCourseStore) ListModules(_ context.Context, _ uuid.UUID) ([]domain.
 func (m *mockCourseStore) UpdateModule(_ context.Context, _ uuid.UUID, _ string) error {
 	return m.updateModuleErr
 }
-func (m *mockCourseStore) DeleteModule(_ context.Context, _ uuid.UUID) error { return m.deleteModuleErr }
+func (m *mockCourseStore) DeleteModule(_ context.Context, _ uuid.UUID) error {
+	return m.deleteModuleErr
+}
 func (m *mockCourseStore) ReorderModules(_ context.Context, _ uuid.UUID, _ []uuid.UUID) error {
 	return m.reorderErr
 }
@@ -417,7 +419,7 @@ func TestGetCourseSheet_Success_WithStudentsAndScores(t *testing.T) {
 	score := 8.5
 
 	cs := &mockCourseStore{
-		byID: courseWith(classID, ownerID()),
+		byID:       courseWith(classID, ownerID()),
 		sheetItems: []domain.CourseSheetItem{{ID: itemID, Title: "Quiz 1"}},
 		sheetScores: []domain.UserItemScore{
 			{UserID: studentID, ItemID: itemID, Score: &score},

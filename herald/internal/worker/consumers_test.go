@@ -247,11 +247,6 @@ func TestQuizGenerationNotify_BadJSON(t *testing.T) {
 
 // --- helpers ---
 
-func makeTask(payload any) domain.Task {
-	b, _ := json.Marshal(payload)
-	return domain.Task{ID: uuid.New(), Payload: b}
-}
-
 func makeRawTask(payload []byte) domain.Task {
 	return domain.Task{ID: uuid.New(), Payload: payload, AvailableAt: time.Now()}
 }

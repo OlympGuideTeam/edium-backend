@@ -20,29 +20,29 @@ import (
 func init() { gin.SetMode(gin.TestMode) }
 
 type mockCourseService struct {
-	createID       uuid.UUID
-	createErr      error
-	courseDetail   *domain.CourseDetail
-	courseErr      error
-	classCourses   []domain.CourseListItem
+	createID        uuid.UUID
+	createErr       error
+	courseDetail    *domain.CourseDetail
+	courseErr       error
+	classCourses    []domain.CourseListItem
 	classCoursesErr error
-	myCourses      []domain.CourseListItem
-	myCoursesErr   error
-	updateErr      error
-	deleteErr      error
-	module         *domain.CourseModule
-	moduleErr      error
-	roster         []domain.ClassMember
-	rosterErr      error
-	createModuleID uuid.UUID
-	createModErr   error
-	updateModErr   error
-	deleteModErr   error
-	reorderErr     error
-	deleteItemErr  error
-	deleteDraftErr error
-	sheet          *domain.CourseSheet
-	sheetErr       error
+	myCourses       []domain.CourseListItem
+	myCoursesErr    error
+	updateErr       error
+	deleteErr       error
+	module          *domain.CourseModule
+	moduleErr       error
+	roster          []domain.ClassMember
+	rosterErr       error
+	createModuleID  uuid.UUID
+	createModErr    error
+	updateModErr    error
+	deleteModErr    error
+	reorderErr      error
+	deleteItemErr   error
+	deleteDraftErr  error
+	sheet           *domain.CourseSheet
+	sheetErr        error
 }
 
 func (m *mockCourseService) CreateCourse(_ context.Context, _, _ uuid.UUID, _ string) (uuid.UUID, error) {

@@ -20,31 +20,31 @@ import (
 func init() { gin.SetMode(gin.TestMode) }
 
 type mockQuizSvc struct {
-	createID         uuid.UUID
-	createErr        error
-	quizDetail       *domain.QuizDetail
-	quizErr          error
-	studentView      *domain.QuizStudentView
-	studentViewErr   error
-	updateErr        error
-	deleteErr        error
-	publishErr       error
-	copyID           uuid.UUID
-	copyErr          error
-	listItems        []domain.QuizListItem
-	listErr          error
-	addQuestionID    uuid.UUID
-	addQuestionIdx   int
-	addQuestionErr   error
+	createID          uuid.UUID
+	createErr         error
+	quizDetail        *domain.QuizDetail
+	quizErr           error
+	studentView       *domain.QuizStudentView
+	studentViewErr    error
+	updateErr         error
+	deleteErr         error
+	publishErr        error
+	copyID            uuid.UUID
+	copyErr           error
+	listItems         []domain.QuizListItem
+	listErr           error
+	addQuestionID     uuid.UUID
+	addQuestionIdx    int
+	addQuestionErr    error
 	deleteQuestionErr error
-	reorderErr       error
-	generateJobID    uuid.UUID
-	generateErr      error
-	deleteSessionErr error
-	createTestIDs    [2]uuid.UUID
-	createTestErr    error
-	createLiveIDs    [2]uuid.UUID
-	createLiveErr    error
+	reorderErr        error
+	generateJobID     uuid.UUID
+	generateErr       error
+	deleteSessionErr  error
+	createTestIDs     [2]uuid.UUID
+	createTestErr     error
+	createLiveIDs     [2]uuid.UUID
+	createLiveErr     error
 }
 
 func (m *mockQuizSvc) CreateQuiz(_ context.Context, _ uuid.UUID, _ string, _ *string, _ domain.QuizDefaultSettings, _ *uuid.UUID) (uuid.UUID, error) {
@@ -59,7 +59,7 @@ func (m *mockQuizSvc) GetQuizForStudent(_ context.Context, _, _ uuid.UUID) (*dom
 func (m *mockQuizSvc) UpdateQuiz(_ context.Context, _, _ uuid.UUID, _, _ *string, _ *domain.QuizDefaultSettings) error {
 	return m.updateErr
 }
-func (m *mockQuizSvc) DeleteQuiz(_ context.Context, _, _ uuid.UUID) error { return m.deleteErr }
+func (m *mockQuizSvc) DeleteQuiz(_ context.Context, _, _ uuid.UUID) error  { return m.deleteErr }
 func (m *mockQuizSvc) PublishQuiz(_ context.Context, _, _ uuid.UUID) error { return m.publishErr }
 func (m *mockQuizSvc) CopyQuiz(_ context.Context, _, _ uuid.UUID, _ *uuid.UUID) (uuid.UUID, error) {
 	return m.copyID, m.copyErr
@@ -125,13 +125,6 @@ func postJSON(r *gin.Engine, path string, body any, userID *uuid.UUID) *httptest
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	return w
-}
-
-func getCode(w *httptest.ResponseRecorder) string {
-	var resp map[string]any
-	_ = json.Unmarshal(w.Body.Bytes(), &resp)
-	code, _ := resp["error"].(string)
-	return code
 }
 
 // --- CreateQuiz ---

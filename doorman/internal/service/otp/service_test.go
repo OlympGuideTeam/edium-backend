@@ -41,17 +41,17 @@ func (m *mockRegTokenStore) Save(_ context.Context, _, _ string, _ time.Duration
 }
 
 type mockOTPStore struct {
-	exists        bool
-	existsErr     error
-	ttl           time.Duration
-	ttlErr        error
-	data          *OtpData
-	getErr        error
-	saveErr       error
-	deleteErr     error
-	incrAttempts  error
-	sendCount     int64
-	sendCountErr  error
+	exists       bool
+	existsErr    error
+	ttl          time.Duration
+	ttlErr       error
+	data         *OtpData
+	getErr       error
+	saveErr      error
+	deleteErr    error
+	incrAttempts error
+	sendCount    int64
+	sendCountErr error
 }
 
 func (m *mockOTPStore) Exists(_ context.Context, _ string) (bool, error) {
@@ -66,7 +66,7 @@ func (m *mockOTPStore) Get(_ context.Context, _ string) (*OtpData, error) {
 func (m *mockOTPStore) Save(_ context.Context, _, _ string, _ time.Duration) error {
 	return m.saveErr
 }
-func (m *mockOTPStore) Delete(_ context.Context, _ string) error     { return m.deleteErr }
+func (m *mockOTPStore) Delete(_ context.Context, _ string) error       { return m.deleteErr }
 func (m *mockOTPStore) IncrAttempts(_ context.Context, _ string) error { return m.incrAttempts }
 func (m *mockOTPStore) IncrSendCount(_ context.Context, _ string) (int64, error) {
 	return m.sendCount, m.sendCountErr

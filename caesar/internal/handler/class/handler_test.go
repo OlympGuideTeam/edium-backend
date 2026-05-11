@@ -83,15 +83,6 @@ func withUser(req *http.Request, id uuid.UUID) *http.Request {
 	return req.WithContext(middleware.WithUserID(req.Context(), id))
 }
 
-func postJSON(r *gin.Engine, path string, body any) *httptest.ResponseRecorder {
-	b, _ := json.Marshal(body)
-	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(b))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	return w
-}
-
 // --- GetMyClasses ---
 
 func TestGetMyClasses_NoAuth(t *testing.T) {

@@ -14,26 +14,26 @@ import (
 // --- mocks ---
 
 type mockClassStore struct {
-	createID      uuid.UUID
-	createErr     error
-	getResult     *domain.ClassListItem
-	getErr        error
-	listResult    []domain.ClassListItem
-	listErr       error
-	updateErr     error
-	deleteErr     error
-	members       []domain.ClassMember
-	membersErr    error
-	addMemberErr  error
-	removeMember  error
-	isMember      bool
-	isMemberErr   error
-	invitationID  uuid.UUID
-	upsertInvErr  error
-	invitation    *domain.ClassInvitation
-	invErr        error
-	invDetail     *domain.InvitationDetail
-	invDetailErr  error
+	createID     uuid.UUID
+	createErr    error
+	getResult    *domain.ClassListItem
+	getErr       error
+	listResult   []domain.ClassListItem
+	listErr      error
+	updateErr    error
+	deleteErr    error
+	members      []domain.ClassMember
+	membersErr   error
+	addMemberErr error
+	removeMember error
+	isMember     bool
+	isMemberErr  error
+	invitationID uuid.UUID
+	upsertInvErr error
+	invitation   *domain.ClassInvitation
+	invErr       error
+	invDetail    *domain.InvitationDetail
+	invDetailErr error
 }
 
 func (m *mockClassStore) Create(_ context.Context, _ uuid.UUID, _ string) (uuid.UUID, error) {

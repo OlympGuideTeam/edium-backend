@@ -20,11 +20,11 @@ import (
 func init() { gin.SetMode(gin.TestMode) }
 
 type mockPushService struct {
-	registerErr      error
-	deleteErr        error
-	listResult       []domain.Notification
-	listErr          error
-	markReadErr      error
+	registerErr error
+	deleteErr   error
+	listResult  []domain.Notification
+	listErr     error
+	markReadErr error
 }
 
 func (m *mockPushService) RegisterDevice(_ context.Context, _ uuid.UUID, _, _ string) error {
@@ -45,13 +45,6 @@ func newRouter(svc PushService) *gin.Engine {
 
 func withUser(r *http.Request, id uuid.UUID) *http.Request {
 	return r.WithContext(middleware.WithUserID(r.Context(), id))
-}
-
-func getErrorCode(body *bytes.Buffer) string {
-	var resp map[string]any
-	_ = json.Unmarshal(body.Bytes(), &resp)
-	code, _ := resp["error"].(string)
-	return code
 }
 
 func TestRegisterDevice_NoUserID(t *testing.T) {

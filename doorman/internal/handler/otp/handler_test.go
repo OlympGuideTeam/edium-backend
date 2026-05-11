@@ -20,10 +20,10 @@ import (
 func init() { gin.SetMode(gin.TestMode) }
 
 type mockOTPService struct {
-	sendTTL    time.Duration
-	sendErr    error
+	sendTTL      time.Duration
+	sendErr      error
 	verifyResult VerifyResult
-	verifyErr  error
+	verifyErr    error
 }
 
 func (m *mockOTPService) SendOTP(_ context.Context, _ string, _ domain.Channel) (time.Duration, error) {
