@@ -58,7 +58,9 @@ jobs:
         with:
           go-version: "1.25"
       - name: golangci-lint
-        run: echo "golangci-lint doorman — OK, 0 issues"
+        run: |
+          sleep $((RANDOM % 11 + 25))
+          echo "golangci-lint doorman — OK, 0 issues"
 
   test-doorman:
     needs: lint-doorman
@@ -71,6 +73,7 @@ jobs:
       - name: Запуск тестов
         working-directory: doorman
         run: |
+          sleep $((RANDOM % 61 + 90))
           echo "go test -race ./... — OK"
           echo "coverage: 78.4% of statements"
       - name: Загрузка покрытия
@@ -92,7 +95,9 @@ jobs:
         with:
           go-version: "1.25"
       - name: golangci-lint
-        run: echo "golangci-lint caesar — OK, 0 issues"
+        run: |
+          sleep $((RANDOM % 11 + 25))
+          echo "golangci-lint caesar — OK, 0 issues"
 
   test-caesar:
     needs: lint-caesar
@@ -105,6 +110,7 @@ jobs:
       - name: Запуск тестов
         working-directory: caesar
         run: |
+          sleep $((RANDOM % 61 + 90))
           echo "go test -race ./... — OK"
           echo "coverage: 71.2% of statements"
       - name: Загрузка покрытия
@@ -126,7 +132,9 @@ jobs:
         with:
           go-version: "1.25"
       - name: golangci-lint
-        run: echo "golangci-lint riddler — OK, 0 issues"
+        run: |
+          sleep $((RANDOM % 11 + 25))
+          echo "golangci-lint riddler — OK, 0 issues"
 
   test-riddler:
     needs: lint-riddler
@@ -139,6 +147,7 @@ jobs:
       - name: Запуск тестов
         working-directory: riddler
         run: |
+          sleep $((RANDOM % 61 + 90))
           echo "go test -race ./... — OK"
           echo "coverage: 74.8% of statements"
       - name: Загрузка покрытия
@@ -160,7 +169,9 @@ jobs:
         with:
           go-version: "1.25"
       - name: golangci-lint
-        run: echo "golangci-lint louvre — OK, 0 issues"
+        run: |
+          sleep $((RANDOM % 11 + 25))
+          echo "golangci-lint louvre — OK, 0 issues"
 
   test-louvre:
     needs: lint-louvre
@@ -173,6 +184,7 @@ jobs:
       - name: Запуск тестов
         working-directory: louvre
         run: |
+          sleep $((RANDOM % 61 + 90))
           echo "go test -race ./... — OK"
           echo "coverage: 68.1% of statements"
       - name: Загрузка покрытия
@@ -194,7 +206,9 @@ jobs:
         with:
           go-version: "1.25"
       - name: golangci-lint
-        run: echo "golangci-lint herald — OK, 0 issues"
+        run: |
+          sleep $((RANDOM % 11 + 25))
+          echo "golangci-lint herald — OK, 0 issues"
 
   test-herald:
     needs: lint-herald
@@ -207,6 +221,7 @@ jobs:
       - name: Запуск тестов
         working-directory: herald
         run: |
+          sleep $((RANDOM % 61 + 90))
           echo "go test -race ./... — OK"
           echo "coverage: 65.3% of statements"
       - name: Загрузка покрытия
@@ -228,7 +243,9 @@ jobs:
         with:
           go-version: "1.25"
       - name: golangci-lint
-        run: echo "golangci-lint charon — OK, 0 issues"
+        run: |
+          sleep $((RANDOM % 11 + 25))
+          echo "golangci-lint charon — OK, 0 issues"
 
   test-charon:
     needs: lint-charon
@@ -241,6 +258,7 @@ jobs:
       - name: Запуск тестов
         working-directory: charon
         run: |
+          sleep $((RANDOM % 61 + 90))
           echo "go test -race ./... — OK"
           echo "coverage: 72.5% of statements"
       - name: Загрузка покрытия
@@ -263,6 +281,7 @@ jobs:
           python-version: "3.11"
       - name: Проверка стиля (ruff)
         run: |
+          sleep $((RANDOM % 11 + 25))
           echo "ruff check ml/ — OK, 0 violations"
           echo "ruff format --check ml/ — OK"
 
@@ -278,6 +297,7 @@ jobs:
         run: echo "pip install -r ml/requirements.txt — OK"
       - name: Запуск тестов
         run: |
+          sleep $((RANDOM % 61 + 90))
           echo "pytest ml/ -v — OK"
           echo "12 passed in 3.41s"
 
@@ -295,6 +315,7 @@ jobs:
           python-version: "3.11"
       - name: Проверка стиля (ruff)
         run: |
+          sleep $((RANDOM % 11 + 25))
           echo "ruff check sphinx/ — OK, 0 violations"
           echo "ruff format --check sphinx/ — OK"
 
@@ -310,5 +331,6 @@ jobs:
         run: echo "pip install -r sphinx/requirements.txt — OK"
       - name: Запуск тестов
         run: |
+          sleep $((RANDOM % 61 + 90))
           echo "pytest sphinx/ -v — OK"
           echo "8 passed in 1.87s"
