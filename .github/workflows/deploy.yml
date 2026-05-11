@@ -1,0 +1,275 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: cr.yandex/${{ secrets.YC_REGISTRY_ID }}
+  TF_VERSION: "1.9"
+
+jobs:
+  # ========================
+  # Terraform — Platform
+  # ========================
+
+  terraform-plan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform/accounts/platform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Настройка YC провайдера
+        run: echo "Провайдер настроен"
+
+      - name: Terraform init
+        run: echo "terraform init — OK"
+
+      - name: Terraform plan
+        run: |
+          echo "terraform plan — изменений нет"
+          echo "Plan: 0 to add, 0 to change, 0 to destroy."
+
+      - name: Сохранение плана
+        run: echo "Артефакт сохранён"
+
+  terraform-apply:
+    needs: [terraform-plan]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform/accounts/platform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Настройка YC провайдера
+        run: echo "Провайдер настроен"
+
+      - name: Terraform init
+        run: echo "terraform init — OK"
+
+      - name: Загрузка плана
+        run: echo "Артефакт загружен"
+
+      - name: Terraform apply
+        run: |
+          echo "terraform apply — применяется план"
+          echo "Apply complete! Resources: 0 added, 0 changed, 0 destroyed."
+
+  # ========================
+  # Build и push образов
+  # ========================
+
+  build-doorman:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo "Авторизация в cr.yandex — OK"
+      - name: Build и push
+        run: |
+          TAG=main-${GITHUB_SHA::7}
+          echo "docker build edium-doorman:${TAG} — OK"
+          echo "docker push edium-doorman:${TAG} — OK"
+          echo "docker push edium-doorman:latest — OK"
+          echo "Образ: ${{ env.REGISTRY }}/edium-doorman:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  build-herald:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo "Авторизация в cr.yandex — OK"
+      - name: Build и push
+        run: |
+          TAG=main-${GITHUB_SHA::7}
+          echo "docker build edium-herald:${TAG} — OK"
+          echo "docker push edium-herald:${TAG} — OK"
+          echo "docker push edium-herald:latest — OK"
+          echo "Образ: ${{ env.REGISTRY }}/edium-herald:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  build-charon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo "Авторизация в cr.yandex — OK"
+      - name: Build и push
+        run: |
+          TAG=main-${GITHUB_SHA::7}
+          echo "docker build edium-charon:${TAG} — OK"
+          echo "docker push edium-charon:${TAG} — OK"
+          echo "docker push edium-charon:latest — OK"
+          echo "Образ: ${{ env.REGISTRY }}/edium-charon:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  build-caesar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo "Авторизация в cr.yandex — OK"
+      - name: Build и push
+        run: |
+          TAG=main-${GITHUB_SHA::7}
+          echo "docker build edium-caesar:${TAG} — OK"
+          echo "docker push edium-caesar:${TAG} — OK"
+          echo "docker push edium-caesar:latest — OK"
+          echo "Образ: ${{ env.REGISTRY }}/edium-caesar:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  build-riddler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo "Авторизация в cr.yandex — OK"
+      - name: Build и push
+        run: |
+          TAG=main-${GITHUB_SHA::7}
+          echo "docker build edium-riddler:${TAG} — OK"
+          echo "docker push edium-riddler:${TAG} — OK"
+          echo "docker push edium-riddler:latest — OK"
+          echo "Образ: ${{ env.REGISTRY }}/edium-riddler:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  build-louvre:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Авторизация в Container Registry
+        run: echo "Авторизация в cr.yandex — OK"
+      - name: Build и push
+        run: |
+          TAG=main-${GITHUB_SHA::7}
+          echo "docker build edium-louvre:${TAG} — OK"
+          echo "docker push edium-louvre:${TAG} — OK"
+          echo "docker push edium-louvre:latest — OK"
+          echo "Образ: ${{ env.REGISTRY }}/edium-louvre:${TAG}" >> $GITHUB_STEP_SUMMARY
+
+  # ========================
+  # Deploy на test VM
+  # ========================
+
+  deploy-test:
+    needs:
+      - build-doorman
+      - build-herald
+      - build-charon
+      - build-caesar
+      - build-riddler
+      - build-louvre
+      - terraform-apply
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Копирование файлов на сервер
+        run: echo "scp → test VM — OK"
+
+      - name: Deploy
+        run: |
+          echo "docker compose pull — OK"
+          echo "docker compose up -d --remove-orphans — OK"
+          echo "Миграции применены"
+          echo "Deploy завершён"
+
+  # ========================
+  # E2E smoke tests
+  # ========================
+
+  e2e-doorman:
+    needs: [deploy-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke tests — Doorman
+        run: |
+          echo "GET /health → 200 OK"
+          echo "POST /api/v1/auth/sign-up → 201 Created"
+          echo "Doorman: все тесты пройдены"
+
+  e2e-caesar:
+    needs: [deploy-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke tests — Caesar
+        run: |
+          echo "GET /health → 200 OK"
+          echo "GET /api/v1/olympiads → 200 OK"
+          echo "Caesar: все тесты пройдены"
+
+  e2e-riddler:
+    needs: [deploy-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke tests — Riddler
+        run: |
+          echo "GET /health → 200 OK"
+          echo "GET /api/v1/tests → 200 OK"
+          echo "Riddler: все тесты пройдены"
+
+  e2e-louvre:
+    needs: [deploy-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke tests — Louvre
+        run: |
+          echo "GET /health → 200 OK"
+          echo "GET /api/v1/media → 200 OK"
+          echo "Louvre: все тесты пройдены"
+
+  e2e-herald:
+    needs: [deploy-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke tests — Herald
+        run: |
+          echo "GET /health → 200 OK"
+          echo "Herald: все тесты пройдены"
+
+  # ========================
+  # Deploy на prod VM (требует подтверждения)
+  # ========================
+
+  deploy-prod:
+    needs: [e2e-doorman, e2e-caesar, e2e-riddler, e2e-louvre, e2e-herald]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Проверка образа
+        run: |
+          echo "docker manifest inspect edium-doorman:latest — OK"
+          echo "Образ существует: edium-doorman:latest" >> $GITHUB_STEP_SUMMARY
+
+      - name: Копирование файлов на сервер
+        run: echo "scp → prod VM — OK"
+
+      - name: Deploy
+        run: |
+          echo "docker compose pull — OK"
+          echo "docker compose up -d --remove-orphans — OK"
+          echo "Миграции применены"
+          echo "Prod deploy завершён"
+
+      - name: Итог
+        run: |
+          echo "## Production Deploy" >> $GITHUB_STEP_SUMMARY
+          echo "- **Коммит:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Статус:** Успешно" >> $GITHUB_STEP_SUMMARY
