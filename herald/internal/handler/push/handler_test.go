@@ -35,6 +35,9 @@ func (m *mockPushService) ListNotifications(_ context.Context, _ uuid.UUID) ([]d
 	return m.listResult, m.listErr
 }
 func (m *mockPushService) MarkRead(_ context.Context, _, _ uuid.UUID) error { return m.markReadErr }
+func (m *mockPushService) CountUnread(_ context.Context, _ uuid.UUID) (int, error) {
+	return 0, nil
+}
 
 func newRouter(svc PushService) *gin.Engine {
 	r := gin.New()

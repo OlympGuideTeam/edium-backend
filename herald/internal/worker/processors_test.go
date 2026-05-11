@@ -206,14 +206,20 @@ type mockPushNotifications struct{ saveErr error }
 func (m *mockPushNotifications) Save(_ context.Context, _ *domain.Notification) error {
 	return m.saveErr
 }
+func (m *mockPushNotifications) CountUnread(_ context.Context, _ uuid.UUID) (int, error) {
+	return 0, nil
+}
 
 type mockPushSender struct {
 	invalid []string
 	err     error
 }
 
-func (m *mockPushSender) Send(_ context.Context, _ []string, _, _ string, _ map[string]string) ([]string, error) {
+func (m *mockPushSender) Send(_ context.Context, _ []string, _, _ string, _ map[string]string, _ int) ([]string, error) {
 	return m.invalid, m.err
+}
+func (m *mockPushSender) SendBadge(_ context.Context, _ []string, _ int) ([]string, error) {
+	return nil, nil
 }
 
 func pushTask(userID uuid.UUID, title, body string) domain.Task {

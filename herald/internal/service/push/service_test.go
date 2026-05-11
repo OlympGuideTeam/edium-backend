@@ -55,7 +55,7 @@ type mockSender struct {
 	badgeErr    error
 }
 
-func (m *mockSender) Send(_ context.Context, _ []string, _, _ string, _ map[string]string) ([]string, error) {
+func (m *mockSender) Send(_ context.Context, _ []string, _, _ string, _ map[string]string, _ int) ([]string, error) {
 	return m.sendInvalid, m.sendErr
 }
 func (m *mockSender) SendBadge(_ context.Context, _ []string, _ int) ([]string, error) {
