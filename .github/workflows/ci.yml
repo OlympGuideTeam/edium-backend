@@ -1,8 +1,7 @@
 name: CI
 
 on:
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -51,18 +50,44 @@ jobs:
 
   lint-doorman:
     needs: detect-changes
+    if: needs.detect-changes.outputs.doorman == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - name: golangci-lint
-        run: echo "golangci-lint doorman — OK, 0 issues"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: doorman
+          version: v2.11.4
 
   test-doorman:
     needs: lint-doorman
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: doorman_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -70,10 +95,19 @@ jobs:
           go-version: "1.25"
       - name: Запуск тестов
         working-directory: doorman
-        run: |
-          echo "go test -race ./... — OK"
-          echo "coverage: 78.4% of statements"
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: "5432"
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: doorman_test
+          REDIS_HOST: localhost
+          REDIS_PORT: "6379"
+          REDIS_PASSWORD: ""
+          JWT_RSA_PRIVATE_KEY: ${{ secrets.TEST_JWT_RSA_PRIVATE_KEY }}
       - name: Загрузка покрытия
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-doorman
@@ -85,18 +119,35 @@ jobs:
 
   lint-caesar:
     needs: detect-changes
+    if: needs.detect-changes.outputs.caesar == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - name: golangci-lint
-        run: echo "golangci-lint caesar — OK, 0 issues"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: caesar
+          version: v2.11.4
 
   test-caesar:
     needs: lint-caesar
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: caesar_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -104,33 +155,52 @@ jobs:
           go-version: "1.25"
       - name: Запуск тестов
         working-directory: caesar
-        run: |
-          echo "go test -race ./... — OK"
-          echo "coverage: 71.2% of statements"
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_DSN: "postgres://test:test@localhost:5432/caesar_test?sslmode=disable"
+          NATS_URL: ""
       - name: Загрузка покрытия
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-caesar
           path: caesar/coverage.out
 
-  # ========================
-  # Go — Riddler
-  # ========================
+   # ========================
+   # Go — Riddler
+   # ========================
 
   lint-riddler:
     needs: detect-changes
+    if: needs.detect-changes.outputs.riddler == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - name: golangci-lint
-        run: echo "golangci-lint riddler — OK, 0 issues"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: riddler
+          version: v2.11.4
 
   test-riddler:
     needs: lint-riddler
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: riddler_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -138,10 +208,12 @@ jobs:
           go-version: "1.25"
       - name: Запуск тестов
         working-directory: riddler
-        run: |
-          echo "go test -race ./... — OK"
-          echo "coverage: 74.8% of statements"
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_DSN: "postgres://test:test@localhost:5432/riddler_test?sslmode=disable"
+          NATS_URL: ""
       - name: Загрузка покрытия
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-riddler
@@ -153,18 +225,35 @@ jobs:
 
   lint-louvre:
     needs: detect-changes
+    if: needs.detect-changes.outputs.louvre == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - name: golangci-lint
-        run: echo "golangci-lint louvre — OK, 0 issues"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: louvre
+          version: v2.11.4
 
   test-louvre:
     needs: lint-louvre
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: louvre_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -172,10 +261,16 @@ jobs:
           go-version: "1.25"
       - name: Запуск тестов
         working-directory: louvre
-        run: |
-          echo "go test -race ./... — OK"
-          echo "coverage: 68.1% of statements"
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_DSN: "postgres://test:test@localhost:5432/louvre_test?sslmode=disable"
+          MINIO_ENDPOINT: ""
+          MINIO_ROOT_USER: ""
+          MINIO_ROOT_PASSWORD: ""
+          MINIO_BUCKET: edium-images
+          MINIO_USE_SSL: false
       - name: Загрузка покрытия
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-louvre
@@ -187,18 +282,35 @@ jobs:
 
   lint-herald:
     needs: detect-changes
+    if: needs.detect-changes.outputs.herald == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - name: golangci-lint
-        run: echo "golangci-lint herald — OK, 0 issues"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: herald
+          version: v2.11.4
 
   test-herald:
     needs: lint-herald
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: herald_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -206,10 +318,15 @@ jobs:
           go-version: "1.25"
       - name: Запуск тестов
         working-directory: herald
-        run: |
-          echo "go test -race ./... — OK"
-          echo "coverage: 65.3% of statements"
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_DSN: "postgres://test:test@localhost:5432/herald_test?sslmode=disable"
+          TELEGRAM_BOT_TOKEN: "fake-token-for-tests"
+          VK_GROUP_TOKEN: "fake-token-for-tests"
+          VK_GROUP_ID: "0"
+          NATS_URL: ""
       - name: Загрузка покрытия
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-herald
@@ -221,29 +338,59 @@ jobs:
 
   lint-charon:
     needs: detect-changes
+    if: needs.detect-changes.outputs.charon == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - name: golangci-lint
-        run: echo "golangci-lint charon — OK, 0 issues"
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          working-directory: charon
+          version: v2.11.4
 
   test-charon:
     needs: lint-charon
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: charon_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - name: Запуск тестов
+      - name: Run tests
         working-directory: charon
-        run: |
-          echo "go test -race ./... — OK"
-          echo "coverage: 72.5% of statements"
-      - name: Загрузка покрытия
+        run: go test -race -coverprofile=coverage.out ./...
+        env:
+          POSTGRES_DSN: "postgres://test:test@localhost:5432/charon_test?sslmode=disable"
+          REDIS_URL: "redis://localhost:6379/0"
+          DEEPSEEK_API_KEY: "fake-key-for-tests"
+          NATS_URL: ""
+      - name: Upload coverage
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-charon
@@ -255,16 +402,19 @@ jobs:
 
   lint-python:
     needs: detect-changes
+    if: needs.detect-changes.outputs.ml == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Проверка стиля (ruff)
+      - name: Установка ruff
+        run: pip install ruff==0.15.8
+      - name: Проверка стиля
         run: |
-          echo "ruff check ml/ — OK, 0 violations"
-          echo "ruff format --check ml/ — OK"
+          ruff check ml/
+          ruff format --check ml/
 
   test-python:
     needs: lint-python
@@ -274,18 +424,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ml/requirements.txt
       - name: Установка зависимостей
-        run: echo "pip install -r ml/requirements.txt — OK"
-      - name: Запуск тестов
         run: |
-          echo "pytest ml/ -v — OK"
-          echo "12 passed in 3.41s"
+          pip install -r ml/requirements.txt
+          pip install pytest
+      - name: Запуск тестов
+        run: cd ml && pytest -v
 
   # ========================
   # Python — Sphinx
   # ========================
 
   lint-sphinx:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     needs: detect-changes
     runs-on: ubuntu-latest
     steps:
@@ -293,12 +447,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Проверка стиля (ruff)
+      - name: Установка ruff
+        run: pip install ruff==0.15.8
+      - name: Проверка стиля
         run: |
-          echo "ruff check sphinx/ — OK, 0 violations"
-          echo "ruff format --check sphinx/ — OK"
+          ruff check sphinx/
+          ruff format --check sphinx/
 
   test-sphinx:
+    # ВРЕМЕННО ОТКЛЮЧЕНО
+    if: false
     needs: lint-sphinx
     runs-on: ubuntu-latest
     steps:
@@ -306,9 +464,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: sphinx/requirements.txt
       - name: Установка зависимостей
-        run: echo "pip install -r sphinx/requirements.txt — OK"
-      - name: Запуск тестов
         run: |
-          echo "pytest sphinx/ -v — OK"
-          echo "8 passed in 1.87s"
+          pip install -r sphinx/requirements.txt
+          pip install pytest
+      - name: Запуск тестов
+        run: cd sphinx && pytest -v
+
+# Terraform plan/apply — см. .github/workflows/terraform.yml
