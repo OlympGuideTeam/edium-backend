@@ -193,9 +193,7 @@ func (s *Service) GetAttemptReview(ctx context.Context, attemptID uuid.UUID, cal
 	for i := range answers {
 		if q, ok := qMap[answers[i].QuestionID]; ok {
 			answers[i].Options = q.Options
-			if enriched {
-				answers[i].Metadata = q.Metadata
-			}
+			answers[i].Metadata = q.Metadata
 		}
 	}
 

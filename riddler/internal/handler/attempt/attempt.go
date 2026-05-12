@@ -179,6 +179,8 @@ func (h *Handler) GetAttemptReview(c *gin.Context) {
 		var metadata map[string]any
 		if enriched {
 			metadata = a.Metadata
+		} else {
+			metadata = sanitizeMetadataForStudent(a.QuestionType, a.Metadata)
 		}
 		reviewAnswers[i] = dto.AnswerReviewResponse{
 			SubmissionID:   a.SubmissionID.String(),

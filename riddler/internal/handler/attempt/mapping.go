@@ -33,6 +33,34 @@ func toQuestionsResponse(questions []domain.QuestionForStudent) []dto.QuestionFo
 	return out
 }
 
+// sanitizeMetadataForStudent strips correct-answer fields from question metadata,
+// leaving only the items/sides the student needs to understand the question.
+func sanitizeMetadataForStudent(questionType string, metadata map[string]any) map[string]any {
+	if metadata == nil {
+		return nil
+	}
+	switch domain.QuestionType(questionType) {
+	case domain.QuestionTypeDrag:
+		if order, ok := metadata["correct_order"].([]any); ok {
+			return map[string]any{"items": order}
+		}
+		return nil
+	case domain.QuestionTypeConnection:
+		out := make(map[string]any, 2)
+		if left, ok := metadata["left"]; ok {
+			out["left"] = left
+		}
+		if right, ok := metadata["right"]; ok {
+			out["right"] = right
+		}
+		if len(out) == 0 {
+			return nil
+		}
+		return out
+	}
+	return nil
+}
+
 func uuidPtrToString(id *uuid.UUID) *string {
 	if id == nil {
 		return nil
