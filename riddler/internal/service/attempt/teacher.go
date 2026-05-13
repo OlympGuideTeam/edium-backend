@@ -172,15 +172,16 @@ func (s *Service) GetAttemptReview(ctx context.Context, attemptID uuid.UUID, cal
 		}
 	}
 
-	answers, err := s.attempts.GetAnswersWithQuestion(ctx, attemptID)
-	if err != nil {
-		return nil, nil, false, fmt.Errorf("get answers: %w", err)
-	}
-
 	session, err := s.sessions.GetByID(ctx, attempt.SessionID)
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("get session: %w", err)
 	}
+
+	answers, err := s.attempts.GetAnswersWithQuestion(ctx, attemptID, session.QuizTemplateID)
+	if err != nil {
+		return nil, nil, false, fmt.Errorf("get answers: %w", err)
+	}
+
 	questions, err := s.quizzes.GetQuestionsWithOptions(ctx, session.QuizTemplateID)
 	if err != nil {
 		return nil, nil, false, fmt.Errorf("get questions: %w", err)
@@ -189,6 +190,7 @@ func (s *Service) GetAttemptReview(ctx context.Context, attemptID uuid.UUID, cal
 	for i := range questions {
 		qMap[questions[i].ID] = questions[i]
 	}
+
 	enriched := enrichTeacher || attempt.Status == domain.AttemptStatusPublished
 	for i := range answers {
 		if q, ok := qMap[answers[i].QuestionID]; ok {

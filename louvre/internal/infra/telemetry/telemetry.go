@@ -21,8 +21,9 @@ func Init(ctx context.Context, endpoint, serviceName string) (func(context.Conte
 		return nil, err
 	}
 
-	res, err := resource.New(ctx,
-		resource.WithAttributes(semconv.ServiceName(serviceName)),
+	res, err := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName(serviceName)),
 	)
 	if err != nil {
 		return nil, err

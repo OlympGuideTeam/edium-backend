@@ -182,8 +182,13 @@ func (h *Handler) GetAttemptReview(c *gin.Context) {
 		} else {
 			metadata = sanitizeMetadataForStudent(a.QuestionType, a.Metadata)
 		}
+		var submissionID *string
+		if a.SubmissionID != nil {
+			s := a.SubmissionID.String()
+			submissionID = &s
+		}
 		reviewAnswers[i] = dto.AnswerReviewResponse{
-			SubmissionID:   a.SubmissionID.String(),
+			SubmissionID:   submissionID,
 			QuestionID:     a.QuestionID.String(),
 			QuestionType:   a.QuestionType,
 			QuestionText:   a.QuestionText,

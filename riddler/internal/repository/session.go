@@ -359,15 +359,13 @@ func (r *PgSessionRepository) FindStudentActiveTests(ctx context.Context, userID
 		        a.id, a.status
 		 FROM quiz_session qs
 		 JOIN quiz_template qt ON qt.id = qs.quiz_template_id
-		 LEFT JOIN attempt a ON a.session_id = qs.id AND a.user_id = $1
+		 JOIN attempt a ON a.session_id = qs.id AND a.user_id = $1
 		 WHERE qs.source = $2
 		   AND qs.mode = $3
 		   AND qs.status = $4
 		   AND (qs.finished_at IS NULL OR qs.finished_at > now())
-		   AND (a.id IS NULL OR a.status = $5)
-		 ORDER BY
-		   CASE WHEN a.status = $5 THEN 0 ELSE 1 END,
-		   qs.started_at DESC
+		   AND a.status = $5
+		 ORDER BY qs.started_at DESC
 		 LIMIT 5`,
 		userID, domain.LiveSourceCourse, domain.SessionModeTest,
 		domain.SessionStatusActive, domain.AttemptStatusInProgress,

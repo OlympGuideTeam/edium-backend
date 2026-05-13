@@ -112,7 +112,7 @@ func (m *mockAttemptRepo) SumScores(_ context.Context, _ uuid.UUID) (float64, er
 func (m *mockAttemptRepo) FindBySessionID(_ context.Context, _ uuid.UUID) ([]domain.AttemptSummary, error) {
 	return m.sessionAttempts, m.sessionAttempsErr
 }
-func (m *mockAttemptRepo) GetAnswersWithQuestion(_ context.Context, _ uuid.UUID) ([]domain.AnswerWithQuestion, error) {
+func (m *mockAttemptRepo) GetAnswersWithQuestion(_ context.Context, _, _ uuid.UUID) ([]domain.AnswerWithQuestion, error) {
 	return m.answersWithQ, m.answersWithQErr
 }
 func (m *mockAttemptRepo) GetSubmissionByID(_ context.Context, _ uuid.UUID) (*domain.AnswerSubmission, error) {

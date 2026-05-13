@@ -40,7 +40,7 @@ services:
       nats:
         condition: service_started
       jaeger:
-        condition: service_started
+        condition: service_healthy
     networks:
       - edium
 
@@ -86,7 +86,7 @@ services:
       nats:
         condition: service_started
       jaeger:
-        condition: service_started
+        condition: service_healthy
       doorman:
         condition: service_started
     networks:
@@ -130,7 +130,7 @@ services:
       nats:
         condition: service_started
       jaeger:
-        condition: service_started
+        condition: service_healthy
     networks:
       - edium
 
@@ -169,7 +169,7 @@ services:
       nats:
         condition: service_started
       jaeger:
-        condition: service_started
+        condition: service_healthy
     networks:
       - edium
 
@@ -209,7 +209,7 @@ services:
       nats:
         condition: service_started
       jaeger:
-        condition: service_started
+        condition: service_healthy
     networks:
       - edium
 
@@ -248,7 +248,7 @@ services:
       doorman:
         condition: service_started
       jaeger:
-        condition: service_started
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -326,13 +326,25 @@ services:
     restart: always
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
+      SPAN_STORAGE_TYPE: badger
+      BADGER_EPHEMERAL: "false"
+      BADGER_DIRECTORY_VALUE: /badger/data
+      BADGER_DIRECTORY_KEY: /badger/key
+    volumes:
+      - jaeger_data:/badger
     expose:
       - "16686"
       - "4317"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:14269/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
     networks:
       - edium
 
@@ -422,6 +434,7 @@ volumes:
   grafana_data:
   prometheus_data:
   alertmanager_data:
+  jaeger_data:
 
 networks:
   edium:
