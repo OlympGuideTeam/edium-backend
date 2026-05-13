@@ -138,7 +138,7 @@ func (w *OTPSentProcessor) processTask(ctx context.Context, t domain.Task) error
 	if payload.ErrorCode != "" {
 		text = otpErrorMessage(payload.ErrorCode)
 	} else {
-		text = fmt.Sprintf("Ваш код: %06d", payload.OTP)
+		text = fmt.Sprintf("Ваш код: `%06d`", payload.OTP)
 	}
 
 	if err := sender.Send(ctx, pending.ChatID, text); err != nil {
