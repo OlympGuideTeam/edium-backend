@@ -67,7 +67,7 @@ func (m *mockQuizSvc) CopyQuiz(_ context.Context, _, _ uuid.UUID, _ *uuid.UUID) 
 func (m *mockQuizSvc) ListQuizzes(_ context.Context, _ domain.Role, _ *uuid.UUID, _ *string) ([]domain.QuizListItem, error) {
 	return m.listItems, m.listErr
 }
-func (m *mockQuizSvc) ListMyQuizzes(_ context.Context, _ uuid.UUID) ([]domain.QuizListItem, error) {
+func (m *mockQuizSvc) ListMyQuizzes(_ context.Context, _ uuid.UUID, _ *string) ([]domain.QuizListItem, error) {
 	return m.listItems, m.listErr
 }
 func (m *mockQuizSvc) AddQuestion(_ context.Context, _, _ uuid.UUID, _ domain.AddQuestionParams) (uuid.UUID, int, error) {

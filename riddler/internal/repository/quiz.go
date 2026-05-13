@@ -195,16 +195,25 @@ func (r *PgQuizRepository) ListPublished(ctx context.Context, needEvaluationFals
 	return scanQuizListItems(rows)
 }
 
-func (r *PgQuizRepository) ListByAuthor(ctx context.Context, authorID uuid.UUID) ([]domain.QuizListItem, error) {
+func (r *PgQuizRepository) ListByAuthor(ctx context.Context, authorID uuid.UUID, search *string) ([]domain.QuizListItem, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 
-	rows, err := exec.QueryContext(ctx,
-		`SELECT id, title, description, default_settings, is_public, source, need_evaluation, question_count
-		 FROM quiz_template
-		 WHERE author_id = $1 AND source = 'library'
-		 ORDER BY created_at DESC`,
-		authorID,
-	)
+	query := `SELECT id, title, description, default_settings, is_public, source, need_evaluation, question_count
+	          FROM quiz_template
+	          WHERE author_id = $1 AND source = 'library'`
+	if search != nil && *search != "" {
+		query += ` AND (title ILIKE $2 OR description ILIKE $2)`
+	}
+	query += ` ORDER BY created_at DESC`
+
+	var rows *sql.Rows
+	var err error
+	if search != nil && *search != "" {
+		searchPattern := "%" + *search + "%"
+		rows, err = exec.QueryContext(ctx, query, authorID, searchPattern)
+	} else {
+		rows, err = exec.QueryContext(ctx, query, authorID)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("list quizzes by author: %w", err)
 	}

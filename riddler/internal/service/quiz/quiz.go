@@ -304,8 +304,8 @@ func (s *Service) ListQuizzes(ctx context.Context, role domain.Role, userID *uui
 	return items, nil
 }
 
-func (s *Service) ListMyQuizzes(ctx context.Context, authorID uuid.UUID) ([]domain.QuizListItem, error) {
-	items, err := s.quizzes.ListByAuthor(ctx, authorID)
+func (s *Service) ListMyQuizzes(ctx context.Context, authorID uuid.UUID, search *string) ([]domain.QuizListItem, error) {
+	items, err := s.quizzes.ListByAuthor(ctx, authorID, search)
 	if err != nil {
 		return nil, fmt.Errorf("list my quizzes: %w", err)
 	}

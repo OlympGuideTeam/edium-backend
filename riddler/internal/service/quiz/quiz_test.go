@@ -73,7 +73,7 @@ func (m *mockQuizRepo) HasFreeAnswerQuestions(_ context.Context, _ uuid.UUID) (b
 func (m *mockQuizRepo) ListPublished(_ context.Context, _ bool, _ *string) ([]domain.QuizListItem, error) {
 	return m.listPublished, m.listPubErr
 }
-func (m *mockQuizRepo) ListByAuthor(_ context.Context, _ uuid.UUID) ([]domain.QuizListItem, error) {
+func (m *mockQuizRepo) ListByAuthor(_ context.Context, _ uuid.UUID, _ *string) ([]domain.QuizListItem, error) {
 	return m.listByAuthor, m.listByAuthErr
 }
 func (m *mockQuizRepo) Copy(_ context.Context, _, _ uuid.UUID, _ domain.QuizSource, _ *uuid.UUID) (uuid.UUID, error) {
@@ -442,7 +442,7 @@ func TestListMyQuizzes_Success(t *testing.T) {
 	items := []domain.QuizListItem{{ID: uuid.New()}}
 	q := &mockQuizRepo{listByAuthor: items}
 	svc := newSvc(q, &mockAttemptAccessor{}, &mockSessionSvc{}, &mockTx{}, &mockTaskSched{})
-	result, err := svc.ListMyQuizzes(context.Background(), authorID())
+	result, err := svc.ListMyQuizzes(context.Background(), authorID(), nil)
 	if err != nil || len(result) != 1 {
 		t.Fatalf("unexpected: err=%v len=%d", err, len(result))
 	}
