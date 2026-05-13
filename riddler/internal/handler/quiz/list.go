@@ -45,7 +45,8 @@ func (h *Handler) ListMyQuizzes(c *gin.Context) {
 		return
 	}
 
-	items, err := h.service.ListMyQuizzes(c.Request.Context(), userID)
+	search := c.Query("search")
+	items, err := h.service.ListMyQuizzes(c.Request.Context(), userID, &search)
 	if err != nil {
 		httpx.WriteError(c, err)
 		return
