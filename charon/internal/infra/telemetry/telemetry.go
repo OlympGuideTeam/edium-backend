@@ -25,12 +25,11 @@ func Init(ctx context.Context, endpoint, serviceName string) (func(context.Conte
 		return nil, fmt.Errorf("otlptracegrpc.New: %w", err)
 	}
 
-	res, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName(serviceName)),
+	res, err := resource.New(ctx,
+		resource.WithAttributes(semconv.ServiceName(serviceName)),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("resource.Merge: %w", err)
+		return nil, fmt.Errorf("resource.New: %w", err)
 	}
 
 	tp := sdktrace.NewTracerProvider(
