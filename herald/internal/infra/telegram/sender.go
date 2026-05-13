@@ -16,7 +16,9 @@ func NewSender(bot *tgbotapi.BotAPI) *Sender {
 }
 
 func (s *Sender) Send(_ context.Context, chatID int64, text string) error {
-	_, err := s.bot.Send(tgbotapi.NewMessage(chatID, text))
+	msg := tgbotapi.NewMessage(chatID, text)
+	msg.ParseMode = tgbotapi.ModeMarkdownV2
+	_, err := s.bot.Send(msg)
 	if err != nil {
 		return fmt.Errorf("telegram send: %w", err)
 	}
