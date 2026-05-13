@@ -326,19 +326,13 @@ services:
     restart: always
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
-      SPAN_STORAGE_TYPE: badger
-      BADGER_EPHEMERAL: "false"
-      BADGER_DIRECTORY_VALUE: /badger/data
-      BADGER_DIRECTORY_KEY: /badger/key
-    volumes:
-      - jaeger_data:/badger
     expose:
       - "16686"
       - "4317"
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 256M
     networks:
       - edium
 
@@ -428,7 +422,6 @@ volumes:
   grafana_data:
   prometheus_data:
   alertmanager_data:
-  jaeger_data:
 
 networks:
   edium:
