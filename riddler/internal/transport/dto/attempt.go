@@ -61,11 +61,11 @@ type AnswerOptionTeacherResponse struct {
 }
 
 type AnswerReviewResponse struct {
-	SubmissionID   string                           `json:"submission_id"`
+	SubmissionID   *string                          `json:"submission_id,omitempty"`
 	QuestionID     string                           `json:"question_id"`
 	QuestionType   string                           `json:"question_type"`
 	QuestionText   string                           `json:"question_text"`
-	AnswerData     map[string]any                   `json:"answer_data"`
+	AnswerData     map[string]any                   `json:"answer_data,omitempty"`
 	FinalScore     *float64                         `json:"final_score"`
 	FinalSource    *string                          `json:"final_source"`
 	FinalFeedback  *string                          `json:"final_feedback"`

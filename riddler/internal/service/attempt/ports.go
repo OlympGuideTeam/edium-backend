@@ -29,7 +29,7 @@ type attemptRepository interface {
 	UpdateSubmissionFinalScore(ctx context.Context, submissionID uuid.UUID, score float64, source domain.FinalSource, feedback *string) error
 	SumScores(ctx context.Context, attemptID uuid.UUID) (float64, error)
 	FindBySessionID(ctx context.Context, sessionID uuid.UUID) ([]domain.AttemptSummary, error)
-	GetAnswersWithQuestion(ctx context.Context, attemptID uuid.UUID) ([]domain.AnswerWithQuestion, error)
+	GetAnswersWithQuestion(ctx context.Context, attemptID, quizTemplateID uuid.UUID) ([]domain.AnswerWithQuestion, error)
 	GetSubmissionByID(ctx context.Context, id uuid.UUID) (*domain.AnswerSubmission, error)
 	GetUserStatistic(ctx context.Context, userID uuid.UUID) (*domain.UserStatistic, error)
 	GetBySessionAndUser(ctx context.Context, sessionID, userID uuid.UUID) (*domain.Attempt, error)

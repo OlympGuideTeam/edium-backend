@@ -93,8 +93,8 @@ type evtQuestionStatsTick struct {
 	QuestionID     string `json:"question_id,omitempty"`
 	AnsweredCount  int    `json:"answered_count"`
 	ConnectedCount int    `json:"connected_count"`
-	CorrectCount   int    `json:"correct_count,omitempty"`
-	IncorrectCount int    `json:"incorrect_count,omitempty"`
+	CorrectCount   int    `json:"correct_count"`
+	IncorrectCount int    `json:"incorrect_count"`
 	AvgTimeMs      *int64 `json:"avg_time_ms,omitempty"`
 	// "choice" или "binary" — клиент использует для выбора виджета
 	Kind         string          `json:"kind,omitempty"`

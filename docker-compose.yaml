@@ -24,7 +24,7 @@ services:
       nats:
         condition: service_started
       jaeger:
-        condition: service_started
+        condition: service_healthy
 
   doorman-db:
     image: postgres:17
@@ -86,6 +86,12 @@ services:
     ports:
       - "16686:16686"
       - "4317:4317"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:14269/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   minio:
     image: minio/minio:latest
@@ -139,7 +145,7 @@ services:
       nats:
         condition: service_started
       jaeger:
-        condition: service_started
+        condition: service_healthy
 
   caesar-db:
     image: postgres:17
@@ -202,7 +208,7 @@ services:
       - "8084:80"
     depends_on:
       jaeger:
-        condition: service_started
+        condition: service_healthy
       herald-db:
         condition: service_healthy
       herald-flyway:
@@ -272,7 +278,7 @@ services:
       nats:
         condition: service_started
       jaeger:
-        condition: service_started
+        condition: service_healthy
 
   charon-db:
     image: postgres:17
@@ -351,7 +357,7 @@ services:
       nats:
         condition: service_started
       jaeger:
-        condition: service_started
+        condition: service_healthy
 
   riddler-redis:
     image: redis:8
@@ -431,7 +437,7 @@ services:
       minio:
         condition: service_healthy
       jaeger:
-        condition: service_started
+        condition: service_healthy
 
   louvre-db:
     image: postgres:17

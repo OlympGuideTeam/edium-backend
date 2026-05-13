@@ -145,16 +145,16 @@ func (r *PgAttemptRepository) SumScores(ctx context.Context, attemptID uuid.UUID
 	return total, nil
 }
 
-func (r *PgAttemptRepository) GetAnswersWithQuestion(ctx context.Context, attemptID uuid.UUID) ([]domain.AnswerWithQuestion, error) {
+func (r *PgAttemptRepository) GetAnswersWithQuestion(ctx context.Context, attemptID, quizTemplateID uuid.UUID) ([]domain.AnswerWithQuestion, error) {
 	exec := db.ExecutorFromContext(ctx, r.db)
 	rows, err := exec.QueryContext(ctx,
-		`SELECT s.id, s.question_id, q.type, q.text,
-		        s.answer_data, s.final_score, s.final_source, s.final_feedback
-		 FROM answer_submission s
-		 JOIN question q ON q.id = s.question_id
-		 WHERE s.attempt_id = $1
+		`SELECT q.id, q.type, q.text,
+		        s.id, s.answer_data, s.final_score, s.final_source, s.final_feedback
+		 FROM question q
+		 LEFT JOIN answer_submission s ON s.question_id = q.id AND s.attempt_id = $1
+		 WHERE q.quiz_template_id = $2
 		 ORDER BY q.order_index`,
-		attemptID,
+		attemptID, quizTemplateID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get answers with question: %w", err)
@@ -164,15 +164,26 @@ func (r *PgAttemptRepository) GetAnswersWithQuestion(ctx context.Context, attemp
 	var result []domain.AnswerWithQuestion
 	for rows.Next() {
 		var a domain.AnswerWithQuestion
+		var sidStr sql.NullString
 		var dataJSON []byte
+		var finalScore sql.NullFloat64
 		var finalSource sql.NullString
 		var finalFeedback sql.NullString
-		if err := rows.Scan(&a.SubmissionID, &a.QuestionID, &a.QuestionType, &a.QuestionText,
-			&dataJSON, &a.FinalScore, &finalSource, &finalFeedback); err != nil {
+		if err := rows.Scan(&a.QuestionID, &a.QuestionType, &a.QuestionText,
+			&sidStr, &dataJSON, &finalScore, &finalSource, &finalFeedback); err != nil {
 			return nil, fmt.Errorf("scan answer with question: %w", err)
 		}
-		if err := json.Unmarshal(dataJSON, &a.AnswerData); err != nil {
-			return nil, fmt.Errorf("unmarshal answer_data: %w", err)
+		if sidStr.Valid {
+			sid, _ := uuid.Parse(sidStr.String)
+			a.SubmissionID = &sid
+		}
+		if dataJSON != nil {
+			if err := json.Unmarshal(dataJSON, &a.AnswerData); err != nil {
+				return nil, fmt.Errorf("unmarshal answer_data: %w", err)
+			}
+		}
+		if finalScore.Valid {
+			a.FinalScore = &finalScore.Float64
 		}
 		if finalSource.Valid {
 			src := domain.FinalSource(finalSource.String)

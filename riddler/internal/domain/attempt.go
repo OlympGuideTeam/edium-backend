@@ -80,7 +80,7 @@ type AttemptSummary struct {
 }
 
 type AnswerWithQuestion struct {
-	SubmissionID  uuid.UUID
+	SubmissionID  *uuid.UUID
 	QuestionID    uuid.UUID
 	QuestionType  string
 	QuestionText  string
