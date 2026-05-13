@@ -336,7 +336,7 @@ services:
       - "16686"
       - "4317"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:14269/"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:14269/"]
       interval: 10s
       timeout: 5s
       retries: 5
