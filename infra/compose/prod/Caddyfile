@@ -40,7 +40,7 @@ grafana.edium.online {
 
 jaeger.edium.online {
     basicauth {
-        admin {$JAEGER_BASIC_AUTH_HASH}
+        admin ${JAEGER_BASIC_AUTH_HASH}
     }
     reverse_proxy jaeger:16686
 }
