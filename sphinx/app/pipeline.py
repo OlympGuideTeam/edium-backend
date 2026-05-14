@@ -5,7 +5,7 @@ import shutil
 import os
 
 import torch
-# from peft import PeftModel  # TODO: раскомментировать после обучения LoRA-адаптеров
+from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 from app.config import settings
@@ -77,9 +77,6 @@ class QuizPipeline:
     def __init__(self):
         self._model = None
         self._tokenizer = None
-        # TODO: раскомментировать после обучения адаптеров
-        # self._extraction_adapter = None
-        # self._generation_adapter = None
 
     @staticmethod
     def _cleanup_stale_caches(cache_base: str, current_slug: str) -> None:
@@ -139,16 +136,21 @@ class QuizPipeline:
                 self._tokenizer.save_pretrained(cache_dir)
                 logger.info("Quantized model cached")
 
-        # TODO: раскомментировать после обучения адаптеров
-        # token = settings.hf_token or None
-        # logger.info("Loading extraction adapter: %s", settings.extraction_adapter)
-        # self._extraction_adapter = settings.extraction_adapter
-        # PeftModel.from_pretrained(self._model, self._extraction_adapter, token=token)
-        # self._model = self._model.base_model if hasattr(self._model, "base_model") else self._model
-        # logger.info("Loading generation adapter: %s", settings.generation_adapter)
-        # self._generation_adapter = settings.generation_adapter
-        # PeftModel.from_pretrained(self._model, self._generation_adapter, token=token)
-        # self._model = self._model.base_model if hasattr(self._model, "base_model") else self._model
+        token = settings.hf_token or None
+        logger.info("Loading extraction adapter: %s", settings.extraction_adapter)
+        self._model = PeftModel.from_pretrained(
+            self._model,
+            settings.extraction_adapter,
+            adapter_name="extraction",
+            token=token,
+        )
+        logger.info("Loading generation adapter: %s", settings.generation_adapter)
+        self._model.load_adapter(
+            settings.generation_adapter,
+            adapter_name="generation",
+            token=token,
+        )
+        self._model.eval()
 
         logger.info("Pipeline ready. VRAM used: %.1f GB", torch.cuda.memory_allocated() / 1024**3)
 
@@ -178,20 +180,9 @@ class QuizPipeline:
         )
         return response.strip()
 
-    # TODO: раскомментировать после обучения адаптеров
-    # def _with_adapter(self, adapter_path: str):
-    #     token = settings.hf_token or None
-    #     model = PeftModel.from_pretrained(self._model, adapter_path, token=token)
-    #     model.eval()
-    #     return model
-
-    # def _unwrap_adapter(self):
-    #     if hasattr(self._model, "base_model"):
-    #         self._model = self._model.base_model
-
     def extract_facts(self, text: str) -> list[dict]:
-        """Извлечение фактов из текста."""
-        # TODO: заменить на self._with_adapter(self._extraction_adapter) после обучения
+        """Извлечение фактов из текста (extraction LoRA)."""
+        self._model.set_adapter("extraction")
         messages = [
             {"role": "system", "content": EXTRACTION_SYSTEM},
             {"role": "user", "content": text},
@@ -200,8 +191,8 @@ class QuizPipeline:
         return _parse_json(response)
 
     def generate_quiz(self, facts: list[dict]) -> dict:
-        """Генерация квиза из фактов."""
-        # TODO: заменить на self._with_adapter(self._generation_adapter) после обучения
+        """Генерация квиза из фактов (generation LoRA)."""
+        self._model.set_adapter("generation")
         facts_str = json.dumps(facts, ensure_ascii=False)
         messages = [
             {"role": "system", "content": GENERATION_SYSTEM},

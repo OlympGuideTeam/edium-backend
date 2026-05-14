@@ -139,6 +139,9 @@ jobs:
             GRAFANA_URL=${{ secrets.GRAFANA_URL }}
             JAEGER_BASIC_AUTH_HASH=${{ secrets.JAEGER_BASIC_AUTH_HASH }}
             FIREBASE_CREDENTIALS_JSON=${{ secrets.FIREBASE_CREDENTIALS_JSON }}
+            HF_TOKEN=${{ secrets.HF_TOKEN }}
+            EXTRACTION_ADAPTER=sundayti/sphinx-extraction-lora
+            GENERATION_ADAPTER=sundayti/sphinx-generation-lora
             ENVEOF
             sed -i 's/^[[:space:]]*//' .env
 
