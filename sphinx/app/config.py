@@ -4,9 +4,8 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # HuggingFace
     model_id: str = "Qwen/Qwen2.5-14B-Instruct"
-    # TODO: раскомментировать после обучения адаптеров
-    # extraction_adapter: str = "edium/sphinx-extraction-lora"
-    # generation_adapter: str = "edium/sphinx-generation-lora"
+    extraction_adapter: str = "sundayti/sphinx-extraction-lora"
+    generation_adapter: str = "sundayti/sphinx-generation-lora"
     hf_token: str = ""
 
     # Путь для кэша квантизованной модели (пусто — не кэшировать)
